@@ -34,6 +34,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
         direction="column"
         h="full"
         bg="white"
+        overflowY="auto"
         borderRadius="3xl"
       > 
         {children}
