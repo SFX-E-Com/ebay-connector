@@ -17,6 +17,7 @@ interface CreateListingRequest {
       postalCode?: string;
       country: string; // Required - 2-letter ISO code
     };
+    locationTypes?: string[];
   };
 
   // Inventory item data
@@ -26,13 +27,29 @@ interface CreateListingRequest {
     };
   };
   condition?: string;
+  conditionDescription?: string;
   product?: {
     title: string;
     description: string;
     imageUrls: string[];
     brand?: string;
     mpn?: string;
+    ean?: string[];
+    isbn?: string[];
+    upc?: string[];
     aspects?: Record<string, string[]>;
+  };
+  packageWeightAndSize?: {
+    dimensions?: {
+      height: number;
+      length: number;
+      width: number;
+      unit: string;
+    };
+    weight?: {
+      value: number;
+      unit: string;
+    };
   };
 
   // Offer data
@@ -77,6 +94,13 @@ export async function POST(
 
     const body: CreateListingRequest = await request.json();
 
+    console.log(`[CREATE LISTING API] ====== REQUEST DETAILS ======`);
+    console.log(`[CREATE LISTING API] SKU: ${body.sku}`);
+    console.log(`[CREATE LISTING API] Marketplace: ${body.marketplaceId || 'EBAY_US'}`);
+    console.log(`[CREATE LISTING API] Category: ${body.categoryId}`);
+    console.log(`[CREATE LISTING API] Publish requested: ${body.publish}`);
+    console.log(`[CREATE LISTING API] =============================`);
+
     // Validate required fields
     if (!body.sku) {
       return NextResponse.json(
@@ -109,6 +133,16 @@ export async function POST(
           { status: 400 }
         );
       }
+
+      if (!body.marketplaceId) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: 'Marketplace ID is required when publish=true (e.g., EBAY_US, EBAY_DE)',
+          },
+          { status: 400 }
+        );
+      }
     }
 
     // Get the eBay account
@@ -130,9 +164,8 @@ export async function POST(
     const ebayService = new EbayListingService(account);
 
     // Log the complete request data being sent to eBay
-    console.log('=== COMPLETE REQUEST DATA TO EBAY API ===');
-    console.log(JSON.stringify(body, null, 2));
-    console.log('=== END REQUEST DATA ===');
+    console.log('[CREATE LISTING API] Account:', account.friendlyName || account.ebayUsername);
+    console.log('[CREATE LISTING API] Environment:', process.env.EBAY_SANDBOX === 'true' ? 'SANDBOX' : 'PRODUCTION');
 
     // Execute complete listing creation workflow
     console.log(`[CREATE LISTING API] Starting complete listing creation for SKU: ${body.sku}`);
@@ -151,16 +184,18 @@ export async function POST(
         try {
           const locationData: any = {
             ...body.location,
-            locationTypes: ['WAREHOUSE']
+            locationTypes: body.location.locationTypes || ['WAREHOUSE']
           };
           results.location = await ebayService.createInventoryLocation(locationData);
           console.log('[CREATE LISTING API] Location created successfully');
         } catch (error: any) {
           // Continue if location already exists (204 status)
           if (!error.message.includes('204') && !error.message.includes('already exists')) {
-            throw error;
+            console.error('[CREATE LISTING API] Location creation error:', error.message);
+            // Don't fail the entire request if location creation fails
+          } else {
+            console.log('[CREATE LISTING API] Location already exists, continuing...');
           }
-          console.log('[CREATE LISTING API] Location already exists, continuing...');
         }
       }
 
@@ -169,56 +204,108 @@ export async function POST(
       const inventoryData: any = {};
       if (body.availability) inventoryData.availability = body.availability;
       if (body.condition) inventoryData.condition = body.condition;
+      if (body.conditionDescription) inventoryData.conditionDescription = body.conditionDescription;
       if (body.product) inventoryData.product = body.product;
+      if (body.packageWeightAndSize) {
+        // Remove problematic packageType field if it exists
+        const { packageType, ...safePackageData } = body.packageWeightAndSize as any;
+        if (Object.keys(safePackageData).length > 0) {
+          inventoryData.packageWeightAndSize = safePackageData;
+        }
+      }
+
+      console.log('[CREATE LISTING API] Inventory data:', JSON.stringify(inventoryData, null, 2));
 
       results.inventoryItem = await ebayService.createOrUpdateInventoryItem({
         sku: body.sku,
         ...inventoryData
       });
-      console.log('[CREATE LISTING API] Inventory item created successfully');
+      console.log('[CREATE LISTING API] Inventory item created/updated successfully');
 
-      // Step 3: Create offer
-      console.log('[CREATE LISTING API] Creating offer...');
-      const offerData: any = {
-        sku: body.sku,
-        marketplaceId: body.marketplaceId || 'EBAY_US',
-        format: body.format || 'FIXED_PRICE'
-      };
+      // Wait for eBay to process the inventory item
+      if (body.publish) {
+        console.log('[CREATE LISTING API] Waiting 5 seconds for eBay to process inventory item...');
+        await new Promise(resolve => setTimeout(resolve, 5000));
+      }
 
-      if (body.categoryId) offerData.categoryId = body.categoryId;
-      if (body.pricingSummary) offerData.pricingSummary = body.pricingSummary;
-      if (body.availableQuantity) offerData.availableQuantity = body.availableQuantity;
-      if (body.location?.merchantLocationKey) offerData.merchantLocationKey = body.location.merchantLocationKey;
-      if (body.listingDuration) offerData.listingDuration = body.listingDuration;
-      if (body.listingPolicies) offerData.listingPolicies = body.listingPolicies;
-      if (body.shippingCostOverrides) offerData.shippingCostOverrides = body.shippingCostOverrides;
+      // Step 3: Create offer if publishing
+      if (body.publish) {
+        console.log('[CREATE LISTING API] Creating offer...');
+        const offerData: any = {
+          sku: body.sku,
+          marketplaceId: body.marketplaceId || 'EBAY_US',
+          format: body.format || 'FIXED_PRICE'
+        };
 
-      results.offer = await ebayService.createOffer(offerData);
-      console.log('[CREATE LISTING API] Offer created:', results.offer);
+        if (body.categoryId) offerData.categoryId = body.categoryId;
+        if (body.pricingSummary) offerData.pricingSummary = body.pricingSummary;
+        if (body.availableQuantity !== undefined) offerData.availableQuantity = body.availableQuantity;
+        if (body.location?.merchantLocationKey) {
+          offerData.merchantLocationKey = body.location.merchantLocationKey;
+        } else {
+          offerData.merchantLocationKey = `LOC-${body.sku}`;
+        }
+        if (body.listingDuration) offerData.listingDuration = body.listingDuration;
+        if (body.listingPolicies) offerData.listingPolicies = body.listingPolicies;
+        if (body.shippingCostOverrides) offerData.shippingCostOverrides = body.shippingCostOverrides;
 
-      // Step 4: Publish if requested
-      if (body.publish && results.offer.offerId) {
-        console.log('[CREATE LISTING API] Publishing offer...');
+        console.log('[CREATE LISTING API] Offer data:', JSON.stringify(offerData, null, 2));
+
         try {
-          results.listing = await ebayService.publishOffer(results.offer.offerId);
-          console.log('[CREATE LISTING API] Offer published successfully');
-        } catch (error: any) {
-          console.error('[CREATE LISTING API] Publish error:', error.message);
-          // Return partial success
-          return NextResponse.json({
-            success: true,
-            data: {
-              sku: body.sku,
-              steps_completed: ['inventory_item_created', 'offer_created'],
-              details: results,
-            },
-            message: 'Listing created but not published. Check the error for details.',
-            publishError: error.message,
-            metadata: {
-              account_used: account.friendlyName || account.ebayUsername,
-              account_id: accountId,
-            },
-          });
+          results.offer = await ebayService.createOffer(offerData);
+          console.log('[CREATE LISTING API] Offer created:', results.offer);
+
+          // Step 4: Publish the offer
+          if (results.offer.offerId) {
+            console.log('[CREATE LISTING API] Publishing offer...');
+            try {
+              results.listing = await ebayService.publishOffer(results.offer.offerId);
+              console.log('[CREATE LISTING API] Offer published successfully');
+            } catch (publishError: any) {
+              console.error('[CREATE LISTING API] Publish error:', publishError.message);
+              // Return partial success
+              return NextResponse.json({
+                success: true,
+                data: {
+                  sku: body.sku,
+                  steps_completed: ['inventory_item_created', 'offer_created'],
+                  details: results,
+                },
+                message: 'Listing created but not published. Check the error for details.',
+                publishError: publishError.message,
+                metadata: {
+                  account_used: account.friendlyName || account.ebayUsername,
+                  account_id: accountId,
+                },
+              });
+            }
+          }
+        } catch (offerError: any) {
+          console.error('[CREATE LISTING API] Offer creation error:', offerError.message);
+
+          // Check if it's a synchronization issue
+          if (offerError.message.includes('could not be found')) {
+            return NextResponse.json({
+              success: false,
+              partial: true,
+              message: 'Inventory item created but offer creation failed due to eBay synchronization delay',
+              data: {
+                sku: body.sku,
+                steps_completed: ['inventory_item_created'],
+                inventoryItem: results.inventoryItem,
+                nextStep: 'Wait 10-30 seconds then use POST /api/ebay/{accountId}/offers to create the offer manually'
+              },
+              error: `eBay synchronization delay. The inventory item was created successfully but eBay needs more time to make it available for offers in marketplace ${body.marketplaceId}.`,
+              suggestion: 'Try creating the offer manually in 10-30 seconds using the /offers endpoint',
+              metadata: {
+                account_used: account.friendlyName || account.ebayUsername,
+                account_id: accountId,
+                environment: process.env.EBAY_SANDBOX === 'true' ? 'sandbox' : 'production'
+              }
+            }, { status: 202 }); // 202 Accepted - request accepted but not completed
+          }
+
+          throw offerError;
         }
       }
     } catch (error: any) {

@@ -450,14 +450,15 @@ const swaggerDocument = {
     '/api/ebay/{accountId}/listings/create': {
       post: {
         tags: ['Listings'],
-        summary: 'Create complete listing',
-        description: 'Creates both inventory item and offer in one API call',
+        summary: 'Create complete listing with comprehensive data',
+        description: 'Creates inventory item, offer, and optionally publishes the listing in a single API call. Supports all eBay requirements including location, regulatory info, and marketplace-specific fields.',
         parameters: [
           {
             name: 'accountId',
             in: 'path',
             required: true,
-            schema: { type: 'string' }
+            schema: { type: 'string' },
+            description: 'eBay account ID from your system'
           }
         ],
         requestBody: {
@@ -466,40 +467,262 @@ const swaggerDocument = {
             'application/json': {
               schema: {
                 type: 'object',
-                required: ['inventoryItem', 'offer'],
+                required: ['sku', 'marketplaceId', 'categoryId', 'product', 'condition', 'pricingSummary', 'location', 'availability'],
                 properties: {
-                  inventoryItem: {
-                    type: 'object',
-                    description: 'Inventory item data (see POST /inventory)'
+                  // Core required fields
+                  sku: { type: 'string', description: 'Unique SKU for your item', example: 'PROD-001' },
+                  marketplaceId: {
+                    type: 'string',
+                    description: 'eBay marketplace identifier',
+                    enum: ['EBAY_US', 'EBAY_CA', 'EBAY_UK', 'EBAY_AU', 'EBAY_AT', 'EBAY_BE', 'EBAY_FR', 'EBAY_DE', 'EBAY_IT', 'EBAY_NL', 'EBAY_ES', 'EBAY_CH', 'EBAY_HK', 'EBAY_IN', 'EBAY_IE', 'EBAY_MY', 'EBAY_PH', 'EBAY_PL', 'EBAY_SG', 'EBAY_TH', 'EBAY_TW'],
+                    example: 'EBAY_DE'
                   },
-                  offer: {
+                  categoryId: { type: 'string', description: 'eBay category ID (use Category Suggestion API)', example: '9355' },
+
+                  // Product information
+                  product: {
                     type: 'object',
+                    required: ['title', 'description', 'imageUrls'],
                     properties: {
-                      marketplaceId: { type: 'string', example: 'EBAY_US' },
-                      format: { type: 'string', enum: ['FIXED_PRICE', 'AUCTION'], example: 'FIXED_PRICE' },
-                      pricingSummary: {
-                        type: 'object',
-                        properties: {
-                          price: {
-                            type: 'object',
-                            properties: {
-                              value: { type: 'string', example: '29.99' },
-                              currency: { type: 'string', example: 'USD' }
-                            }
-                          }
-                        }
+                      title: { type: 'string', maxLength: 80, description: 'Product title', example: 'Apple iPhone 13 Pro Max 256GB' },
+                      description: { type: 'string', description: 'HTML-supported product description', example: '<p>Brand new iPhone in original packaging</p>' },
+                      imageUrls: {
+                        type: 'array',
+                        items: { type: 'string' },
+                        minItems: 1,
+                        maxItems: 24,
+                        description: 'Product images (first is primary)',
+                        example: ['https://example.com/image1.jpg', 'https://example.com/image2.jpg']
                       },
-                      listingPolicies: {
+                      brand: { type: 'string', description: 'Product brand', example: 'Apple' },
+                      mpn: { type: 'string', description: 'Manufacturer Part Number', example: 'MLPH3LL/A' },
+                      ean: { type: 'array', items: { type: 'string' }, description: 'European Article Numbers' },
+                      isbn: { type: 'array', items: { type: 'string' }, description: 'ISBN numbers' },
+                      upc: { type: 'array', items: { type: 'string' }, description: 'Universal Product Codes' },
+                      epid: { type: 'string', description: 'eBay Product ID (if known)' },
+                      aspects: {
                         type: 'object',
-                        properties: {
-                          fulfillmentPolicyId: { type: 'string' },
-                          paymentPolicyId: { type: 'string' },
-                          returnPolicyId: { type: 'string' }
+                        additionalProperties: {
+                          type: 'array',
+                          items: { type: 'string' }
+                        },
+                        description: 'Category-specific aspects',
+                        example: {
+                          'Color': ['Space Gray'],
+                          'Storage Capacity': ['256 GB'],
+                          'Network': ['Unlocked']
                         }
                       }
                     }
                   },
-                  publishOffer: { type: 'boolean', default: false, description: 'Auto-publish the offer after creation' }
+
+                  // Condition
+                  condition: {
+                    type: 'string',
+                    enum: ['NEW', 'LIKE_NEW', 'NEW_OTHER', 'NEW_WITH_DEFECTS', 'MANUFACTURER_REFURBISHED', 'CERTIFIED_REFURBISHED', 'EXCELLENT_REFURBISHED', 'VERY_GOOD_REFURBISHED', 'GOOD_REFURBISHED', 'SELLER_REFURBISHED', 'USED_EXCELLENT', 'USED_VERY_GOOD', 'USED_GOOD', 'USED_ACCEPTABLE', 'FOR_PARTS_OR_NOT_WORKING'],
+                    description: 'Item condition',
+                    example: 'NEW'
+                  },
+                  conditionDescription: { type: 'string', description: 'Additional condition details', example: 'Brand new in sealed box' },
+
+                  // Pricing
+                  pricingSummary: {
+                    type: 'object',
+                    required: ['price'],
+                    properties: {
+                      price: {
+                        type: 'object',
+                        required: ['value', 'currency'],
+                        properties: {
+                          value: { type: 'string', description: 'Item price', example: '899.99' },
+                          currency: { type: 'string', description: 'Currency (must match marketplace)', example: 'EUR' }
+                        }
+                      },
+                      auctionStartPrice: {
+                        type: 'object',
+                        properties: {
+                          value: { type: 'string', example: '1.00' },
+                          currency: { type: 'string', example: 'EUR' }
+                        }
+                      },
+                      auctionReservePrice: {
+                        type: 'object',
+                        properties: {
+                          value: { type: 'string', example: '500.00' },
+                          currency: { type: 'string', example: 'EUR' }
+                        }
+                      }
+                    }
+                  },
+
+                  // Location
+                  location: {
+                    type: 'object',
+                    required: ['address'],
+                    properties: {
+                      merchantLocationKey: { type: 'string', description: 'Your internal location ID' },
+                      name: { type: 'string', description: 'Location name' },
+                      address: {
+                        type: 'object',
+                        required: ['country'],
+                        properties: {
+                          addressLine1: { type: 'string' },
+                          addressLine2: { type: 'string' },
+                          city: { type: 'string', example: 'Berlin' },
+                          stateOrProvince: { type: 'string', example: 'BE' },
+                          postalCode: { type: 'string', example: '10115' },
+                          country: { type: 'string', description: '2-letter ISO code', example: 'DE' }
+                        }
+                      },
+                      locationTypes: {
+                        type: 'array',
+                        items: { type: 'string', enum: ['WAREHOUSE', 'STORE'] }
+                      }
+                    }
+                  },
+
+                  // Availability
+                  availability: {
+                    type: 'object',
+                    required: ['shipToLocationAvailability'],
+                    properties: {
+                      shipToLocationAvailability: {
+                        type: 'object',
+                        required: ['quantity'],
+                        properties: {
+                          quantity: { type: 'integer', description: 'Total available quantity', example: 10 }
+                        }
+                      }
+                    }
+                  },
+                  availableQuantity: { type: 'integer', description: 'Quantity for this offer', example: 10 },
+
+                  // Listing configuration
+                  format: {
+                    type: 'string',
+                    enum: ['FIXED_PRICE', 'AUCTION'],
+                    default: 'FIXED_PRICE',
+                    description: 'Listing format'
+                  },
+                  listingDuration: {
+                    type: 'string',
+                    enum: ['DAYS_3', 'DAYS_5', 'DAYS_7', 'DAYS_10', 'DAYS_30', 'GTC'],
+                    default: 'GTC',
+                    description: 'Listing duration (GTC = Good Till Cancelled)'
+                  },
+                  listingStartDate: { type: 'string', format: 'date-time', description: 'Schedule listing start' },
+
+                  // Policies
+                  listingPolicies: {
+                    type: 'object',
+                    properties: {
+                      fulfillmentPolicyId: { type: 'string', description: 'Shipping policy ID' },
+                      paymentPolicyId: { type: 'string', description: 'Payment policy ID' },
+                      returnPolicyId: { type: 'string', description: 'Return policy ID' },
+                      eBayPlusIfEligible: { type: 'boolean', description: 'Enable eBay Plus if eligible' }
+                    }
+                  },
+
+                  // Shipping
+                  shippingCostOverrides: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        priority: { type: 'integer', example: 1 },
+                        shippingCost: {
+                          type: 'object',
+                          properties: {
+                            value: { type: 'string', example: '5.99' },
+                            currency: { type: 'string', example: 'EUR' }
+                          }
+                        },
+                        shippingServiceType: {
+                          type: 'string',
+                          enum: ['ECONOMY', 'STANDARD', 'EXPEDITED', 'ONE_DAY', 'FREIGHT'],
+                          example: 'STANDARD'
+                        }
+                      }
+                    }
+                  },
+
+                  // Package dimensions
+                  packageWeightAndSize: {
+                    type: 'object',
+                    properties: {
+                      weight: {
+                        type: 'object',
+                        properties: {
+                          value: { type: 'number', example: 0.5 },
+                          unit: { type: 'string', enum: ['POUND', 'KILOGRAM', 'OUNCE', 'GRAM'], example: 'KILOGRAM' }
+                        }
+                      },
+                      packageType: {
+                        type: 'string',
+                        enum: ['PACKAGE_THICK_ENVELOPE', 'BULKY_GOODS', 'CARTON', 'ENVELOPE', 'FLAT_RATE_ENVELOPE', 'LARGE_ENVELOPE', 'LARGE_PACKAGE', 'LETTER', 'MEDIUM_PACKAGE', 'PACKAGE', 'PARCEL'],
+                        example: 'PACKAGE'
+                      },
+                      dimensions: {
+                        type: 'object',
+                        properties: {
+                          length: { type: 'number', example: 20 },
+                          width: { type: 'number', example: 15 },
+                          height: { type: 'number', example: 10 },
+                          unit: { type: 'string', enum: ['INCH', 'CENTIMETER'], example: 'CENTIMETER' }
+                        }
+                      }
+                    }
+                  },
+
+                  // Tax
+                  tax: {
+                    type: 'object',
+                    properties: {
+                      vatPercentage: { type: 'number', description: 'VAT percentage for EU', example: 19 },
+                      applyTax: { type: 'boolean' }
+                    }
+                  },
+
+                  // Best Offer
+                  bestOfferEnabled: { type: 'boolean', description: 'Enable Best Offer' },
+                  bestOfferAutoAcceptPrice: {
+                    type: 'object',
+                    properties: {
+                      value: { type: 'string', example: '800.00' },
+                      currency: { type: 'string', example: 'EUR' }
+                    }
+                  },
+
+                  // EU Regulatory
+                  regulatory: {
+                    type: 'object',
+                    properties: {
+                      manufacturer: {
+                        type: 'object',
+                        properties: {
+                          companyName: { type: 'string', example: 'Apple Inc.' },
+                          addressLine1: { type: 'string' },
+                          city: { type: 'string' },
+                          country: { type: 'string' }
+                        }
+                      },
+                      responsiblePersons: {
+                        type: 'array',
+                        items: {
+                          type: 'object',
+                          properties: {
+                            companyName: { type: 'string' },
+                            types: { type: 'array', items: { type: 'string' } },
+                            country: { type: 'string' }
+                          }
+                        }
+                      }
+                    }
+                  },
+
+                  // Control flags
+                  publish: { type: 'boolean', default: false, description: 'Auto-publish after creation' },
+                  validateOnly: { type: 'boolean', default: false, description: 'Only validate without creating' }
                 }
               }
             }

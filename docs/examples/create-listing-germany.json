@@ -1,0 +1,144 @@
+{
+  "sku": "IPHONE-13-PRO-256GB-DE",
+  "marketplaceId": "EBAY_DE",
+  "categoryId": "9355",
+
+  "product": {
+    "title": "Apple iPhone 13 Pro Max 256GB Graphit - NEU & OVP",
+    "description": "<div style='font-family: Arial, sans-serif;'><h2>Apple iPhone 13 Pro Max 256GB</h2><p><strong>Zustand:</strong> Brandneu, versiegelt in Originalverpackung</p><ul><li>6,7\" Super Retina XDR Display mit ProMotion</li><li>A15 Bionic Chip</li><li>Pro Kamera-System mit 3x optischem Zoom</li><li>256GB Speicher</li><li>5G fähig</li><li>Farbe: Graphit</li></ul><p><strong>Lieferumfang:</strong></p><ul><li>iPhone 13 Pro Max</li><li>USB-C auf Lightning Kabel</li><li>Originalverpackung mit Dokumentation</li></ul><p>Versand erfolgt versichert mit DHL. Bei Fragen stehe ich gerne zur Verfügung!</p></div>",
+    "imageUrls": [
+      "https://example.com/iphone13-front.jpg",
+      "https://example.com/iphone13-back.jpg",
+      "https://example.com/iphone13-side.jpg",
+      "https://example.com/iphone13-box.jpg"
+    ],
+    "brand": "Apple",
+    "mpn": "MLPH3ZD/A",
+    "ean": ["0194252700266"],
+    "aspects": {
+      "Marke": ["Apple"],
+      "Modell": ["iPhone 13 Pro Max"],
+      "Speicherkapazität": ["256 GB"],
+      "Farbe": ["Graphit"],
+      "Netzwerk": ["Ohne Simlock"],
+      "Betriebssystem": ["iOS"],
+      "Displaygröße": ["6,7 Zoll"],
+      "Konnektivität": ["5G", "Bluetooth", "Wi-Fi", "NFC", "Lightning"],
+      "Prozessor": ["A15 Bionic"],
+      "RAM": ["6 GB"],
+      "Herstellergarantie": ["1 Jahr"]
+    }
+  },
+
+  "condition": "NEW",
+  "conditionDescription": "Brandneu, versiegelt in Originalverpackung. Ungeöffnet mit allen Siegeln intakt.",
+
+  "pricingSummary": {
+    "price": {
+      "value": "899.99",
+      "currency": "EUR"
+    }
+  },
+
+  "location": {
+    "merchantLocationKey": "BERLIN-WAREHOUSE-01",
+    "name": "Hauptlager Berlin",
+    "address": {
+      "addressLine1": "Beispielstraße 123",
+      "city": "Berlin",
+      "stateOrProvince": "BE",
+      "postalCode": "10115",
+      "country": "DE"
+    },
+    "locationTypes": ["WAREHOUSE"]
+  },
+
+  "availability": {
+    "shipToLocationAvailability": {
+      "quantity": 5
+    }
+  },
+  "availableQuantity": 5,
+
+  "format": "FIXED_PRICE",
+  "listingDuration": "GTC",
+
+  "listingPolicies": {
+    "fulfillmentPolicyId": "YOUR_FULFILLMENT_POLICY_ID",
+    "paymentPolicyId": "YOUR_PAYMENT_POLICY_ID",
+    "returnPolicyId": "YOUR_RETURN_POLICY_ID",
+    "eBayPlusIfEligible": true
+  },
+
+  "shippingCostOverrides": [
+    {
+      "priority": 1,
+      "shippingCost": {
+        "value": "4.99",
+        "currency": "EUR"
+      },
+      "shippingServiceType": "STANDARD"
+    },
+    {
+      "priority": 2,
+      "shippingCost": {
+        "value": "9.99",
+        "currency": "EUR"
+      },
+      "shippingServiceType": "EXPEDITED"
+    }
+  ],
+
+  "packageWeightAndSize": {
+    "weight": {
+      "value": 0.35,
+      "unit": "KILOGRAM"
+    },
+    "packageType": "PACKAGE",
+    "dimensions": {
+      "length": 20,
+      "width": 15,
+      "height": 8,
+      "unit": "CENTIMETER"
+    }
+  },
+
+  "tax": {
+    "vatPercentage": 19,
+    "applyTax": true
+  },
+
+  "bestOfferEnabled": true,
+  "bestOfferAutoAcceptPrice": {
+    "value": "850.00",
+    "currency": "EUR"
+  },
+  "bestOfferAutoDeclinePrice": {
+    "value": "700.00",
+    "currency": "EUR"
+  },
+
+  "regulatory": {
+    "manufacturer": {
+      "companyName": "Apple Distribution International Ltd.",
+      "addressLine1": "Hollyhill Industrial Estate",
+      "city": "Cork",
+      "country": "IE"
+    },
+    "responsiblePersons": [
+      {
+        "companyName": "Apple GmbH",
+        "types": ["EU_RESPONSIBLE_PERSON"],
+        "addressLine1": "Katharina-Heinroth-Ufer 1",
+        "city": "München",
+        "postalCode": "81829",
+        "country": "DE"
+      }
+    ]
+  },
+
+  "storeCategoryNames": ["Smartphones", "Apple Produkte"],
+
+  "publish": true,
+  "validateOnly": false
+}

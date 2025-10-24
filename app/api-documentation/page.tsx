@@ -69,7 +69,6 @@ export default function APIDocumentationPage() {
   return (
     <Box
       id="swagger-ui"
-      minHeight="100vh"
       backgroundColor="white"
     />
   );

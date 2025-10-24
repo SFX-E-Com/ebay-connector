@@ -139,21 +139,6 @@ export class EbayListingService {
     const now = new Date();
     const isExpired = this.tokenExpiresAt < now;
 
-    console.log('=== TOKEN VALIDATION DEBUG ===');
-    console.log('Account ID:', account.id);
-    console.log('Environment detected:', environment);
-    console.log('EBAY_SANDBOX env var:', process.env.EBAY_SANDBOX);
-    console.log('Using API URLs:');
-    console.log('  Inventory:', this.baseInventoryUrl);
-    console.log('  Account:', this.baseAccountUrl);
-    console.log('Token expires at:', this.tokenExpiresAt.toISOString());
-    console.log('Current time:', now.toISOString());
-    console.log('Token is expired:', isExpired);
-    console.log('Has refresh token:', !!this.refreshToken);
-    console.log('Token length:', account.accessToken?.length);
-    console.log('Token preview:', account.accessToken?.substring(0, 20) + '...');
-    console.log('Token starts with "v^1.1":', account.accessToken?.startsWith('v^1.1'));
-
     // Decrypt access token
     this.accessToken = this.decryptToken(account.accessToken as string);
   }
@@ -168,10 +153,6 @@ export class EbayListingService {
     if (!this.refreshToken) {
       throw new Error('No refresh token available. Please reconnect the account.');
     }
-
-    console.log('=== REFRESHING ACCESS TOKEN ===');
-    console.log('Account ID:', this.accountId);
-    console.log('Has refresh token:', !!this.refreshToken);
 
     const tokenUrl = process.env.EBAY_SANDBOX === 'true'
       ? 'https://api.sandbox.ebay.com/identity/v1/oauth2/token'
@@ -202,9 +183,6 @@ export class EbayListingService {
 
       const tokenData = await response.json();
 
-      console.log('✅ Token refreshed successfully');
-      console.log('New token expires in (seconds):', tokenData.expires_in);
-
       // Update the in-memory token
       this.accessToken = tokenData.access_token;
       this.tokenExpiresAt = new Date(Date.now() + (tokenData.expires_in * 1000));
@@ -220,7 +198,6 @@ export class EbayListingService {
             expiresAt: this.tokenExpiresAt
           } as any
         });
-        console.log('✅ Database updated with new token');
       } else {
         // Client-side: Call an API endpoint to update the token
         console.log('⚠️ Client-side token refresh - database update skipped');
@@ -248,14 +225,10 @@ export class EbayListingService {
 
     const url = `${this.baseInventoryUrl}${endpoint}`;
 
-    // Debug the exact request being made
-    console.log('=== EBAY API REQUEST DEBUG ===');
-    console.log('URL:', url);
-    console.log('Method:', method);
-    console.log('Access Token Length:', this.accessToken?.length);
-    console.log('Access Token Preview:', this.accessToken?.substring(0, 30) + '...');
-    console.log('Authorization Header:', `Bearer ${this.accessToken?.substring(0, 30)}...`);
-    console.log('Request body:', body ? JSON.stringify(body, null, 2) : 'No body');
+    console.log('[EbayListingService] ====== API REQUEST ======');
+    console.log('[EbayListingService] Method:', method);
+    console.log('[EbayListingService] URL:', url);
+    console.log('[EbayListingService] Endpoint:', endpoint);
 
     const headers = {
       'Authorization': `Bearer ${this.accessToken}`,
@@ -265,6 +238,10 @@ export class EbayListingService {
       'Accept-Language': 'en-US'
     };
 
+    if (body) {
+      console.log('[EbayListingService] Request Body:', JSON.stringify(body, null, 2));
+    }
+
     try {
       const response = await fetch(url, {
         method,
@@ -272,22 +249,31 @@ export class EbayListingService {
         body: body ? JSON.stringify(body) : undefined
       });
 
+      console.log('[EbayListingService] Response Status:', response.status);
+      console.log('[EbayListingService] Response Status Text:', response.statusText);
+
       if (!response.ok) {
         const errorData = await response.text();
-        console.error('=== EBAY API ERROR RESPONSE ===');
-        console.error('Status:', response.status);
-        console.error('Status Text:', response.statusText);
-        console.error('Response Headers:', Object.fromEntries(response.headers.entries()));
-        console.error('Error Data:', errorData);
+        console.error('[EbayListingService] ====== API ERROR ======');
+        console.error('[EbayListingService] Status:', response.status);
+        console.error('[EbayListingService] Status Text:', response.statusText);
+        console.error('[EbayListingService] Response Headers:', Object.fromEntries(response.headers.entries()));
+        console.error('[EbayListingService] Error Data:', errorData);
         throw new Error(`eBay API Error: ${response.status} ${response.statusText} - ${errorData}`);
       }
 
       const contentType = response.headers.get('content-type');
+      let responseData;
       if (contentType && contentType.includes('application/json')) {
-        return await response.json();
+        responseData = await response.json();
       } else {
-        return await response.text();
+        responseData = await response.text();
       }
+
+      console.log('[EbayListingService] ✅ Success Response:', JSON.stringify(responseData, null, 2).substring(0, 500));
+      console.log('[EbayListingService] ====== END API REQUEST ======');
+
+      return responseData;
     } catch (error) {
       console.error('eBay API request failed:', error);
       throw error;
@@ -406,7 +392,49 @@ export class EbayListingService {
   }
 
   async createOffer(offer: OfferRequest): Promise<any> {
-    return this.makeEbayRequest('/offer', 'POST', offer);
+    // Create a custom request with marketplace-specific header
+    console.log('[EbayListingService.createOffer] Creating offer with marketplace header:', offer.marketplaceId);
+
+    // Ensure token is valid before making request
+    await this.ensureValidToken();
+
+    const url = `${this.baseInventoryUrl}/offer`;
+
+    const headers = {
+      'Authorization': `Bearer ${this.accessToken}`,
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'Content-Language': 'en-US',
+      'Accept-Language': 'en-US',
+      'X-EBAY-C-MARKETPLACE-ID': offer.marketplaceId  // Add marketplace-specific header
+    };
+
+    console.log('[EbayListingService.createOffer] Request URL:', url);
+    console.log('[EbayListingService.createOffer] Request headers include X-EBAY-C-MARKETPLACE-ID:', offer.marketplaceId);
+    console.log('[EbayListingService.createOffer] Request body:', JSON.stringify(offer, null, 2));
+
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(offer)
+      });
+
+      console.log('[EbayListingService.createOffer] Response Status:', response.status);
+
+      if (!response.ok) {
+        const errorData = await response.text();
+        console.error('[EbayListingService.createOffer] Error response:', errorData);
+        throw new Error(`eBay API Error: ${response.status} ${response.statusText} - ${errorData}`);
+      }
+
+      const result = await response.json();
+      console.log('[EbayListingService.createOffer] ✅ Offer created successfully');
+      return result;
+    } catch (error) {
+      console.error('[EbayListingService.createOffer] Failed:', error);
+      throw error;
+    }
   }
 
   async updateOffer(offerId: string, offer: Partial<OfferRequest>): Promise<any> {
@@ -461,7 +489,7 @@ export class EbayListingService {
       // First, test if we can access the inventory API at all
       console.log('Testing inventory API access...');
       try {
-        const testResponse = await this.getInventoryItems(1, 0);
+        await this.getInventoryItems(1, 0);
         console.log('✅ Inventory API access test successful');
       } catch (testError) {
         console.error('❌ Inventory API access test failed:', testError);

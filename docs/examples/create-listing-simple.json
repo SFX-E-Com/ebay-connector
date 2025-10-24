@@ -1,0 +1,55 @@
+{
+  "// Required Fields": "These are the minimum required fields to create a listing",
+
+  "sku": "TEST-PRODUCT-001",
+  "marketplaceId": "EBAY_DE",
+  "categoryId": "9355",
+
+  "product": {
+    "title": "Test Product Title",
+    "description": "This is a test product description with detailed information about the item.",
+    "imageUrls": [
+      "https://example.com/product-image.jpg"
+    ],
+    "aspects": {
+      "Brand": ["Generic"],
+      "Color": ["Black"]
+    }
+  },
+
+  "condition": "NEW",
+
+  "pricingSummary": {
+    "price": {
+      "value": "29.99",
+      "currency": "EUR"
+    }
+  },
+
+  "location": {
+    "address": {
+      "country": "DE",
+      "city": "Berlin",
+      "postalCode": "10115"
+    }
+  },
+
+  "availability": {
+    "shipToLocationAvailability": {
+      "quantity": 10
+    }
+  },
+
+  "// Optional Fields": "Add these as needed",
+
+  "format": "FIXED_PRICE",
+  "publish": false,
+
+  "// Notes": [
+    "1. Set publish: true to immediately list the item on eBay",
+    "2. Set validateOnly: true to test without creating anything",
+    "3. Currency must match marketplace (EUR for EBAY_DE, USD for EBAY_US)",
+    "4. All aspects values must be arrays, even for single values",
+    "5. Use categoryId from eBay's Category Suggestion API for your product"
+  ]
+}
