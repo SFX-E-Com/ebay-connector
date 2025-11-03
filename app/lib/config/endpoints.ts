@@ -19,6 +19,13 @@ export const AVAILABLE_ENDPOINTS: EndpointConfig[] = [
     requiredPlan: 'FREE'
   },
   {
+    id: '/ebay/{accountId}/trading',
+    name: 'Trading APIs',
+    description: 'View and manage items with trading api',
+    category: 'core',
+    requiredPlan: 'FREE'
+  },
+  {
     id: '/ebay/{accountId}/orders',
     name: 'Order Management',
     description: 'Access order data, fulfillment, and tracking information',

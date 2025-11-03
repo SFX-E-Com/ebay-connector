@@ -1,537 +1,554 @@
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/app/lib/services/database';
 import { EbayTradingApiService } from '@/app/lib/services/ebay-trading-api';
-
-interface TradingListingRequest {
-  // Required fields
-  sku: string;
-  title: string;
-  description: string;
-  categoryId: string;
-  price: number;
-  quantity: number;
-
-  // Marketplace (defaults to EBAY_US)
-  marketplace?: string;
-
-  // Condition
-  condition?: string;
-  conditionDescription?: string;
-
-  // Location
-  location?: string;
-  postalCode?: string;
-
-  // Images
-  images?: string[];
-
-  // Item specifics (e.g., brand, model, etc.)
-  itemSpecifics?: Record<string, string | string[]>;
-
-  // Shipping
-  shippingOptions?: Array<{
-    service: string;
-    cost: number;
-    additionalCost?: number;
-  }>;
-
-  // Return policy
-  returnPolicy?: {
-    returnsAccepted: boolean;
-    refundOption?: string;
-    returnsWithin?: string;
-    shippingCostPaidBy?: string;
-    description?: string;
-  };
-
-  // Payment
-  paymentMethods?: string[];
-  paypalEmail?: string;
-
-  // Other options
-  handlingTime?: number;
-  listingDuration?: string;
-
-  // Business policies (if using business accounts)
-  sellerProfiles?: {
-    paymentProfile?: string;
-    returnProfile?: string;
-    shippingProfile?: string;
-  };
-
-  // Verify only (don't create, just check fees and validation)
-  verifyOnly?: boolean;
-}
+import { RealtimeDebugLogger } from '@/app/lib/services/realtimeDebugLogger';
+import { withEbayAuth } from '@/app/lib/middleware/ebayAuth';
+import { EbayTradingItem } from '@/app/lib/types/ebay-trading-api.types';
 
 // POST /api/ebay/[accountId]/trading/listing - Create listing using Trading API
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ accountId: string }> }
-): Promise<NextResponse> {
-  const { accountId } = await params;
-
-  try {
-    console.log(`[TRADING API] POST request for account: ${accountId}`);
-
-    const body: TradingListingRequest = await request.json();
-
-    // Log request details
-    console.log('[TRADING API] ====== REQUEST DETAILS ======');
-    console.log('[TRADING API] SKU:', body.sku);
-    console.log('[TRADING API] Title:', body.title);
-    console.log('[TRADING API] Marketplace:', body.marketplace || 'EBAY_US');
-    console.log('[TRADING API] Category:', body.categoryId);
-    console.log('[TRADING API] Price:', body.price);
-    console.log('[TRADING API] Quantity:', body.quantity);
-    console.log('[TRADING API] Condition:', body.condition);
-    console.log('[TRADING API] Verify Only:', body.verifyOnly);
-    console.log('[TRADING API] ==============================');
-
-    // Validate required fields
-    if (!body.sku || !body.title || !body.description || !body.categoryId || !body.price || !body.quantity) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'Missing required fields: sku, title, description, categoryId, price, quantity',
-        },
-        { status: 400 }
-      );
-    }
-
-    // Get the eBay account with OAuth token
-    const account = await prisma.ebayUserToken.findUnique({
-      where: { id: accountId },
-    });
-
-    if (!account) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'eBay account not found',
-        },
-        { status: 404 }
-      );
-    }
-
-    // Check if token is expired
-    if (account.expiresAt < new Date()) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'OAuth token expired. Please reconnect your eBay account.',
-        },
-        { status: 401 }
-      );
-    }
-
-    // Initialize Trading API service
-    const tradingApi = new EbayTradingApiService(
-      account as any,
-      body.marketplace || 'EBAY_US'
-    );
-
-    console.log('[TRADING API] Using account:', account.ebayUsername || account.ebayUserId);
-    console.log('[TRADING API] Token expires at:', account.expiresAt);
-    console.log('[TRADING API] Environment:', process.env.EBAY_SANDBOX === 'true' ? 'SANDBOX' : 'PRODUCTION');
+const postHandler = withEbayAuth(
+  '/ebay/{accountId}/inventory',
+  async (request: NextRequest, authData) => {
+    // Check for debug mode
+    const { searchParams } = new URL(request.url);
+    const debugMode = searchParams.get('debug') === '1';
 
     try {
-      let result;
+      // Use body from authData (already parsed in middleware)
+      const body: EbayTradingItem = authData.requestBody;
 
-      if (body.verifyOnly) {
-        // Verify listing without creating
-        console.log('[TRADING API] Verifying listing (not creating)...');
-        result = await tradingApi.verifyAddFixedPriceItem(body);
-
-        console.log('[TRADING API] Verification result:', result);
-
-        return NextResponse.json({
-          success: true,
-          message: 'Listing verified successfully',
-          data: {
-            fees: result.fees,
-            errors: result.errors,
-            warnings: result.warnings,
-          },
-          metadata: {
-            account_used: account.ebayUsername || account.ebayUserId,
-            account_id: accountId,
-            marketplace: body.marketplace || 'EBAY_US',
-            api_type: 'TRADING',
-            verified_only: true,
-          },
-        });
-      } else {
-        // Create actual listing
-        console.log('[TRADING API] Creating listing...');
-        result = await tradingApi.addFixedPriceItem(body);
-
-        console.log('[TRADING API] Listing created successfully!');
-        console.log('[TRADING API] Item ID:', result.itemId);
-        console.log('[TRADING API] Fees:', result.fees);
-
-        // Optionally store in database for tracking
-        // You can add database storage here if needed
-
-        return NextResponse.json({
-          success: true,
-          message: 'Listing created successfully on eBay',
-          data: {
-            itemId: result.itemId,
-            sku: result.sku,
-            startTime: result.startTime,
-            endTime: result.endTime,
-            fees: result.fees,
-            warnings: result.warnings,
-            listingUrl: `https://www.ebay${process.env.EBAY_SANDBOX === 'true' ? '.sandbox' : ''}.com/itm/${result.itemId}`,
-          },
-          metadata: {
-            account_used: account.ebayUsername || account.ebayUserId,
-            account_id: accountId,
-            marketplace: body.marketplace || 'EBAY_US',
-            api_type: 'TRADING',
-          },
-        });
-      }
-    } catch (apiError: any) {
-      console.error('[TRADING API] API Error:', apiError);
-
-      // Parse Trading API errors
-      if (apiError.errors) {
+      if (!body) {
         return NextResponse.json(
           {
             success: false,
-            message: 'eBay Trading API error',
-            errors: apiError.errors,
-            ack: apiError.ack,
+            message: 'Request body is required',
           },
           { status: 400 }
         );
       }
 
-      throw apiError;
-    }
-  } catch (error: any) {
-    console.error('[TRADING API] Error:', error);
+      // Log request details if debug mode is enabled
+      if (debugMode) {
+        await RealtimeDebugLogger.info('TRADING_API_CREATE', 'POST request received', {
+          accountId: authData.ebayAccount.id,
+          sku: body.sku,
+          title: body.title,
+          categoryId: body.primaryCategory?.categoryId,
+          price: body.startPrice,
+          quantity: body.quantity,
+          condition: body.conditionId,
+          url: request.url,
+          method: 'POST'
+        });
+      }
 
-    return NextResponse.json(
-      {
-        success: false,
-        message: 'Failed to create listing via Trading API',
-        error: error.message,
-        details: error.stack,
-      },
-      { status: 500 }
-    );
+      // Validate required fields
+      if (!body.title || !body.description || !body.primaryCategory?.categoryId || !body.startPrice || !body.quantity) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: 'Missing required fields: title, description, primaryCategory.categoryId, startPrice, quantity',
+          },
+          { status: 400 }
+        );
+      }
+
+      // Infer marketplace from country if not specified
+      let marketplace = body.marketplace;
+      if (!marketplace && body.country) {
+        const countryToMarketplace: Record<string, string> = {
+          'US': 'EBAY_US',
+          'GB': 'EBAY_UK',
+          'UK': 'EBAY_UK',
+          'DE': 'EBAY_DE',
+          'AU': 'EBAY_AU',
+          'CA': 'EBAY_CA',
+          'FR': 'EBAY_FR',
+          'IT': 'EBAY_IT',
+          'ES': 'EBAY_ES',
+          'CH': 'EBAY_CH',
+          'AT': 'EBAY_AT',
+          'BE': 'EBAY_BE',
+          'NL': 'EBAY_NL',
+        };
+        marketplace = countryToMarketplace[body.country] || 'EBAY_US';
+
+        if (debugMode) {
+          await RealtimeDebugLogger.info('TRADING_API_CREATE', 'Inferred marketplace from country', {
+            country: body.country,
+            marketplace
+          });
+        }
+      } else if (!marketplace) {
+        marketplace = 'EBAY_US';
+      }
+
+      // Initialize Trading API service with debug mode
+      // The authData.ebayAccount already has a refreshed token from the middleware
+      const tradingApi = new EbayTradingApiService(
+        authData.ebayAccount as any,
+        marketplace,
+        debugMode
+      );
+
+      if (debugMode) {
+        await RealtimeDebugLogger.debug('TRADING_API_CREATE', 'Trading API initialized', {
+          account: authData.ebayAccount.ebayUsername || authData.ebayAccount.ebayUserId,
+          tokenExpiresAt: authData.ebayAccount.expiresAt,
+          environment: process.env.EBAY_SANDBOX === 'true' ? 'SANDBOX' : 'PRODUCTION'
+        });
+      }
+
+      try {
+        let result;
+
+        if (body.verifyOnly) {
+          // Verify listing without creating
+          if (debugMode) {
+            await RealtimeDebugLogger.info('TRADING_API_CREATE', 'Verifying listing (not creating)', { sku: body.sku });
+          }
+          result = await tradingApi.verifyAddFixedPriceItem(body);
+
+          if (debugMode) {
+            await RealtimeDebugLogger.info('TRADING_API_CREATE', 'Verification completed', result);
+          }
+
+          return NextResponse.json({
+            success: true,
+            message: 'Listing verified successfully',
+            data: {
+              fees: result.fees,
+              errors: result.errors,
+              warnings: result.warnings,
+            },
+            metadata: {
+              account_used: authData.ebayAccount.ebayUsername || authData.ebayAccount.ebayUserId,
+              account_id: authData.ebayAccount.id,
+              marketplace: marketplace,
+              api_type: 'TRADING',
+              verified_only: true,
+            },
+          });
+        } else {
+          // Create actual listing
+          if (debugMode) {
+            await RealtimeDebugLogger.info('TRADING_API_CREATE', 'Creating listing', { sku: body.sku });
+          }
+          result = await tradingApi.addFixedPriceItem(body);
+
+          if (debugMode) {
+            await RealtimeDebugLogger.info('TRADING_API_CREATE', 'Listing created successfully', {
+              itemId: result.itemId,
+              fees: result.fees
+            });
+          }
+
+          return NextResponse.json({
+            success: true,
+            message: 'Listing created successfully on eBay',
+            data: {
+              itemId: result.itemId,
+              sku: result.sku,
+              startTime: result.startTime,
+              endTime: result.endTime,
+              fees: result.fees,
+              warnings: result.warnings,
+              listingUrl: `https://www.ebay${process.env.EBAY_SANDBOX === 'true' ? '.sandbox' : ''}.com/itm/${result.itemId}`,
+            },
+            metadata: {
+              account_used: authData.ebayAccount.ebayUsername || authData.ebayAccount.ebayUserId,
+              account_id: authData.ebayAccount.id,
+              marketplace: marketplace,
+              api_type: 'TRADING',
+            },
+          });
+        }
+      } catch (apiError: any) {
+        if (debugMode) {
+          await RealtimeDebugLogger.error('TRADING_API_CREATE', 'API Error', apiError);
+        }
+
+        // Parse Trading API errors
+        if (apiError.errors) {
+          return NextResponse.json(
+            {
+              success: false,
+              message: 'eBay Trading API error',
+              errors: apiError.errors,
+              ack: apiError.ack,
+            },
+            { status: 400 }
+          );
+        }
+
+        throw apiError;
+      }
+    } catch (error: any) {
+      if (debugMode) {
+        await RealtimeDebugLogger.error('TRADING_API_CREATE', 'Unexpected error', {
+          error: error.message,
+          stack: error.stack
+        });
+      }
+
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'Failed to create listing via Trading API',
+          error: error.message,
+          details: error.stack,
+        },
+        { status: 500 }
+      );
+    }
   }
-}
+);
 
 // GET /api/ebay/[accountId]/trading/listing - Get listing details
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ accountId: string }> }
-): Promise<NextResponse> {
-  const { accountId } = await params;
-
-  try {
+const getHandler = withEbayAuth(
+  '/api/ebay/[accountId]/trading/listing',
+  async (request: NextRequest, authData) => {
     const { searchParams } = new URL(request.url);
+    const debugMode = searchParams.get('debug') === '1';
     const itemId = searchParams.get('itemId');
 
-    if (!itemId) {
+    try {
+      if (debugMode) {
+        await RealtimeDebugLogger.info('TRADING_API_GET', 'GET request received', {
+          accountId: authData.ebayAccount.id,
+          itemId,
+          url: request.url,
+          method: 'GET'
+        });
+      }
+
+      if (!itemId) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: 'Item ID is required',
+          },
+          { status: 400 }
+        );
+      }
+
+      // Initialize Trading API service with debug mode
+      const tradingApi = new EbayTradingApiService(
+        authData.ebayAccount as any,
+        'EBAY_US',
+        debugMode
+      );
+
+      if (debugMode) {
+        await RealtimeDebugLogger.debug('TRADING_API_GET', 'Trading API initialized', {
+          account: authData.ebayAccount.ebayUsername || authData.ebayAccount.ebayUserId,
+          tokenExpiresAt: authData.ebayAccount.expiresAt,
+          environment: process.env.EBAY_SANDBOX === 'true' ? 'SANDBOX' : 'PRODUCTION'
+        });
+      }
+
+      // Get item details
+      const result = await tradingApi.getItem(itemId);
+
+      if (debugMode) {
+        await RealtimeDebugLogger.info('TRADING_API_GET', 'Item retrieved successfully', {
+          itemId: result.item?.ItemID,
+          sku: result.item?.SKU
+        });
+      }
+
+      return NextResponse.json({
+        success: true,
+        data: result.item,
+        metadata: {
+          account_used: authData.ebayAccount.ebayUsername || authData.ebayAccount.ebayUserId,
+          account_id: authData.ebayAccount.id,
+        },
+      });
+    } catch (error: any) {
+      if (debugMode) {
+        await RealtimeDebugLogger.error('TRADING_API_GET', 'Failed to get listing', {
+          error: error.message,
+          stack: error.stack
+        });
+      }
+
       return NextResponse.json(
         {
           success: false,
-          message: 'Item ID is required',
+          message: 'Failed to get listing details',
+          error: error.message,
         },
-        { status: 400 }
+        { status: 500 }
       );
     }
-
-    // Get the eBay account
-    const account = await prisma.ebayUserToken.findUnique({
-      where: { id: accountId },
-    });
-
-    if (!account) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'eBay account not found',
-        },
-        { status: 404 }
-      );
-    }
-
-    // Initialize Trading API service
-    const tradingApi = new EbayTradingApiService(account as any);
-
-    // Get item details
-    const result = await tradingApi.getItem(itemId);
-
-    return NextResponse.json({
-      success: true,
-      data: result.item,
-      metadata: {
-        account_used: account.ebayUsername || account.ebayUserId,
-        account_id: accountId,
-      },
-    });
-  } catch (error: any) {
-    console.error('[TRADING API] GET Error:', error);
-
-    return NextResponse.json(
-      {
-        success: false,
-        message: 'Failed to get listing details',
-        error: error.message,
-      },
-      { status: 500 }
-    );
   }
-}
+);
 
 // PUT /api/ebay/[accountId]/trading/listing - Update listing
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ accountId: string }> }
-): Promise<NextResponse> {
-  const { accountId } = await params;
-
-  try {
-    console.log(`[TRADING API] PUT request for account: ${accountId}`);
-
-    const body = await request.json();
-    const { itemId, sku, marketplace = 'EBAY_US', ...updates } = body;
-
-    // Need either itemId or SKU
-    if (!itemId && !sku) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'Either Item ID or SKU is required',
-        },
-        { status: 400 }
-      );
-    }
-
-    console.log('[TRADING API UPDATE] ====== REQUEST DETAILS ======');
-    console.log('[TRADING API UPDATE] Item ID:', itemId);
-    console.log('[TRADING API UPDATE] SKU:', sku);
-    console.log('[TRADING API UPDATE] Marketplace:', marketplace);
-    console.log('[TRADING API UPDATE] Updates:', JSON.stringify(updates, null, 2));
-    console.log('[TRADING API UPDATE] ==============================');
-
-    // Get the eBay account
-    const account = await prisma.ebayUserToken.findUnique({
-      where: { id: accountId },
-    });
-
-    if (!account) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'eBay account not found',
-        },
-        { status: 404 }
-      );
-    }
-
-    // Check if token is expired
-    if (account.expiresAt < new Date()) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'OAuth token expired. Please reconnect your eBay account.',
-        },
-        { status: 401 }
-      );
-    }
-
-    // Initialize Trading API service
-    const tradingApi = new EbayTradingApiService(account as any, marketplace);
-
-    console.log('[TRADING API UPDATE] Using account:', account.ebayUsername || account.ebayUserId);
+const putHandler = withEbayAuth(
+  '/api/ebay/[accountId]/trading/listing',
+  async (request: NextRequest, authData) => {
+    const { searchParams } = new URL(request.url);
+    const debugMode = searchParams.get('debug') === '1';
 
     try {
-      // If SKU provided instead of itemId, use it
-      const identifier = itemId || sku;
+      // Use body from authData (already parsed in middleware)
+      const body = authData.requestBody;
 
-      // Update listing
-      const result = await tradingApi.reviseFixedPriceItem(identifier, updates);
-
-      console.log('[TRADING API UPDATE] Listing updated successfully');
-
-      return NextResponse.json({
-        success: true,
-        message: 'Listing updated successfully',
-        data: result,
-        metadata: {
-          account_used: account.ebayUsername || account.ebayUserId,
-          account_id: accountId,
-          marketplace: marketplace,
-          api_type: 'TRADING',
-        },
-      });
-    } catch (apiError: any) {
-      console.error('[TRADING API UPDATE] API Error:', apiError);
-
-      if (apiError.errors) {
+      if (!body) {
         return NextResponse.json(
           {
             success: false,
-            message: 'eBay Trading API error',
-            errors: apiError.errors,
-            ack: apiError.ack,
+            message: 'Request body is required',
           },
           { status: 400 }
         );
       }
 
-      throw apiError;
-    }
-  } catch (error: any) {
-    console.error('[TRADING API UPDATE] Error:', error);
+      const { itemId, sku, marketplace = 'EBAY_US', ...updates } = body;
 
-    return NextResponse.json(
-      {
-        success: false,
-        message: 'Failed to update listing',
-        error: error.message,
-      },
-      { status: 500 }
-    );
+      if (debugMode) {
+        await RealtimeDebugLogger.info('TRADING_API_UPDATE', 'PUT request received', {
+          accountId: authData.ebayAccount.id,
+          itemId,
+          sku,
+          marketplace,
+          url: request.url,
+          method: 'PUT'
+        });
+      }
+
+      // Need either itemId or SKU
+      if (!itemId && !sku) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: 'Either Item ID or SKU is required',
+          },
+          { status: 400 }
+        );
+      }
+
+      if (debugMode) {
+        await RealtimeDebugLogger.debug('TRADING_API_UPDATE', 'Request details', {
+          itemId,
+          sku,
+          marketplace,
+          updates
+        });
+      }
+
+      // Initialize Trading API service
+      const tradingApi = new EbayTradingApiService(
+        authData.ebayAccount as any,
+        marketplace,
+        debugMode
+      );
+
+      if (debugMode) {
+        await RealtimeDebugLogger.debug('TRADING_API_UPDATE', 'Using account', {
+          account: authData.ebayAccount.ebayUsername || authData.ebayAccount.ebayUserId
+        });
+      }
+
+      try {
+        // If SKU provided instead of itemId, use it
+        const identifier = itemId || sku;
+
+        // Update listing
+        const result = await tradingApi.reviseFixedPriceItem(identifier, updates);
+
+        if (debugMode) {
+          await RealtimeDebugLogger.info('TRADING_API_UPDATE', 'Listing updated successfully', result);
+        }
+
+        return NextResponse.json({
+          success: true,
+          message: 'Listing updated successfully',
+          data: result,
+          metadata: {
+            account_used: authData.ebayAccount.ebayUsername || authData.ebayAccount.ebayUserId,
+            account_id: authData.ebayAccount.id,
+            marketplace: marketplace,
+            api_type: 'TRADING',
+          },
+        });
+      } catch (apiError: any) {
+        if (debugMode) {
+          await RealtimeDebugLogger.error('TRADING_API_UPDATE', 'API Error', apiError);
+        }
+
+        if (apiError.errors) {
+          return NextResponse.json(
+            {
+              success: false,
+              message: 'eBay Trading API error',
+              errors: apiError.errors,
+              ack: apiError.ack,
+            },
+            { status: 400 }
+          );
+        }
+
+        throw apiError;
+      }
+    } catch (error: any) {
+      if (debugMode) {
+        await RealtimeDebugLogger.error('TRADING_API_UPDATE', 'Error', {
+          error: error.message,
+          stack: error.stack
+        });
+      }
+
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'Failed to update listing',
+          error: error.message,
+        },
+        { status: 500 }
+      );
+    }
   }
-}
+);
 
 // DELETE /api/ebay/[accountId]/trading/listing - End listing
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ accountId: string }> }
-): Promise<NextResponse> {
-  const { accountId } = await params;
-
-  try {
-    console.log(`[TRADING API] DELETE request for account: ${accountId}`);
-
+const deleteHandler = withEbayAuth(
+  '/api/ebay/[accountId]/trading/listing',
+  async (request: NextRequest, authData) => {
     const { searchParams } = new URL(request.url);
-    const itemId = searchParams.get('itemId');
-    const sku = searchParams.get('sku');
-    const reason = searchParams.get('reason') || 'NotAvailable';
-    const marketplace = searchParams.get('marketplace') || 'EBAY_US';
-
-    // Need either itemId or SKU
-    if (!itemId && !sku) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'Either Item ID or SKU is required',
-        },
-        { status: 400 }
-      );
-    }
-
-    console.log('[TRADING API DELETE] ====== REQUEST DETAILS ======');
-    console.log('[TRADING API DELETE] Item ID:', itemId);
-    console.log('[TRADING API DELETE] SKU:', sku);
-    console.log('[TRADING API DELETE] Reason:', reason);
-    console.log('[TRADING API DELETE] Marketplace:', marketplace);
-    console.log('[TRADING API DELETE] ==============================');
-
-    // Valid ending reasons
-    const validReasons = [
-      'Incorrect',           // The listing contained an error
-      'LostOrBroken',       // Item is no longer available
-      'NotAvailable',       // Item is out of stock
-      'OtherListingError',  // Other listing error
-      'ProductDeleted',     // Product was deleted
-      'SellToHighBidder'    // For auction items
-    ];
-
-    if (!validReasons.includes(reason)) {
-      console.warn(`[TRADING API DELETE] Invalid reason: ${reason}, using default: OtherListingError`);
-    }
-
-    // Get the eBay account
-    const account = await prisma.ebayUserToken.findUnique({
-      where: { id: accountId },
-    });
-
-    if (!account) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'eBay account not found',
-        },
-        { status: 404 }
-      );
-    }
-
-    // Check if token is expired
-    if (account.expiresAt < new Date()) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'OAuth token expired. Please reconnect your eBay account.',
-        },
-        { status: 401 }
-      );
-    }
-
-    // Initialize Trading API service
-    const tradingApi = new EbayTradingApiService(account as any, marketplace);
-
-    console.log('[TRADING API DELETE] Using account:', account.ebayUsername || account.ebayUserId);
+    const debugMode = searchParams.get('debug') === '1';
 
     try {
-      // Use itemId or SKU
-      const identifier = itemId || sku;
+      const itemId = searchParams.get('itemId');
+      const sku = searchParams.get('sku');
+      const reason = searchParams.get('reason') || 'NotAvailable';
+      const marketplace = searchParams.get('marketplace') || 'EBAY_US';
 
-      // End listing
-      const result = await tradingApi.endFixedPriceItem(identifier!, reason);
-
-      console.log('[TRADING API DELETE] Listing ended successfully');
-
-      return NextResponse.json({
-        success: true,
-        message: 'Listing ended successfully',
-        data: {
-          ...result,
-          reason: reason,
-          identifier: identifier,
-        },
-        metadata: {
-          account_used: account.ebayUsername || account.ebayUserId,
-          account_id: accountId,
-          marketplace: marketplace,
-          api_type: 'TRADING',
-        },
-      });
-    } catch (apiError: any) {
-      console.error('[TRADING API DELETE] API Error:', apiError);
-
-      if (apiError.errors) {
+      // Need either itemId or SKU
+      if (!itemId && !sku) {
         return NextResponse.json(
           {
             success: false,
-            message: 'eBay Trading API error',
-            errors: apiError.errors,
-            ack: apiError.ack,
+            message: 'Either Item ID or SKU is required',
           },
           { status: 400 }
         );
       }
 
-      throw apiError;
-    }
-  } catch (error: any) {
-    console.error('[TRADING API DELETE] Error:', error);
+      if (debugMode) {
+        await RealtimeDebugLogger.info('TRADING_API_DELETE', 'DELETE request received', {
+          accountId: authData.ebayAccount.id,
+          itemId,
+          sku,
+          reason,
+          marketplace,
+          url: request.url,
+          method: 'DELETE'
+        });
+      }
 
-    return NextResponse.json(
-      {
-        success: false,
-        message: 'Failed to end listing',
-        error: error.message,
-      },
-      { status: 500 }
-    );
+      // Valid ending reasons
+      const validReasons = [
+        'Incorrect',           // The listing contained an error
+        'LostOrBroken',       // Item is no longer available
+        'NotAvailable',       // Item is out of stock
+        'OtherListingError',  // Other listing error
+        'ProductDeleted',     // Product was deleted
+        'SellToHighBidder'    // For auction items
+      ];
+
+      if (!validReasons.includes(reason)) {
+        if (debugMode) {
+          await RealtimeDebugLogger.warn('TRADING_API_DELETE', 'Invalid reason provided', {
+            providedReason: reason,
+            defaultReason: 'OtherListingError'
+          });
+        }
+      }
+
+      // Initialize Trading API service
+      const tradingApi = new EbayTradingApiService(
+        authData.ebayAccount as any,
+        marketplace,
+        debugMode
+      );
+
+      if (debugMode) {
+        await RealtimeDebugLogger.debug('TRADING_API_DELETE', 'Using account', {
+          account: authData.ebayAccount.ebayUsername || authData.ebayAccount.ebayUserId,
+          tokenExpiresAt: authData.ebayAccount.expiresAt,
+          environment: process.env.EBAY_SANDBOX === 'true' ? 'SANDBOX' : 'PRODUCTION'
+        });
+      }
+
+      try {
+        // Use itemId or SKU
+        const identifier = itemId || sku;
+
+        // End listing
+        const result = await tradingApi.endFixedPriceItem(identifier!, reason);
+
+        if (debugMode) {
+          await RealtimeDebugLogger.info('TRADING_API_DELETE', 'Listing ended successfully', result);
+        }
+
+        return NextResponse.json({
+          success: true,
+          message: 'Listing ended successfully',
+          data: {
+            ...result,
+            reason: reason,
+            identifier: identifier,
+          },
+          metadata: {
+            account_used: authData.ebayAccount.ebayUsername || authData.ebayAccount.ebayUserId,
+            account_id: authData.ebayAccount.id,
+            marketplace: marketplace,
+            api_type: 'TRADING',
+          },
+        });
+      } catch (apiError: any) {
+        if (debugMode) {
+          await RealtimeDebugLogger.error('TRADING_API_DELETE', 'API Error', apiError);
+        }
+
+        if (apiError.errors) {
+          return NextResponse.json(
+            {
+              success: false,
+              message: 'eBay Trading API error',
+              errors: apiError.errors,
+              ack: apiError.ack,
+            },
+            { status: 400 }
+          );
+        }
+
+        throw apiError;
+      }
+    } catch (error: any) {
+      if (debugMode) {
+        await RealtimeDebugLogger.error('TRADING_API_DELETE', 'Error', {
+          error: error.message,
+          stack: error.stack
+        });
+      }
+
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'Failed to end listing',
+          error: error.message,
+        },
+        { status: 500 }
+      );
+    }
   }
-}
+);
+
+// Export the handlers
+export const POST = postHandler;
+export const GET = getHandler;
+export const PUT = putHandler;
+export const DELETE = deleteHandler;

@@ -26,6 +26,7 @@ export interface EbayAuthData {
         ebayUsername: string | null;
         status: string;
     };
+    requestBody?: any; // Add parsed body here to avoid re-reading
 }
 
 export function withEbayAuth(
@@ -58,13 +59,20 @@ export function withEbayAuth(
 
                 // Capture request data for logging
                 let requestData: any = {};
+                let parsedBody: any = null;
                 if (request.method === "GET") {
                     requestData = {
                         queryParams: Object.fromEntries(url.searchParams),
                     };
                 } else {
-                    const body = await request.json();
-                    requestData = { requestBody: body };
+                    // Parse body once and store it to avoid re-reading
+                    try {
+                        parsedBody = await request.json();
+                        requestData = { requestBody: parsedBody };
+                    } catch (error) {
+                        // Body might be empty or already consumed, that's okay
+                        requestData = { requestBody: null };
+                    }
                 }
 
                 if (!accountId) {
@@ -283,6 +291,7 @@ export function withEbayAuth(
                         ebayUsername: ebayAccount.ebayUsername,
                         status: ebayAccount.status,
                     },
+                    requestBody: parsedBody, // Pass parsed body to handler
                 };
 
                 await logToDebug(

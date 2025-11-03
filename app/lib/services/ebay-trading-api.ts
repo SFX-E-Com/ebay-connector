@@ -1,5 +1,8 @@
 import { XMLBuilder, XMLParser } from 'fast-xml-parser';
 import { TRADING_API_CONFIG, getSiteId, getCountryCode, getCurrency, CONDITION_IDS } from '../config/trading-api';
+import { RealtimeDebugLogger } from './realtimeDebugLogger';
+import { transformItemToEbayFormat } from '../utils/ebay-trading-transformer';
+import { EbayTradingItem } from '../types/ebay-trading-api.types';
 
 interface EbayUserToken {
   id: string;
@@ -23,10 +26,12 @@ export class EbayTradingApiService {
   private accessToken: string;
   private siteId: number;
   private apiUrl: string;
+  private debugMode: boolean = false;
 
-  constructor(account: EbayUserToken, marketplace: string = 'EBAY_US') {
+  constructor(account: EbayUserToken, marketplace: string = 'EBAY_US', debugMode: boolean = false) {
     this.accessToken = account.accessToken;
     this.siteId = getSiteId(marketplace);
+    this.debugMode = debugMode;
     this.apiUrl = process.env.EBAY_SANDBOX === 'true'
       ? TRADING_API_CONFIG.sandbox.url
       : TRADING_API_CONFIG.production.url;
@@ -54,12 +59,18 @@ export class EbayTradingApiService {
    * Make a Trading API call
    */
   private async callAPI(callName: string, requestBody: any): Promise<any> {
+    const startTime = Date.now();
     const headers = this.buildHeaders(callName);
     const xml = this.buildXmlRequest(callName, requestBody);
 
-    console.log(`[Trading API] Making ${callName} call to ${this.apiUrl}`);
-    console.log(`[Trading API] Site ID: ${this.siteId}`);
-    console.log('[Trading API] Request XML:', xml.substring(0, 500) + '...');
+    if (this.debugMode) {
+      await RealtimeDebugLogger.debug('TRADING_API', `Making ${callName} call`, {
+        url: this.apiUrl,
+        siteId: this.siteId,
+        callName,
+        requestXml: xml.substring(0, 1000)
+      });
+    }
 
     try {
       const response = await fetch(this.apiUrl, {
@@ -69,12 +80,24 @@ export class EbayTradingApiService {
       });
 
       const responseXml = await response.text();
-      console.log('[Trading API] Response status:', response.status);
-      console.log('[Trading API] Response XML:', responseXml.substring(0, 500) + '...');
+      const duration = Date.now() - startTime;
+
+      if (this.debugMode) {
+        await RealtimeDebugLogger.info('TRADING_API_RESPONSE', `${callName} completed`, {
+          status: response.status,
+          duration,
+          responseXml: responseXml.substring(0, 1000)
+        });
+      }
 
       return this.parseResponse(responseXml, callName);
     } catch (error) {
-      console.error('[Trading API] Network error:', error);
+      if (this.debugMode) {
+        await RealtimeDebugLogger.error('TRADING_API_ERROR', `Network error in ${callName}`, {
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined
+        });
+      }
       throw error;
     }
   }
@@ -155,172 +178,42 @@ export class EbayTradingApiService {
   /**
    * Add Fixed Price Item (Create listing)
    */
-  async addFixedPriceItem(listing: any): Promise<any> {
+  async addFixedPriceItem(listing: EbayTradingItem): Promise<any> {
     const marketplace = Object.keys(TRADING_API_CONFIG.siteIds).find(
       key => TRADING_API_CONFIG.siteIds[key as keyof typeof TRADING_API_CONFIG.siteIds] === this.siteId
     ) || 'EBAY_US';
 
-    const country = getCountryCode(marketplace);
-    const currency = getCurrency(marketplace);
+    // Use the transformer to convert TypeScript types to eBay XML format
+    const item = transformItemToEbayFormat(listing, marketplace);
 
-    // Build item data
-    const item: any = {
-      SKU: listing.sku,
-      Title: listing.title,
-      Description: `<![CDATA[${listing.description}]]>`,
-      PrimaryCategory: {
-        CategoryID: listing.categoryId,
-      },
-      StartPrice: {
-        '_currencyID': currency,
-        '_value': listing.price.toString(),
-      },
-      Quantity: listing.quantity,
-      Country: country,
-      Currency: currency,
-      DispatchTimeMax: listing.handlingTime || 3,
-      ListingDuration: listing.listingDuration || 'GTC',
-      ListingType: 'FixedPriceItem',
-      ConditionID: CONDITION_IDS[listing.condition as keyof typeof CONDITION_IDS] || 1000,
-      Location: listing.location || country,
-      PostalCode: listing.postalCode,
-    };
+    // Set defaults for required fields if not provided
+    if (!item.ListingDuration) item.ListingDuration = 'GTC';
+    if (!item.ListingType) item.ListingType = 'FixedPriceItem';
+    if (!item.DispatchTimeMax) item.DispatchTimeMax = 3;
 
-    // Add condition description if provided
-    if (listing.conditionDescription) {
-      item.ConditionDescription = listing.conditionDescription;
+    // Validate critical fields
+    if (!item.StartPrice || !item.StartPrice._value) {
+      if (this.debugMode) {
+        await RealtimeDebugLogger.error('TRADING_API', 'StartPrice is missing or invalid', {
+          startPrice: item.StartPrice,
+          listingStartPrice: listing.startPrice,
+          item: JSON.stringify(item, null, 2)
+        });
+      }
+      throw new Error('StartPrice is required and must be a valid number');
     }
 
-    // Add images
-    if (listing.images && listing.images.length > 0) {
-      item.PictureDetails = {
-        GalleryType: 'Gallery',
-        PictureURL: listing.images,
-      };
-    }
-
-    // Add item specifics with German translations for EBAY_DE
-    if (listing.itemSpecifics && Object.keys(listing.itemSpecifics).length > 0) {
-      // Map English names to German for German marketplace
-      const germanSpecificMapping: Record<string, string> = {
-        'Brand': 'Marke',
-        'Model': 'Modell',
-        'Storage Capacity': 'Speicherkapazität',
-        'Color': 'Farbe',
-        'Compatible Brand': 'Kompatible Marke',
-        'Compatible Model': 'Kompatibles Modell',
-        'Type': 'Produktart',
-        'Material': 'Material',
-      };
-
-      const nameValueList = Object.entries(listing.itemSpecifics).map(([name, value]) => {
-        // Use German name if marketplace is EBAY_DE and mapping exists
-        const finalName = (marketplace === 'EBAY_DE' && germanSpecificMapping[name])
-          ? germanSpecificMapping[name]
-          : name;
-
-        return {
-          Name: finalName,
-          Value: Array.isArray(value) ? value : [value],
-        };
+    if (this.debugMode) {
+      await RealtimeDebugLogger.debug('TRADING_API', 'Transformed item for AddFixedPriceItem', {
+        marketplace,
+        title: item.Title,
+        startPrice: item.StartPrice,
+        currency: item.Currency,
+        quantity: item.Quantity,
+        sku: item.SKU,
+        categoryId: item.PrimaryCategory?.CategoryID
       });
-
-      item.ItemSpecifics = {
-        NameValueList: nameValueList,
-      };
     }
-
-    // Add product identifiers if provided
-    if (listing.productIdentifiers) {
-      const productListingDetails: any = {};
-      if (listing.productIdentifiers.ean) {
-        productListingDetails.EAN = listing.productIdentifiers.ean;
-      }
-      if (listing.productIdentifiers.upc) {
-        productListingDetails.UPC = listing.productIdentifiers.upc;
-      }
-      if (listing.productIdentifiers.isbn) {
-        productListingDetails.ISBN = listing.productIdentifiers.isbn;
-      }
-      if (listing.productIdentifiers.mpn || listing.productIdentifiers.brand) {
-        productListingDetails.BrandMPN = {
-          Brand: listing.productIdentifiers.brand || listing.itemSpecifics?.Brand || 'Unbranded',
-          MPN: listing.productIdentifiers.mpn || 'Does not apply',
-        };
-      }
-
-      if (Object.keys(productListingDetails).length > 0) {
-        item.ProductListingDetails = productListingDetails;
-      }
-    }
-
-    // Check if using business policies first
-    if (listing.sellerProfiles) {
-      // Add business policies
-      item.SellerProfiles = {
-        SellerPaymentProfile: {
-          PaymentProfileID: listing.sellerProfiles.paymentProfileId || listing.sellerProfiles.paymentProfileName,
-        },
-        SellerReturnProfile: {
-          ReturnProfileID: listing.sellerProfiles.returnProfileId || listing.sellerProfiles.returnProfileName,
-        },
-        SellerShippingProfile: {
-          ShippingProfileID: listing.sellerProfiles.shippingProfileId || listing.sellerProfiles.shippingProfileName,
-        },
-      };
-    } else {
-      // Only add inline policies if NOT using business policies
-      // Add shipping details
-      if (listing.shippingOptions && listing.shippingOptions.length > 0) {
-        item.ShippingDetails = {
-          ShippingType: 'Flat',
-          ShippingServiceOptions: listing.shippingOptions.map((option: any, index: number) => {
-            const shippingService: any = {
-              ShippingServicePriority: index + 1,
-              ShippingService: option.service,
-              ShippingServiceCost: {
-                '_currencyID': currency,
-                '_value': option.cost.toString(),
-              },
-            };
-
-            // Add additional cost if provided
-            if (option.additionalCost !== undefined) {
-              shippingService.ShippingServiceAdditionalCost = {
-                '_currencyID': currency,
-                '_value': option.additionalCost.toString(),
-              };
-            }
-
-            return shippingService;
-          }),
-        };
-      }
-
-      // Add return policy
-      if (listing.returnPolicy) {
-        item.ReturnPolicy = {
-          ReturnsAcceptedOption: listing.returnPolicy.returnsAccepted ? 'ReturnsAccepted' : 'ReturnsNotAccepted',
-          RefundOption: listing.returnPolicy.refundOption || 'MoneyBack',
-          ReturnsWithinOption: listing.returnPolicy.returnsWithin || 'Days_30',
-          ShippingCostPaidByOption: listing.returnPolicy.shippingCostPaidBy || 'Buyer',
-        };
-
-        if (listing.returnPolicy.description) {
-          item.ReturnPolicy.Description = listing.returnPolicy.description;
-        }
-      }
-
-      // Add payment methods only if not managed payments
-      // Most accounts now use managed payments, so PayPal is handled automatically
-      if (listing.paymentMethods && !listing.managedPayments) {
-        item.PaymentMethods = listing.paymentMethods;
-        if (listing.paypalEmail) {
-          item.PayPalEmailAddress = listing.paypalEmail;
-        }
-      }
-    }
-
 
     const requestBody = {
       Item: item,
@@ -344,34 +237,18 @@ export class EbayTradingApiService {
   /**
    * Verify Add Fixed Price Item (Test without creating)
    */
-  async verifyAddFixedPriceItem(listing: any): Promise<any> {
-    // Same as addFixedPriceItem but calls VerifyAddFixedPriceItem
+  async verifyAddFixedPriceItem(listing: EbayTradingItem): Promise<any> {
     const marketplace = Object.keys(TRADING_API_CONFIG.siteIds).find(
       key => TRADING_API_CONFIG.siteIds[key as keyof typeof TRADING_API_CONFIG.siteIds] === this.siteId
     ) || 'EBAY_US';
 
-    const country = getCountryCode(marketplace);
-    const currency = getCurrency(marketplace);
+    // Use the transformer to convert TypeScript types to eBay XML format
+    const item = transformItemToEbayFormat(listing, marketplace);
 
-    const item: any = {
-      SKU: listing.sku,
-      Title: listing.title,
-      Description: `<![CDATA[${listing.description}]]>`,
-      PrimaryCategory: {
-        CategoryID: listing.categoryId,
-      },
-      StartPrice: {
-        '_currencyID': currency,
-        '_value': listing.price.toString(),
-      },
-      Quantity: listing.quantity,
-      Country: country,
-      Currency: currency,
-      DispatchTimeMax: listing.handlingTime || 3,
-      ListingDuration: listing.listingDuration || 'GTC',
-      ListingType: 'FixedPriceItem',
-      ConditionID: CONDITION_IDS[listing.condition as keyof typeof CONDITION_IDS] || 1000,
-    };
+    // Set defaults for required fields if not provided
+    if (!item.ListingDuration) item.ListingDuration = 'GTC';
+    if (!item.ListingType) item.ListingType = 'FixedPriceItem';
+    if (!item.DispatchTimeMax) item.DispatchTimeMax = 3;
 
     const requestBody = {
       Item: item,
@@ -401,10 +278,14 @@ export class EbayTradingApiService {
     // SKU only works for seller's own fixed-price items
     if (useSku) {
       requestBody.SKU = identifier;
-      console.log(`[TRADING API] Getting item by SKU: ${identifier}`);
+      if (this.debugMode) {
+        await RealtimeDebugLogger.debug('TRADING_API', `Getting item by SKU: ${identifier}`, { sku: identifier });
+      }
     } else {
       requestBody.ItemID = identifier;
-      console.log(`[TRADING API] Getting item by ItemID: ${identifier}`);
+      if (this.debugMode) {
+        await RealtimeDebugLogger.debug('TRADING_API', `Getting item by ItemID: ${identifier}`, { itemId: identifier });
+      }
     }
 
     const response = await this.callAPI('GetItem', requestBody);
@@ -452,7 +333,9 @@ export class EbayTradingApiService {
 
     // Filter by SKU if provided
     if (options.sku) {
-      console.log(`[TRADING API] Filtering results for SKU: ${options.sku}`);
+      if (this.debugMode) {
+        await RealtimeDebugLogger.debug('TRADING_API', `Filtering results for SKU: ${options.sku}`, { sku: options.sku });
+      }
       items = items.filter((item: any) => item.SKU === options.sku);
     }
 
@@ -472,7 +355,9 @@ export class EbayTradingApiService {
    * Get Item ID by SKU using GetSellerList
    */
   async getItemIdBySku(sku: string): Promise<string | null> {
-    console.log(`[TRADING API] Looking up ItemID for SKU: ${sku}`);
+    if (this.debugMode) {
+      await RealtimeDebugLogger.debug('TRADING_API', `Looking up ItemID for SKU: ${sku}`, { sku });
+    }
 
     try {
       // GetSellerList doesn't support SKU filter directly, need to search through results
@@ -491,7 +376,9 @@ export class EbayTradingApiService {
           }
         };
 
-        console.log(`[TRADING API] Searching page ${pageNumber} for SKU: ${sku}`);
+        if (this.debugMode) {
+          await RealtimeDebugLogger.debug('TRADING_API', `Searching page ${pageNumber} for SKU: ${sku}`, { pageNumber, sku });
+        }
         const response = await this.callAPI('GetSellerList', requestBody);
 
         if (response.ItemArray && response.ItemArray.Item) {
@@ -502,7 +389,9 @@ export class EbayTradingApiService {
           for (const item of items) {
             // Check if SKU matches and item is active
             if (item.SKU === sku && item.SellingStatus?.ListingStatus === 'Active') {
-              console.log(`[TRADING API] Found ItemID ${item.ItemID} for SKU ${sku}`);
+              if (this.debugMode) {
+                await RealtimeDebugLogger.info('TRADING_API', `Found ItemID ${item.ItemID} for SKU ${sku}`, { itemId: item.ItemID, sku });
+              }
               return item.ItemID;
             }
           }
@@ -516,10 +405,16 @@ export class EbayTradingApiService {
         pageNumber++;
       }
 
-      console.log(`[TRADING API] No active item found with SKU: ${sku} after searching ${pageNumber} pages`);
+      if (this.debugMode) {
+        await RealtimeDebugLogger.warn('TRADING_API', `No active item found with SKU: ${sku} after searching ${pageNumber} pages`, { sku, pagesSearched: pageNumber });
+      }
       return null;
     } catch (error) {
-      console.error(`[TRADING API] Error looking up SKU:`, error);
+      if (this.debugMode) {
+        await RealtimeDebugLogger.error('TRADING_API', `Error looking up SKU: ${sku}`, {
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
       return null;
     }
   }
@@ -538,19 +433,27 @@ export class EbayTradingApiService {
     // Check if identifier is a SKU or ItemID (ItemIDs are numeric)
     if (/^\d+$/.test(identifier)) {
       item.ItemID = identifier;
-      console.log(`[TRADING API] Using ItemID directly: ${identifier}`);
+      if (this.debugMode) {
+        await RealtimeDebugLogger.debug('TRADING_API', `Using ItemID directly: ${identifier}`, { itemId: identifier });
+      }
     } else {
       // Try to get ItemID from SKU first
-      console.log(`[TRADING API] Attempting to find ItemID for SKU: ${identifier}`);
+      if (this.debugMode) {
+        await RealtimeDebugLogger.debug('TRADING_API', `Attempting to find ItemID for SKU: ${identifier}`, { sku: identifier });
+      }
       const itemId = await this.getItemIdBySku(identifier);
 
       if (itemId) {
         item.ItemID = itemId;
-        console.log(`[TRADING API] Using ItemID ${itemId} (found from SKU ${identifier})`);
+        if (this.debugMode) {
+          await RealtimeDebugLogger.info('TRADING_API', `Using ItemID ${itemId} (found from SKU ${identifier})`, { itemId, sku: identifier });
+        }
       } else {
         // Fallback to using SKU directly (may fail if item wasn't created with this SKU)
         item.SKU = identifier;
-        console.log(`[TRADING API] WARNING: Could not find ItemID for SKU, using SKU directly: ${identifier}`);
+        if (this.debugMode) {
+          await RealtimeDebugLogger.warn('TRADING_API', `Could not find ItemID for SKU, using SKU directly: ${identifier}`, { sku: identifier });
+        }
       }
     }
 
@@ -675,19 +578,27 @@ export class EbayTradingApiService {
     // Check if identifier is a SKU or ItemID (ItemIDs are numeric)
     if (/^\d+$/.test(identifier)) {
       requestBody.ItemID = identifier;
-      console.log(`[TRADING API] Ending listing with ItemID: ${identifier}`);
+      if (this.debugMode) {
+        await RealtimeDebugLogger.debug('TRADING_API', `Ending listing with ItemID: ${identifier}`, { itemId: identifier });
+      }
     } else {
       // Try to get ItemID from SKU first
-      console.log(`[TRADING API] Attempting to find ItemID for SKU: ${identifier}`);
+      if (this.debugMode) {
+        await RealtimeDebugLogger.debug('TRADING_API', `Attempting to find ItemID for SKU: ${identifier}`, { sku: identifier });
+      }
       const itemId = await this.getItemIdBySku(identifier);
 
       if (itemId) {
         requestBody.ItemID = itemId;
-        console.log(`[TRADING API] Ending listing with ItemID ${itemId} (found from SKU ${identifier})`);
+        if (this.debugMode) {
+          await RealtimeDebugLogger.info('TRADING_API', `Ending listing with ItemID ${itemId} (found from SKU ${identifier})`, { itemId, sku: identifier });
+        }
       } else {
         // Fallback to using SKU directly (may fail if item wasn't created with this SKU)
         requestBody.SKU = identifier;
-        console.log(`[TRADING API] WARNING: Could not find ItemID for SKU, using SKU directly: ${identifier}`);
+        if (this.debugMode) {
+          await RealtimeDebugLogger.warn('TRADING_API', `Could not find ItemID for SKU, using SKU directly: ${identifier}`, { sku: identifier });
+        }
       }
     }
 
