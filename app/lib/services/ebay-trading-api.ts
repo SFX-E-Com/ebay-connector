@@ -1,5 +1,5 @@
 import { XMLBuilder, XMLParser } from 'fast-xml-parser';
-import { TRADING_API_CONFIG, getSiteId, getCountryCode, getCurrency, CONDITION_IDS } from '../config/trading-api';
+import { TRADING_API_CONFIG, getSiteId, getCountryCode } from '../config/trading-api';
 import { RealtimeDebugLogger } from './realtimeDebugLogger';
 import { transformItemToEbayFormat } from '../utils/ebay-trading-transformer';
 import { EbayTradingItem } from '../types/ebay-trading-api.types';
@@ -422,15 +422,43 @@ export class EbayTradingApiService {
   /**
    * Revise Fixed Price Item (Update listing)
    */
-  async reviseFixedPriceItem(identifier: string, updates: any): Promise<any> {
+  async reviseFixedPriceItem(identifier: string, updates: Partial<EbayTradingItem>): Promise<any> {
     const marketplace = Object.keys(TRADING_API_CONFIG.siteIds).find(
       key => TRADING_API_CONFIG.siteIds[key as keyof typeof TRADING_API_CONFIG.siteIds] === this.siteId
     ) || 'EBAY_US';
-    const currency = getCurrency(marketplace);
 
-    const item: any = {};
+    // Fields that CANNOT be updated after listing is created
+    const nonUpdatableFields = [
+      'primaryCategory', 'secondaryCategory', 'listingType', 'listingDuration',
+      'productListingDetails', 'conditionId', 'condition', 'country', 'currency',
+      'regulatory', 'buyItNowPrice', 'reservePrice', 'marketplace', 'verifyOnly',
+      'conditionDescriptors', 'itemCompatibilityList', 'charity', 'paymentMethods',
+      'payPalEmailAddress', 'autoPay'
+    ];
 
-    // Check if identifier is a SKU or ItemID (ItemIDs are numeric)
+    // Filter to only include fields that CAN be updated
+    const allowedUpdates: Partial<EbayTradingItem> = {};
+    const removedFields: string[] = [];
+
+    for (const key in updates) {
+      if (nonUpdatableFields.includes(key)) {
+        removedFields.push(key);
+      } else {
+        (allowedUpdates as any)[key] = (updates as any)[key];
+      }
+    }
+
+    if (this.debugMode && removedFields.length > 0) {
+      await RealtimeDebugLogger.warn('TRADING_API', 'Filtered out non-updatable fields', {
+        removedFields,
+        note: 'These fields cannot be changed after listing is created. Use relist instead to change these fields.'
+      });
+    }
+
+    // Use transformer for allowed fields (cast as we only have partial data)
+    const item = transformItemToEbayFormat(allowedUpdates as EbayTradingItem, marketplace);
+
+    // Add ItemID or SKU
     if (/^\d+$/.test(identifier)) {
       item.ItemID = identifier;
       if (this.debugMode) {
@@ -457,97 +485,13 @@ export class EbayTradingApiService {
       }
     }
 
-    // Add fields to update
-    if (updates.title) item.Title = updates.title;
-    if (updates.description) item.Description = `<![CDATA[${updates.description}]]>`;
-    if (updates.price) {
-      item.StartPrice = {
-        '_currencyID': currency,
-        '_value': updates.price.toString(),
-      };
-    }
-    if (updates.quantity !== undefined) item.Quantity = updates.quantity;
-
-    // Update images if provided
-    if (updates.images && updates.images.length > 0) {
-      item.PictureDetails = {
-        PictureURL: updates.images,
-      };
-    }
-
-    // Update item specifics if provided
-    if (updates.itemSpecifics) {
-      const germanSpecificMapping: Record<string, string> = {
-        'Brand': 'Marke',
-        'Model': 'Modell',
-        'Storage Capacity': 'Speicherkapazität',
-        'Color': 'Farbe',
-      };
-
-      const nameValueList = Object.entries(updates.itemSpecifics).map(([name, value]) => {
-        const finalName = (marketplace === 'EBAY_DE' && germanSpecificMapping[name])
-          ? germanSpecificMapping[name]
-          : name;
-
-        return {
-          Name: finalName,
-          Value: Array.isArray(value) ? value : [value],
-        };
+    if (this.debugMode) {
+      await RealtimeDebugLogger.debug('TRADING_API', 'Revising item with filtered data', {
+        itemId: item.ItemID,
+        sku: item.SKU,
+        fieldsToUpdate: Object.keys(item).filter(k => k !== 'ItemID' && k !== 'SKU'),
+        removedFieldsCount: removedFields.length
       });
-
-      item.ItemSpecifics = {
-        NameValueList: nameValueList,
-      };
-    }
-
-    // Update business policies if provided
-    if (updates.sellerProfiles) {
-      item.SellerProfiles = {
-        SellerPaymentProfile: {
-          PaymentProfileID: updates.sellerProfiles.paymentProfileId || updates.sellerProfiles.paymentProfileName,
-        },
-        SellerReturnProfile: {
-          ReturnProfileID: updates.sellerProfiles.returnProfileId || updates.sellerProfiles.returnProfileName,
-        },
-        SellerShippingProfile: {
-          ShippingProfileID: updates.sellerProfiles.shippingProfileId || updates.sellerProfiles.shippingProfileName,
-        },
-      };
-    }
-
-    // Update shipping if provided (only if not using business policies)
-    if (updates.shippingOptions && !updates.sellerProfiles) {
-      item.ShippingDetails = {
-        ShippingType: 'Flat',
-        ShippingServiceOptions: updates.shippingOptions.map((option: any, index: number) => {
-          const shippingService: any = {
-            ShippingServicePriority: index + 1,
-            ShippingService: option.service,
-            ShippingServiceCost: {
-              '_currencyID': currency,
-              '_value': option.cost.toString(),
-            },
-          };
-
-          if (option.additionalCost !== undefined) {
-            shippingService.ShippingServiceAdditionalCost = {
-              '_currencyID': currency,
-              '_value': option.additionalCost.toString(),
-            };
-          }
-
-          return shippingService;
-        }),
-      };
-    }
-
-    // Update condition if provided
-    if (updates.condition) {
-      item.ConditionID = CONDITION_IDS[updates.condition as keyof typeof CONDITION_IDS] || 1000;
-    }
-
-    if (updates.conditionDescription) {
-      item.ConditionDescription = updates.conditionDescription;
     }
 
     const requestBody = {
@@ -559,6 +503,72 @@ export class EbayTradingApiService {
     return {
       success: true,
       itemId: response.ItemID,
+      sku: response.SKU,
+      startTime: response.StartTime,
+      endTime: response.EndTime,
+      fees: this.parseFees(response.Fees),
+      warnings: response.Errors ? this.extractErrors(response) : [],
+    };
+  }
+
+  /**
+   * Relist Fixed Price Item (Relist ended listing)
+   */
+  async relistFixedPriceItem(itemId: string, updates?: Partial<EbayTradingItem>): Promise<any> {
+    const marketplace = Object.keys(TRADING_API_CONFIG.siteIds).find(
+      key => TRADING_API_CONFIG.siteIds[key as keyof typeof TRADING_API_CONFIG.siteIds] === this.siteId
+    ) || 'EBAY_US';
+
+    // Build item data - start with ItemID (required)
+    const item: any = {
+      ItemID: itemId,
+    };
+
+    // If updates are provided, transform and merge them
+    if (updates) {
+      const transformedUpdates = transformItemToEbayFormat(updates as EbayTradingItem, marketplace);
+
+      // Merge transformed updates (excluding ItemID which is already set)
+      Object.keys(transformedUpdates).forEach(key => {
+        if (key !== 'ItemID') {
+          item[key] = transformedUpdates[key];
+        }
+      });
+
+      if (this.debugMode) {
+        await RealtimeDebugLogger.debug('TRADING_API', 'Relist with updates', {
+          itemId,
+          marketplace,
+          updatesProvided: Object.keys(transformedUpdates),
+        });
+      }
+    }
+
+    const requestBody = {
+      Item: item,
+    };
+
+    if (this.debugMode) {
+      await RealtimeDebugLogger.info('TRADING_API', 'Relisting item', {
+        itemId,
+        hasUpdates: !!updates,
+        marketplace,
+      });
+    }
+
+    const response = await this.callAPI('RelistFixedPriceItem', requestBody);
+
+    if (this.debugMode) {
+      await RealtimeDebugLogger.info('TRADING_API', 'Item relisted successfully', {
+        newItemId: response.ItemID,
+        originalItemId: itemId,
+      });
+    }
+
+    return {
+      success: true,
+      itemId: response.ItemID,           // NEW ItemID
+      originalItemId: itemId,             // Original ItemID for reference
       sku: response.SKU,
       startTime: response.StartTime,
       endTime: response.EndTime,

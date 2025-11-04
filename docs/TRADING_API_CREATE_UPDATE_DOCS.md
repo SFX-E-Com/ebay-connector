@@ -3,6 +3,14 @@
 ## Table of Contents
 - [Create Listing (POST)](#create-listing)
 - [Update Listing (PUT)](#update-listing)
+- [Relist Listing (PATCH)](#relist-listing)
+- [Get Listing (GET)](#get-listing)
+- [End Listing (DELETE)](#end-listing)
+- [Bulk Operations](#bulk-operations)
+  - [Bulk Create](#bulk-create-post)
+  - [Bulk Update](#bulk-update-put)
+  - [Bulk Relist](#bulk-relist-patch)
+  - [Bulk Delete](#bulk-delete-delete)
 - [Field Descriptions](#field-descriptions)
 - [Examples](#examples)
 - [Important Notes](#important-notes)
@@ -455,9 +463,49 @@ PUT /api/ebay/{accountId}/trading/listing?debug=1
 }
 ```
 
+### Important Limitations
+
+⚠️ **ReviseFixedPriceItem has strict limitations** - Many fields CANNOT be changed after a listing is created.
+
+**Fields that CANNOT be updated:**
+- ❌ Category (primaryCategory, secondaryCategory)
+- ❌ Listing type (listingType)
+- ❌ Listing duration (listingDuration)
+- ❌ Product identifiers (EAN, UPC, ISBN in productListingDetails)
+- ❌ Condition (conditionId, condition)
+- ❌ Country & Currency
+- ❌ Regulatory information (manufacturer, responsible persons)
+- ❌ Auction-specific (buyItNowPrice, reservePrice)
+- ❌ Condition descriptors
+- ❌ Item compatibility list
+- ❌ Charity settings
+- ❌ Payment methods
+
+**Fields that CAN be updated:**
+- ✅ Title & Description
+- ✅ Price (startPrice)
+- ✅ Quantity
+- ✅ SKU
+- ✅ Pictures (pictureDetails)
+- ✅ Item specifics
+- ✅ Shipping details
+- ✅ Return policy
+- ✅ Business policies (sellerProfiles)
+- ✅ Condition description (text only, not ID)
+- ✅ Dispatch time
+- ✅ Location & Postal code
+- ✅ Subtitle
+- ✅ Best offer settings
+- ✅ Shipping package details
+- ✅ VAT details
+- ✅ Store categories
+- ✅ Video details
+
+💡 **Tip:** If you need to change non-updatable fields, use **PATCH (Relist)** to create a new listing with the changes.
+
 ### Update Request Body
 
-**Note:** For updates, you only need to include the fields you want to change, plus the identifier (itemId or sku).
+**Note:** Only include the fields you want to change, plus the identifier. Non-updatable fields are automatically filtered out.
 
 ```json
 {
@@ -465,49 +513,812 @@ PUT /api/ebay/{accountId}/trading/listing?debug=1
   "itemId": "123456789012",                    // REQUIRED (or use sku) - eBay Item ID
   "sku": "YOUR-SKU-123",                       // REQUIRED (or use itemId) - Your SKU
 
-  "marketplace": "EBAY_US",                    // OPTIONAL - Target marketplace
-
-  // ============== FIELDS TO UPDATE ==============
+  // ============== UPDATABLE FIELDS ==============
   // Include only the fields you want to change
 
-  "title": "Updated Product Title",            // OPTIONAL - New title
-  "description": "Updated description",        // OPTIONAL - New description
-  "price": 89.99,                             // OPTIONAL - New price
-  "quantity": 15,                             // OPTIONAL - New quantity
+  "title": "Updated Product Title",            // ✅ Can update
+  "description": "Updated description",        // ✅ Can update
+  "startPrice": 89.99,                        // ✅ Can update
+  "quantity": 15,                             // ✅ Can update
 
-  "images": [                                  // OPTIONAL - Replace all images
-    "https://example.com/new-image1.jpg",
-    "https://example.com/new-image2.jpg"
-  ],
-
-  "itemSpecifics": {                          // OPTIONAL - Update item specifics
-    "Brand": "Apple",
-    "Model": "iPhone 15 Pro Max",
-    "Color": "Blue Titanium"
+  "pictureDetails": {                         // ✅ Can update
+    "pictureURL": [
+      "https://example.com/new-image1.jpg",
+      "https://example.com/new-image2.jpg"
+    ]
   },
 
-  "shippingOptions": [                        // OPTIONAL - Update shipping
+  "itemSpecifics": [                          // ✅ Can update
     {
-      "service": "USPSPriority",
-      "cost": 8.99,
-      "additionalCost": 3.99
+      "name": "Brand",
+      "value": "Apple"
+    },
+    {
+      "name": "Model",
+      "value": "iPhone 15 Pro Max"
     }
   ],
 
-  "returnPolicy": {                           // OPTIONAL - Update return policy
-    "returnsAccepted": true,
-    "refundOption": "MoneyBack",
-    "returnsWithin": "Days_60",
-    "shippingCostPaidBy": "Seller",
-    "description": "60-day free returns"
+  "shippingDetails": {                        // ✅ Can update
+    "shippingServiceOptions": [
+      {
+        "shippingServicePriority": 1,
+        "shippingService": "USPSPriority",
+        "shippingServiceCost": 8.99
+      }
+    ]
   },
 
-  "sellerProfiles": {                          // OPTIONAL - Update business policies
-    "paymentProfile": "12345",
-    "returnProfile": "23456",
-    "shippingProfile": "34567"
+  "returnPolicy": {                           // ✅ Can update
+    "returnsAcceptedOption": "ReturnsAccepted",
+    "refundOption": "MoneyBack",
+    "returnsWithinOption": "Days_60",
+    "shippingCostPaidByOption": "Seller"
+  },
+
+  "sellerProfiles": {                         // ✅ Can update
+    "sellerPaymentProfile": {
+      "paymentProfileId": 123456
+    },
+    "sellerReturnProfile": {
+      "returnProfileId": 234567
+    },
+    "sellerShippingProfile": {
+      "shippingProfileId": 345678
+    }
+  },
+
+  "conditionDescription": "Excellent condition", // ✅ Can update (description only)
+  "dispatchTimeMax": 2,                       // ✅ Can update
+  "location": "New York, NY",                 // ✅ Can update
+  "subTitle": "Free Shipping!"                // ✅ Can update
+}
+```
+
+### Example: Fields Automatically Filtered
+
+If you try to update non-updatable fields, they are automatically filtered out:
+
+```json
+{
+  "itemId": "123456789012",
+  "title": "New Title",                       // ✅ Will be updated
+  "startPrice": 99.99,                       // ✅ Will be updated
+  "primaryCategory": {                        // ❌ Automatically filtered out
+    "categoryId": "9999"
+  },
+  "conditionId": 3000,                       // ❌ Automatically filtered out
+  "country": "UK"                            // ❌ Automatically filtered out
+}
+```
+
+With `?debug=1`, you'll see which fields were filtered:
+```json
+{
+  "success": true,
+  "message": "Listing updated successfully",
+  "debug": {
+    "removedFields": ["primaryCategory", "conditionId", "country"],
+    "note": "These fields cannot be changed after listing is created. Use relist instead."
   }
 }
+```
+
+---
+
+## Relist Listing
+
+### Endpoint
+```
+PATCH /api/ebay/{accountId}/trading/listing?debug=1
+```
+
+### Headers
+```json
+{
+  "Content-Type": "application/json",
+  "X-API-KEY": "your-api-key"
+}
+```
+
+### Purpose
+
+The Relist API allows you to **re-create an ended listing** with a new ItemID. This is useful for:
+- Relaunching sold-out or expired listings
+- Making changes to ended listings before relisting
+- Managing seasonal inventory cycles
+- Potentially qualifying for insertion fee credits
+
+### Key Differences
+
+| Feature | Relist (PATCH) | Update (PUT) | Create (POST) |
+|---------|---------------|--------------|---------------|
+| Target | Ended listings | Active listings | New listings |
+| ItemID | Creates NEW ItemID | Same ItemID | Creates NEW ItemID |
+| Time Limit | Within 90 days of end | Anytime while active | N/A |
+| Data Source | Copies from original | Updates existing | Fresh data |
+| Watchers | Preserved from original | Maintained | None |
+| Fee Credits | May qualify | No credits | No credits |
+
+### Important Requirements
+
+⚠️ **Must Meet These Conditions:**
+- Original listing must have **ended** (not active)
+- Must relist within **90 days** of listing end date
+- Must be the original seller of the item
+- Cannot relist within 12 hours of listing end
+
+✅ **Benefits:**
+- Preserves watchers from original listing
+- May receive insertion fee credits if item didn't sell
+- Faster than creating from scratch
+- Can modify any field during relist
+
+### Relist Request Body
+
+**Minimum Required (Relist without changes):**
+```json
+{
+  "itemId": "123456789012",                      // REQUIRED - Original ended listing ItemID
+  "marketplace": "EBAY_US"                       // OPTIONAL - Target marketplace
+}
+```
+
+**Relist with Updates:**
+```json
+{
+  // ============== REQUIRED ==============
+  "itemId": "123456789012",                      // REQUIRED - Original ended listing ItemID
+
+  "marketplace": "EBAY_US",                      // OPTIONAL - Target marketplace
+
+  // ============== OPTIONAL UPDATES ==============
+  // Include ONLY the fields you want to change
+  // All other fields will be copied from the original listing
+
+  "startPrice": 79.99,                          // OPTIONAL - New price
+  "quantity": 20,                               // OPTIONAL - New quantity
+  "title": "Updated Product Title",             // OPTIONAL - New title
+  "description": "Updated description",         // OPTIONAL - New description
+
+  "pictureDetails": {                           // OPTIONAL - Replace images
+    "pictureURL": [
+      "https://example.com/updated-image1.jpg",
+      "https://example.com/updated-image2.jpg"
+    ]
+  },
+
+  "itemSpecifics": [                            // OPTIONAL - Update item specifics
+    {
+      "name": "Brand",
+      "value": "Apple"
+    },
+    {
+      "name": "Model",
+      "value": "iPhone 15 Pro Max"
+    },
+    {
+      "name": "Color",
+      "value": "Blue Titanium"
+    }
+  ],
+
+  "shippingDetails": {                          // OPTIONAL - Update shipping
+    "shippingServiceOptions": [
+      {
+        "shippingServicePriority": 1,
+        "shippingService": "USPSPriority",
+        "shippingServiceCost": 9.99
+      }
+    ]
+  },
+
+  "returnPolicy": {                             // OPTIONAL - Update return policy
+    "returnsAcceptedOption": "ReturnsAccepted",
+    "refundOption": "MoneyBack",
+    "returnsWithinOption": "Days_60",
+    "shippingCostPaidByOption": "Seller"
+  }
+}
+```
+
+### Response Format
+
+```json
+{
+  "success": true,
+  "message": "Listing relisted successfully on eBay",
+  "data": {
+    "itemId": "987654321098",                   // NEW ItemID (different from original)
+    "originalItemId": "123456789012",           // Original ItemID for reference
+    "sku": "YOUR-SKU-123",
+    "startTime": "2024-01-15T10:00:00Z",
+    "endTime": "2024-02-15T10:00:00Z",
+    "fees": [
+      {
+        "name": "InsertionFee",
+        "amount": 0.00,                         // Often $0 due to relist credit
+        "currency": "USD",
+        "promotional": 0.00
+      }
+    ],
+    "warnings": [],
+    "listingUrl": "https://www.ebay.com/itm/987654321098"
+  },
+  "metadata": {
+    "account_used": "seller_username",
+    "account_id": "acc_123",
+    "marketplace": "EBAY_US",
+    "api_type": "TRADING",
+    "operation": "RELIST"
+  }
+}
+```
+
+### Common Use Cases
+
+#### 1. Simple Relist (No Changes)
+```json
+{
+  "itemId": "123456789012"
+}
+```
+✅ All settings copied from original listing
+
+#### 2. Relist with New Price
+```json
+{
+  "itemId": "123456789012",
+  "startPrice": 89.99
+}
+```
+✅ Updates price, keeps everything else
+
+#### 3. Relist with Increased Quantity
+```json
+{
+  "itemId": "123456789012",
+  "quantity": 50,
+  "startPrice": 79.99
+}
+```
+✅ Restocks inventory with new price
+
+#### 4. Relist for Different Marketplace
+```json
+{
+  "itemId": "123456789012",
+  "marketplace": "EBAY_UK",
+  "startPrice": 69.99,
+  "currency": "GBP"
+}
+```
+✅ Moves listing to different marketplace
+
+### Error Handling
+
+Common errors you might encounter:
+
+**Error: Item not found or not eligible**
+```json
+{
+  "success": false,
+  "message": "eBay Trading API error",
+  "errors": [
+    {
+      "code": "21916638",
+      "shortMessage": "Item not eligible for relist",
+      "longMessage": "The specified item cannot be relisted. It may still be active or beyond the 90-day relist period."
+    }
+  ]
+}
+```
+
+**Solutions:**
+- Verify the listing has ended (use GET to check status)
+- Check it's within 90 days of end date
+- Ensure you're the original seller
+- Wait at least 12 hours after listing ended
+
+### Notes
+
+1. **New ItemID**: Relisting always creates a NEW ItemID - update your database accordingly
+2. **Watchers Preserved**: Users watching the original listing will continue watching the new one
+3. **Insertion Fee Credits**: If item didn't sell, you may receive credit on insertion fees
+4. **All Settings Copied**: Only include fields you want to change; all others copy from original
+5. **90-Day Limit**: Track your ended listings and relist within the time window
+6. **Debug Mode**: Use `?debug=1` to see detailed relist information
+
+---
+
+## Get Listing
+
+### Endpoint
+```
+GET /api/ebay/{accountId}/trading/listing?itemId=123456789012&debug=1
+```
+
+Returns details of a specific listing by ItemID.
+
+---
+
+## End Listing
+
+### Endpoint
+```
+DELETE /api/ebay/{accountId}/trading/listing?itemId=123456789012&reason=NotAvailable&debug=1
+```
+
+Ends an active listing. Valid reasons: `Incorrect`, `LostOrBroken`, `NotAvailable`, `OtherListingError`, `ProductDeleted`
+
+---
+
+## Bulk Operations
+
+All operations (Create, Update, Relist, Delete) support bulk processing for handling multiple items efficiently.
+
+### Key Features
+
+✅ **Parallel Processing** - Process multiple items simultaneously (default)
+✅ **Sequential Processing** - Process one at a time with `?parallel=false`
+✅ **Partial Success** - Individual item failures don't stop the batch
+✅ **Detailed Results** - Get success/failure status for each item
+✅ **Performance Metrics** - Track duration and average time per item
+✅ **Same Auth & Middleware** - Uses same authentication as single operations
+
+### Common Parameters
+
+- **URL Parameter**: `?parallel=true|false` (default: true)
+- **URL Parameter**: `?debug=1` (enable debug logging)
+- **Body Parameter**: `marketplace` (e.g., "EBAY_US", "EBAY_DE")
+- **Body Parameter**: `items` (array of items to process)
+
+---
+
+### Bulk Create (POST)
+
+Create multiple listings in one request.
+
+#### Endpoint
+```
+POST /api/ebay/{accountId}/trading/listing/bulk?parallel=true&debug=1
+```
+
+#### Request Body
+```json
+{
+  "marketplace": "EBAY_DE",
+  "items": [
+    {
+      "title": "Product 1",
+      "description": "Description 1",
+      "primaryCategory": {"categoryId": "9355"},
+      "startPrice": 99.99,
+      "quantity": 10,
+      "sku": "SKU-001",
+      "condition": "New",
+      "pictureDetails": {
+        "pictureURL": ["https://example.com/image1.jpg"]
+      },
+      "itemSpecifics": [
+        {"name": "Brand", "value": "Apple"},
+        {"name": "Model", "value": "iPhone 15"}
+      ]
+    },
+    {
+      "title": "Product 2",
+      "description": "Description 2",
+      "primaryCategory": {"categoryId": "9355"},
+      "startPrice": 89.99,
+      "quantity": 5,
+      "sku": "SKU-002",
+      "condition": "New",
+      "verifyOnly": true  // Only verify this one
+    }
+  ]
+}
+```
+
+#### Response
+```json
+{
+  "success": true,
+  "message": "Bulk create completed: 2 successful, 0 failed",
+  "data": {
+    "total": 2,
+    "successful": 2,
+    "failed": 0,
+    "results": [
+      {
+        "index": 0,
+        "success": true,
+        "sku": "SKU-001",
+        "data": {
+          "itemId": "123456789012",
+          "sku": "SKU-001",
+          "startTime": "2024-01-15T10:00:00Z",
+          "fees": []
+        }
+      },
+      {
+        "index": 1,
+        "success": true,
+        "sku": "SKU-002",
+        "data": {
+          "fees": [],
+          "errors": [],
+          "warnings": []
+        }
+      }
+    ]
+  },
+  "metadata": {
+    "account_used": "seller_username",
+    "marketplace": "EBAY_DE",
+    "operation": "BULK_CREATE",
+    "parallel": true,
+    "duration": "3450ms"
+  }
+}
+```
+
+---
+
+### Bulk Update (PUT)
+
+Update multiple listings in one request.
+
+#### Endpoint
+```
+PUT /api/ebay/{accountId}/trading/listing/bulk?parallel=true&debug=1
+```
+
+#### Request Body
+```json
+{
+  "marketplace": "EBAY_US",
+  "items": [
+    {
+      "itemId": "123456789012",
+      "startPrice": 79.99,
+      "quantity": 20
+    },
+    {
+      "sku": "SKU-002",
+      "title": "Updated Title",
+      "startPrice": 69.99
+    },
+    {
+      "itemId": "234567890123",
+      "pictureDetails": {
+        "pictureURL": [
+          "https://example.com/new-image1.jpg",
+          "https://example.com/new-image2.jpg"
+        ]
+      }
+    }
+  ]
+}
+```
+
+#### Response
+```json
+{
+  "success": false,
+  "message": "Bulk update completed: 2 successful, 1 failed",
+  "data": {
+    "total": 3,
+    "successful": 2,
+    "failed": 1,
+    "results": [
+      {
+        "index": 0,
+        "success": true,
+        "itemId": "123456789012",
+        "data": {
+          "itemId": "123456789012",
+          "fees": []
+        }
+      },
+      {
+        "index": 1,
+        "success": true,
+        "sku": "SKU-002",
+        "data": {
+          "itemId": "987654321098",
+          "fees": []
+        }
+      },
+      {
+        "index": 2,
+        "success": false,
+        "itemId": "234567890123",
+        "error": "Item not found",
+        "errors": [
+          {
+            "code": 17,
+            "shortMessage": "Item not found"
+          }
+        ]
+      }
+    ]
+  },
+  "metadata": {
+    "operation": "BULK_UPDATE",
+    "parallel": true,
+    "duration": "2100ms"
+  }
+}
+```
+
+---
+
+### Bulk Relist (PATCH)
+
+Relist multiple ended listings in one request.
+
+#### Endpoint
+```
+PATCH /api/ebay/{accountId}/trading/listing/bulk?parallel=true&debug=1
+```
+
+#### Request Body
+```json
+{
+  "marketplace": "EBAY_DE",
+  "items": [
+    {
+      "itemId": "111111111111"
+      // No updates - just relist as-is
+    },
+    {
+      "itemId": "222222222222",
+      "startPrice": 99.99,
+      "quantity": 15
+    },
+    {
+      "itemId": "333333333333",
+      "title": "New Title for Relisted Item",
+      "pictureDetails": {
+        "pictureURL": ["https://example.com/new-photo.jpg"]
+      }
+    }
+  ]
+}
+```
+
+#### Response
+```json
+{
+  "success": true,
+  "message": "Bulk relist completed: 3 successful, 0 failed",
+  "data": {
+    "total": 3,
+    "successful": 3,
+    "failed": 0,
+    "results": [
+      {
+        "index": 0,
+        "success": true,
+        "originalItemId": "111111111111",
+        "newItemId": "444444444444",
+        "data": {
+          "itemId": "444444444444",
+          "originalItemId": "111111111111",
+          "fees": []
+        }
+      },
+      {
+        "index": 1,
+        "success": true,
+        "originalItemId": "222222222222",
+        "newItemId": "555555555555",
+        "data": {
+          "itemId": "555555555555",
+          "fees": []
+        }
+      },
+      {
+        "index": 2,
+        "success": true,
+        "originalItemId": "333333333333",
+        "newItemId": "666666666666",
+        "data": {
+          "itemId": "666666666666",
+          "fees": []
+        }
+      }
+    ]
+  },
+  "metadata": {
+    "operation": "BULK_RELIST",
+    "parallel": true,
+    "duration": "4200ms"
+  }
+}
+```
+
+---
+
+### Bulk Delete (DELETE)
+
+End multiple listings in one request.
+
+#### Endpoint
+```
+DELETE /api/ebay/{accountId}/trading/listing/bulk?parallel=true&debug=1
+```
+
+#### Request Body
+```json
+{
+  "marketplace": "EBAY_US",
+  "reason": "NotAvailable",  // Default reason for all items
+  "items": [
+    {
+      "itemId": "123456789012"
+    },
+    {
+      "sku": "SKU-002",
+      "reason": "LostOrBroken"  // Override default reason
+    },
+    {
+      "itemId": "234567890123"
+    }
+  ]
+}
+```
+
+#### Response
+```json
+{
+  "success": true,
+  "message": "Bulk delete completed: 3 successful, 0 failed",
+  "data": {
+    "total": 3,
+    "successful": 3,
+    "failed": 0,
+    "results": [
+      {
+        "index": 0,
+        "success": true,
+        "itemId": "123456789012",
+        "data": {
+          "success": true,
+          "itemId": "123456789012",
+          "endTime": "2024-01-15T10:30:00Z"
+        }
+      },
+      {
+        "index": 1,
+        "success": true,
+        "sku": "SKU-002",
+        "data": {
+          "success": true,
+          "itemId": "987654321098"
+        }
+      },
+      {
+        "index": 2,
+        "success": true,
+        "itemId": "234567890123",
+        "data": {
+          "success": true,
+          "itemId": "234567890123"
+        }
+      }
+    ]
+  },
+  "metadata": {
+    "operation": "BULK_DELETE",
+    "parallel": true,
+    "duration": "1800ms"
+  }
+}
+```
+
+---
+
+### Bulk Operation Best Practices
+
+#### 1. **Parallel vs Sequential**
+
+**Parallel (Default - Faster)**
+```
+?parallel=true  // Process all items simultaneously
+```
+- ✅ Fastest for large batches
+- ✅ Best for independent items
+- ⚠️ Higher memory usage
+- ⚠️ All failures happen simultaneously
+
+**Sequential (Safer)**
+```
+?parallel=false  // Process one at a time
+```
+- ✅ Lower memory usage
+- ✅ Easier debugging (stops at first error in logs)
+- ✅ Better for rate-limit sensitive operations
+- ⚠️ Slower for large batches
+
+#### 2. **Batch Size Recommendations**
+
+- **Parallel**: 10-50 items per request (eBay rate limits)
+- **Sequential**: 50-100 items per request
+- **Large datasets**: Split into multiple requests
+
+#### 3. **Error Handling**
+
+```javascript
+const response = await fetch('/api/ebay/account/trading/listing/bulk', {
+  method: 'POST',
+  body: JSON.stringify({ items: [...] })
+});
+
+const result = await response.json();
+
+// Check overall success
+if (!result.success) {
+  console.log(`${result.data.failed} items failed`);
+}
+
+// Process individual results
+result.data.results.forEach((item, index) => {
+  if (item.success) {
+    console.log(`Item ${index}: Success - ItemID ${item.data.itemId}`);
+  } else {
+    console.error(`Item ${index}: Failed - ${item.error}`);
+    console.error('eBay Errors:', item.errors);
+  }
+});
+```
+
+#### 4. **Progress Tracking**
+
+```javascript
+// Process in chunks with progress tracking
+const CHUNK_SIZE = 20;
+const items = [...]; // Your 1000 items
+
+for (let i = 0; i < items.length; i += CHUNK_SIZE) {
+  const chunk = items.slice(i, i + CHUNK_SIZE);
+
+  const response = await fetch('/api/ebay/account/trading/listing/bulk', {
+    method: 'POST',
+    body: JSON.stringify({ items: chunk })
+  });
+
+  const result = await response.json();
+  console.log(`Progress: ${i + chunk.length}/${items.length} - ${result.data.successful} successful`);
+
+  // Optional: delay between chunks to avoid rate limits
+  await new Promise(resolve => setTimeout(resolve, 1000));
+}
+```
+
+#### 5. **Handling Partial Failures**
+
+```javascript
+const result = await bulkCreate(items);
+
+// Retry failed items
+const failedItems = result.data.results
+  .filter(r => !r.success)
+  .map(r => items[r.index]);
+
+if (failedItems.length > 0) {
+  console.log(`Retrying ${failedItems.length} failed items...`);
+  const retryResult = await bulkCreate(failedItems);
+}
+
+// Collect successful items
+const successfulItems = result.data.results
+  .filter(r => r.success)
+  .map(r => ({
+    index: r.index,
+    itemId: r.data.itemId,
+    sku: r.sku
+  }));
 ```
 
 ---
@@ -643,6 +1454,38 @@ PUT /api/ebay/{accountId}/trading/listing?debug=1
       "shippingProfileName": "Free Shipping"
     }
   }
+}
+```
+
+### Example 5: Relist Ended Listing with Price Update
+```json
+{
+  "itemId": "123456789012",
+  "startPrice": 89.99,
+  "quantity": 15
+}
+```
+
+### Example 6: Relist with Multiple Updates
+```json
+{
+  "itemId": "123456789012",
+  "marketplace": "EBAY_US",
+  "startPrice": 79.99,
+  "quantity": 25,
+  "title": "Apple iPhone 15 Pro 256GB - Limited Time Offer",
+  "pictureDetails": {
+    "pictureURL": [
+      "https://example.com/new-photo1.jpg",
+      "https://example.com/new-photo2.jpg"
+    ]
+  },
+  "itemSpecifics": [
+    {"name": "Brand", "value": "Apple"},
+    {"name": "Model", "value": "iPhone 15 Pro"},
+    {"name": "Storage Capacity", "value": "256GB"},
+    {"name": "Color", "value": "Blue Titanium"}
+  ]
 }
 ```
 

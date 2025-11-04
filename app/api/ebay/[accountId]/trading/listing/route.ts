@@ -205,7 +205,7 @@ const postHandler = withEbayAuth(
 
 // GET /api/ebay/[accountId]/trading/listing - Get listing details
 const getHandler = withEbayAuth(
-  '/api/ebay/[accountId]/trading/listing',
+  '/ebay/{accountId}/inventory',
   async (request: NextRequest, authData) => {
     const { searchParams } = new URL(request.url);
     const debugMode = searchParams.get('debug') === '1';
@@ -286,7 +286,7 @@ const getHandler = withEbayAuth(
 
 // PUT /api/ebay/[accountId]/trading/listing - Update listing
 const putHandler = withEbayAuth(
-  '/api/ebay/[accountId]/trading/listing',
+  '/ebay/{accountId}/inventory',
   async (request: NextRequest, authData) => {
     const { searchParams } = new URL(request.url);
     const debugMode = searchParams.get('debug') === '1';
@@ -414,7 +414,7 @@ const putHandler = withEbayAuth(
 
 // DELETE /api/ebay/[accountId]/trading/listing - End listing
 const deleteHandler = withEbayAuth(
-  '/api/ebay/[accountId]/trading/listing',
+  '/ebay/{accountId}/inventory',
   async (request: NextRequest, authData) => {
     const { searchParams } = new URL(request.url);
     const debugMode = searchParams.get('debug') === '1';
@@ -547,8 +547,153 @@ const deleteHandler = withEbayAuth(
   }
 );
 
+// PATCH /api/ebay/[accountId]/trading/listing - Relist ended listing
+const patchHandler = withEbayAuth(
+  '/ebay/{accountId}/inventory',
+  async (request: NextRequest, authData) => {
+    const { searchParams } = new URL(request.url);
+    const debugMode = searchParams.get('debug') === '1';
+
+    try {
+      // Use body from authData (already parsed in middleware)
+      const body = authData.requestBody;
+
+      if (!body) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: 'Request body is required',
+          },
+          { status: 400 }
+        );
+      }
+
+      const { itemId, marketplace = 'EBAY_US', ...updates } = body;
+
+      if (debugMode) {
+        await RealtimeDebugLogger.info('TRADING_API_RELIST', 'PATCH request received', {
+          accountId: authData.ebayAccount.id,
+          itemId,
+          marketplace,
+          hasUpdates: Object.keys(updates).length > 0,
+          url: request.url,
+          method: 'PATCH'
+        });
+      }
+
+      // ItemID is required for relist
+      if (!itemId) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: 'Item ID is required for relisting',
+          },
+          { status: 400 }
+        );
+      }
+
+      if (debugMode) {
+        await RealtimeDebugLogger.debug('TRADING_API_RELIST', 'Relist request details', {
+          itemId,
+          marketplace,
+          updates: Object.keys(updates)
+        });
+      }
+
+      // Initialize Trading API service
+      const tradingApi = new EbayTradingApiService(
+        authData.ebayAccount as any,
+        marketplace,
+        debugMode
+      );
+
+      if (debugMode) {
+        await RealtimeDebugLogger.debug('TRADING_API_RELIST', 'Using account', {
+          account: authData.ebayAccount.ebayUsername || authData.ebayAccount.ebayUserId,
+          tokenExpiresAt: authData.ebayAccount.expiresAt,
+          environment: process.env.EBAY_SANDBOX === 'true' ? 'SANDBOX' : 'PRODUCTION'
+        });
+      }
+
+      try {
+        // Relist the item with optional updates
+        const hasUpdates = Object.keys(updates).length > 0;
+        const result = await tradingApi.relistFixedPriceItem(
+          itemId,
+          hasUpdates ? updates : undefined
+        );
+
+        if (debugMode) {
+          await RealtimeDebugLogger.info('TRADING_API_RELIST', 'Item relisted successfully', {
+            newItemId: result.itemId,
+            originalItemId: itemId,
+            fees: result.fees
+          });
+        }
+
+        return NextResponse.json({
+          success: true,
+          message: 'Listing relisted successfully on eBay',
+          data: {
+            itemId: result.itemId,              // New ItemID
+            originalItemId: result.originalItemId, // Original ItemID
+            sku: result.sku,
+            startTime: result.startTime,
+            endTime: result.endTime,
+            fees: result.fees,
+            warnings: result.warnings,
+            listingUrl: `https://www.ebay${process.env.EBAY_SANDBOX === 'true' ? '.sandbox' : ''}.com/itm/${result.itemId}`,
+          },
+          metadata: {
+            account_used: authData.ebayAccount.ebayUsername || authData.ebayAccount.ebayUserId,
+            account_id: authData.ebayAccount.id,
+            marketplace: marketplace,
+            api_type: 'TRADING',
+            operation: 'RELIST',
+          },
+        });
+      } catch (apiError: any) {
+        if (debugMode) {
+          await RealtimeDebugLogger.error('TRADING_API_RELIST', 'API Error', apiError);
+        }
+
+        if (apiError.errors) {
+          return NextResponse.json(
+            {
+              success: false,
+              message: 'eBay Trading API error',
+              errors: apiError.errors,
+              ack: apiError.ack,
+            },
+            { status: 400 }
+          );
+        }
+
+        throw apiError;
+      }
+    } catch (error: any) {
+      if (debugMode) {
+        await RealtimeDebugLogger.error('TRADING_API_RELIST', 'Error', {
+          error: error.message,
+          stack: error.stack
+        });
+      }
+
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'Failed to relist listing',
+          error: error.message,
+        },
+        { status: 500 }
+      );
+    }
+  }
+);
+
 // Export the handlers
 export const POST = postHandler;
 export const GET = getHandler;
 export const PUT = putHandler;
 export const DELETE = deleteHandler;
+export const PATCH = patchHandler;
