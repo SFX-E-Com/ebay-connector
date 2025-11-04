@@ -5,7 +5,7 @@ const swaggerDocument = {
   info: {
     title: 'eBay Connector API',
     version: '1.0.0',
-    description: 'Complete API documentation for eBay Connector application including Inventory, Trading, and OAuth APIs',
+    description: 'Complete API documentation for eBay Connector application - Trading Listing API for creating, updating, relisting, and managing eBay listings',
     contact: {
       name: 'SFX E-commerce',
       email: 'support@sfx-ecommerce.com'
@@ -22,154 +22,22 @@ const swaggerDocument = {
     }
   ],
   tags: [
-    { name: 'Inventory', description: 'eBay Inventory API operations' },
-    { name: 'Listings', description: 'eBay Listings management' },
+    { name: 'Trading Listing', description: 'eBay Trading API listing operations - Create, update, relist, and manage listings' },
     { name: 'Legacy Listings', description: 'Trading API legacy listings' },
-    { name: 'Offers', description: 'eBay Offers (active listings) management' },
-    { name: 'Migration', description: 'Migration tools from Trading API to Inventory API' },
-    { name: 'Locations', description: 'Merchant location management' },
-    { name: 'Policies', description: 'Business policies management' },
-    { name: 'Item Management', description: 'Item existence check and variations' }
+    { name: 'Migration', description: 'Migration tools from Trading API to Inventory API' }
   ],
   paths: {
-    // Inventory Items
-    '/api/ebay/{accountId}/inventory': {
-      get: {
-        tags: ['Inventory'],
-        summary: 'Get all inventory items',
-        description: 'Retrieves all inventory items for the specified eBay account with pagination support',
-        parameters: [
-          {
-            name: 'accountId',
-            in: 'path',
-            required: true,
-            schema: { type: 'string' },
-            description: 'eBay account ID',
-            example: 'cmggns0dk0001jr04tb7ljtkk'
-          },
-          {
-            name: 'limit',
-            in: 'query',
-            schema: { type: 'integer', default: 25, maximum: 200 },
-            description: 'Number of items to return'
-          },
-          {
-            name: 'offset',
-            in: 'query',
-            schema: { type: 'integer', default: 0 },
-            description: 'Number of items to skip'
-          }
-        ],
-        responses: {
-          '200': {
-            description: 'Successful response',
-            content: {
-              'application/json': {
-                schema: {
-                  type: 'object',
-                  properties: {
-                    success: { type: 'boolean', example: true },
-                    data: {
-                      type: 'object',
-                      properties: {
-                        total: { type: 'integer', example: 150 },
-                        limit: { type: 'integer', example: 25 },
-                        offset: { type: 'integer', example: 0 },
-                        inventoryItems: {
-                          type: 'array',
-                          items: {
-                            type: 'object',
-                            properties: {
-                              sku: { type: 'string', example: 'PROD-001' },
-                              product: {
-                                type: 'object',
-                                properties: {
-                                  title: { type: 'string', example: 'iPhone Case' },
-                                  description: { type: 'string' },
-                                  imageUrls: { type: 'array', items: { type: 'string' } },
-                                  aspects: { type: 'object' }
-                                }
-                              },
-                              condition: { type: 'string', example: 'NEW' },
-                              availability: {
-                                type: 'object',
-                                properties: {
-                                  shipToLocationAvailability: {
-                                    type: 'object',
-                                    properties: {
-                                      quantity: { type: 'integer', example: 10 }
-                                    }
-                                  }
-                                }
-                              }
-                            }
-                          }
-                        }
-                      }
-                    },
-                    metadata: {
-                      type: 'object',
-                      properties: {
-                        account_used: { type: 'string' },
-                        account_id: { type: 'string' },
-                        environment: { type: 'string', enum: ['sandbox', 'production'] }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          '401': {
-            description: 'Authentication failed',
-            content: {
-              'application/json': {
-                schema: {
-                  type: 'object',
-                  properties: {
-                    success: { type: 'boolean', example: false },
-                    message: { type: 'string', example: 'eBay authentication failed. Please reconnect your eBay account.' },
-                    error: { type: 'string' }
-                  }
-                }
-              }
-            }
-          },
-          '404': {
-            description: 'Account not found',
-            content: {
-              'application/json': {
-                schema: {
-                  type: 'object',
-                  properties: {
-                    success: { type: 'boolean', example: false },
-                    message: { type: 'string', example: 'eBay account not found' }
-                  }
-                }
-              }
-            }
-          },
-          '500': {
-            description: 'Server error',
-            content: {
-              'application/json': {
-                schema: {
-                  type: 'object',
-                  properties: {
-                    success: { type: 'boolean', example: false },
-                    message: { type: 'string' },
-                    error: { type: 'string' }
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
+    // Trading Listing API - Single Operations
+    '/api/ebay/{accountId}/trading/listing': {
       post: {
-        tags: ['Inventory'],
-        summary: 'Create new inventory item',
-        description: 'Creates a new inventory item in eBay. This does not create a listing - use offers API to list the item.',
+        tags: ['Trading Listing'],
+        summary: 'Create new listing (AddFixedPriceItem)',
+        description: `Creates a new eBay listing using Trading API. Features:
+- Auto-detects marketplace from country code
+- Auto-translates item specifics for EBAY_DE
+- Flexible condition format (ID or string)
+- Business policy fallback with defaults
+- Supports all eBay listing fields`,
         parameters: [
           {
             name: 'accountId',
@@ -177,6 +45,12 @@ const swaggerDocument = {
             required: true,
             schema: { type: 'string' },
             description: 'eBay account ID'
+          },
+          {
+            name: 'debug',
+            in: 'query',
+            schema: { type: 'string', enum: ['1'] },
+            description: 'Enable debug logging'
           }
         ],
         requestBody: {
@@ -185,544 +59,77 @@ const swaggerDocument = {
             'application/json': {
               schema: {
                 type: 'object',
-                required: ['sku', 'product', 'condition', 'availability'],
+                required: ['title', 'description', 'primaryCategory', 'startPrice', 'quantity'],
                 properties: {
-                  sku: { type: 'string', example: 'PROD-001', description: 'Unique SKU for the item' },
-                  product: {
+                  title: { type: 'string', maxLength: 80, description: 'Item title' },
+                  description: { type: 'string', description: 'HTML description (wrapped in CDATA)' },
+                  primaryCategory: {
                     type: 'object',
-                    required: ['title'],
+                    required: ['categoryId'],
                     properties: {
-                      title: { type: 'string', example: 'Apple iPhone 15 Case' },
-                      description: { type: 'string', example: 'High quality protective case' },
-                      imageUrls: {
+                      categoryId: { type: 'string', example: '139973' }
+                    }
+                  },
+                  startPrice: { type: 'number', description: 'Fixed price or starting bid', example: 99.99 },
+                  quantity: { type: 'integer', description: 'Available quantity', example: 10 },
+                  sku: { type: 'string', description: 'Your SKU', example: 'PROD-001' },
+                  country: { type: 'string', description: '2-letter country code (auto-infers marketplace)', example: 'DE' },
+                  marketplace: { type: 'string', enum: ['EBAY_US', 'EBAY_UK', 'EBAY_DE', 'EBAY_AU', 'EBAY_CA', 'EBAY_FR', 'EBAY_IT', 'EBAY_ES'], example: 'EBAY_DE' },
+                  currency: { type: 'string', description: 'Auto-set based on marketplace', example: 'EUR' },
+                  conditionId: { type: 'integer', description: '1000=New, 3000=Used', example: 1000 },
+                  condition: { type: 'string', description: 'Alternative: "New", "Used" (case-insensitive)', example: 'New' },
+                  pictureDetails: {
+                    type: 'object',
+                    properties: {
+                      pictureURL: {
                         type: 'array',
                         items: { type: 'string' },
+                        description: 'Image URLs (first is gallery)',
                         example: ['https://example.com/image1.jpg']
-                      },
-                      aspects: {
-                        type: 'object',
-                        example: {
-                          Brand: 'Apple',
-                          Color: 'Black',
-                          'Compatible Model': 'iPhone 15'
-                        }
-                      },
-                      brand: { type: 'string', example: 'Apple' },
-                      mpn: { type: 'string', example: 'MPN123' },
-                      ean: { type: 'array', items: { type: 'string' } },
-                      upc: { type: 'array', items: { type: 'string' } }
-                    }
-                  },
-                  condition: {
-                    type: 'string',
-                    enum: ['NEW', 'LIKE_NEW', 'USED_EXCELLENT', 'USED_GOOD', 'USED_ACCEPTABLE', 'FOR_PARTS_OR_NOT_WORKING'],
-                    example: 'NEW'
-                  },
-                  conditionDescription: { type: 'string' },
-                  availability: {
-                    type: 'object',
-                    properties: {
-                      shipToLocationAvailability: {
-                        type: 'object',
-                        properties: {
-                          quantity: { type: 'integer', example: 100 }
-                        }
                       }
                     }
                   },
-                  packageWeightAndSize: {
-                    type: 'object',
-                    properties: {
-                      weight: {
-                        type: 'object',
-                        properties: {
-                          value: { type: 'number', example: 0.5 },
-                          unit: { type: 'string', enum: ['POUND', 'KILOGRAM', 'OUNCE', 'GRAM'] }
-                        }
-                      },
-                      dimensions: {
-                        type: 'object',
-                        properties: {
-                          length: { type: 'number' },
-                          width: { type: 'number' },
-                          height: { type: 'number' },
-                          unit: { type: 'string', enum: ['INCH', 'CENTIMETER'] }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        responses: {
-          '200': {
-            description: 'Item created successfully',
-            content: {
-              'application/json': {
-                schema: {
-                  type: 'object',
-                  properties: {
-                    success: { type: 'boolean', example: true },
-                    message: { type: 'string', example: 'Inventory item created successfully' },
-                    data: {
-                      type: 'object',
-                      properties: {
-                        sku: { type: 'string' }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          '400': {
-            description: 'Bad request - Invalid input data'
-          },
-          '401': {
-            description: 'Authentication failed'
-          },
-          '409': {
-            description: 'Conflict - SKU already exists'
-          }
-        }
-      }
-    },
-    '/api/ebay/{accountId}/inventory/{sku}': {
-      get: {
-        tags: ['Inventory'],
-        summary: 'Get specific inventory item by SKU',
-        description: 'Retrieves a single inventory item by its SKU',
-        parameters: [
-          {
-            name: 'accountId',
-            in: 'path',
-            required: true,
-            schema: { type: 'string' },
-            description: 'eBay account ID'
-          },
-          {
-            name: 'sku',
-            in: 'path',
-            required: true,
-            schema: { type: 'string' },
-            description: 'SKU of the inventory item',
-            example: 'PROD-001'
-          }
-        ],
-        responses: {
-          '200': {
-            description: 'Successful response'
-          },
-          '404': {
-            description: 'Item not found'
-          }
-        }
-      },
-      put: {
-        tags: ['Inventory'],
-        summary: 'Update inventory item',
-        description: 'Updates an existing inventory item',
-        parameters: [
-          {
-            name: 'accountId',
-            in: 'path',
-            required: true,
-            schema: { type: 'string' }
-          },
-          {
-            name: 'sku',
-            in: 'path',
-            required: true,
-            schema: { type: 'string' }
-          }
-        ],
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                description: 'Same structure as POST /inventory'
-              }
-            }
-          }
-        },
-        responses: {
-          '200': {
-            description: 'Item updated successfully'
-          }
-        }
-      },
-      delete: {
-        tags: ['Inventory'],
-        summary: 'Delete inventory item',
-        description: 'Deletes an inventory item. Item must not have active offers.',
-        parameters: [
-          {
-            name: 'accountId',
-            in: 'path',
-            required: true,
-            schema: { type: 'string' }
-          },
-          {
-            name: 'sku',
-            in: 'path',
-            required: true,
-            schema: { type: 'string' }
-          }
-        ],
-        responses: {
-          '200': {
-            description: 'Item deleted successfully'
-          },
-          '400': {
-            description: 'Cannot delete - item has active offers'
-          }
-        }
-      }
-    },
-
-    // Listings Management
-    '/api/ebay/{accountId}/listings': {
-      get: {
-        tags: ['Listings'],
-        summary: 'Get all listings',
-        description: 'Wrapper endpoint for inventory items - returns all listings with additional formatting',
-        parameters: [
-          {
-            name: 'accountId',
-            in: 'path',
-            required: true,
-            schema: { type: 'string' }
-          },
-          {
-            name: 'limit',
-            in: 'query',
-            schema: { type: 'integer', default: 25 }
-          },
-          {
-            name: 'offset',
-            in: 'query',
-            schema: { type: 'integer', default: 0 }
-          },
-          {
-            name: 'sku',
-            in: 'query',
-            schema: { type: 'string' },
-            description: 'Filter by specific SKU'
-          }
-        ],
-        responses: {
-          '200': {
-            description: 'Successful response'
-          }
-        }
-      }
-    },
-    '/api/ebay/{accountId}/listings/{sku}': {
-      get: {
-        tags: ['Listings'],
-        summary: 'Get specific listing by SKU',
-        description: 'Retrieves a single listing by its SKU',
-        parameters: [
-          {
-            name: 'accountId',
-            in: 'path',
-            required: true,
-            schema: { type: 'string' }
-          },
-          {
-            name: 'sku',
-            in: 'path',
-            required: true,
-            schema: { type: 'string' }
-          }
-        ],
-        responses: {
-          '200': {
-            description: 'Successful response'
-          }
-        }
-      }
-    },
-    '/api/ebay/{accountId}/listings/create': {
-      post: {
-        tags: ['Listings'],
-        summary: 'Create complete listing with comprehensive data',
-        description: 'Creates inventory item, offer, and optionally publishes the listing in a single API call. Supports all eBay requirements including location, regulatory info, and marketplace-specific fields.',
-        parameters: [
-          {
-            name: 'accountId',
-            in: 'path',
-            required: true,
-            schema: { type: 'string' },
-            description: 'eBay account ID from your system'
-          }
-        ],
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                required: ['sku', 'marketplaceId', 'categoryId', 'product', 'condition', 'pricingSummary', 'location', 'availability'],
-                properties: {
-                  // Core required fields
-                  sku: { type: 'string', description: 'Unique SKU for your item', example: 'PROD-001' },
-                  marketplaceId: {
-                    type: 'string',
-                    description: 'eBay marketplace identifier',
-                    enum: ['EBAY_US', 'EBAY_CA', 'EBAY_UK', 'EBAY_AU', 'EBAY_AT', 'EBAY_BE', 'EBAY_FR', 'EBAY_DE', 'EBAY_IT', 'EBAY_NL', 'EBAY_ES', 'EBAY_CH', 'EBAY_HK', 'EBAY_IN', 'EBAY_IE', 'EBAY_MY', 'EBAY_PH', 'EBAY_PL', 'EBAY_SG', 'EBAY_TH', 'EBAY_TW'],
-                    example: 'EBAY_DE'
-                  },
-                  categoryId: { type: 'string', description: 'eBay category ID (use Category Suggestion API)', example: '9355' },
-
-                  // Product information
-                  product: {
-                    type: 'object',
-                    required: ['title', 'description', 'imageUrls'],
-                    properties: {
-                      title: { type: 'string', maxLength: 80, description: 'Product title', example: 'Apple iPhone 13 Pro Max 256GB' },
-                      description: { type: 'string', description: 'HTML-supported product description', example: '<p>Brand new iPhone in original packaging</p>' },
-                      imageUrls: {
-                        type: 'array',
-                        items: { type: 'string' },
-                        minItems: 1,
-                        maxItems: 24,
-                        description: 'Product images (first is primary)',
-                        example: ['https://example.com/image1.jpg', 'https://example.com/image2.jpg']
-                      },
-                      brand: { type: 'string', description: 'Product brand', example: 'Apple' },
-                      mpn: { type: 'string', description: 'Manufacturer Part Number', example: 'MLPH3LL/A' },
-                      ean: { type: 'array', items: { type: 'string' }, description: 'European Article Numbers' },
-                      isbn: { type: 'array', items: { type: 'string' }, description: 'ISBN numbers' },
-                      upc: { type: 'array', items: { type: 'string' }, description: 'Universal Product Codes' },
-                      epid: { type: 'string', description: 'eBay Product ID (if known)' },
-                      aspects: {
-                        type: 'object',
-                        additionalProperties: {
-                          type: 'array',
-                          items: { type: 'string' }
-                        },
-                        description: 'Category-specific aspects',
-                        example: {
-                          'Color': ['Space Gray'],
-                          'Storage Capacity': ['256 GB'],
-                          'Network': ['Unlocked']
-                        }
-                      }
-                    }
-                  },
-
-                  // Condition
-                  condition: {
-                    type: 'string',
-                    enum: ['NEW', 'LIKE_NEW', 'NEW_OTHER', 'NEW_WITH_DEFECTS', 'MANUFACTURER_REFURBISHED', 'CERTIFIED_REFURBISHED', 'EXCELLENT_REFURBISHED', 'VERY_GOOD_REFURBISHED', 'GOOD_REFURBISHED', 'SELLER_REFURBISHED', 'USED_EXCELLENT', 'USED_VERY_GOOD', 'USED_GOOD', 'USED_ACCEPTABLE', 'FOR_PARTS_OR_NOT_WORKING'],
-                    description: 'Item condition',
-                    example: 'NEW'
-                  },
-                  conditionDescription: { type: 'string', description: 'Additional condition details', example: 'Brand new in sealed box' },
-
-                  // Pricing
-                  pricingSummary: {
-                    type: 'object',
-                    required: ['price'],
-                    properties: {
-                      price: {
-                        type: 'object',
-                        required: ['value', 'currency'],
-                        properties: {
-                          value: { type: 'string', description: 'Item price', example: '899.99' },
-                          currency: { type: 'string', description: 'Currency (must match marketplace)', example: 'EUR' }
-                        }
-                      },
-                      auctionStartPrice: {
-                        type: 'object',
-                        properties: {
-                          value: { type: 'string', example: '1.00' },
-                          currency: { type: 'string', example: 'EUR' }
-                        }
-                      },
-                      auctionReservePrice: {
-                        type: 'object',
-                        properties: {
-                          value: { type: 'string', example: '500.00' },
-                          currency: { type: 'string', example: 'EUR' }
-                        }
-                      }
-                    }
-                  },
-
-                  // Location
-                  location: {
-                    type: 'object',
-                    required: ['address'],
-                    properties: {
-                      merchantLocationKey: { type: 'string', description: 'Your internal location ID' },
-                      name: { type: 'string', description: 'Location name' },
-                      address: {
-                        type: 'object',
-                        required: ['country'],
-                        properties: {
-                          addressLine1: { type: 'string' },
-                          addressLine2: { type: 'string' },
-                          city: { type: 'string', example: 'Berlin' },
-                          stateOrProvince: { type: 'string', example: 'BE' },
-                          postalCode: { type: 'string', example: '10115' },
-                          country: { type: 'string', description: '2-letter ISO code', example: 'DE' }
-                        }
-                      },
-                      locationTypes: {
-                        type: 'array',
-                        items: { type: 'string', enum: ['WAREHOUSE', 'STORE'] }
-                      }
-                    }
-                  },
-
-                  // Availability
-                  availability: {
-                    type: 'object',
-                    required: ['shipToLocationAvailability'],
-                    properties: {
-                      shipToLocationAvailability: {
-                        type: 'object',
-                        required: ['quantity'],
-                        properties: {
-                          quantity: { type: 'integer', description: 'Total available quantity', example: 10 }
-                        }
-                      }
-                    }
-                  },
-                  availableQuantity: { type: 'integer', description: 'Quantity for this offer', example: 10 },
-
-                  // Listing configuration
-                  format: {
-                    type: 'string',
-                    enum: ['FIXED_PRICE', 'AUCTION'],
-                    default: 'FIXED_PRICE',
-                    description: 'Listing format'
-                  },
-                  listingDuration: {
-                    type: 'string',
-                    enum: ['DAYS_3', 'DAYS_5', 'DAYS_7', 'DAYS_10', 'DAYS_30', 'GTC'],
-                    default: 'GTC',
-                    description: 'Listing duration (GTC = Good Till Cancelled)'
-                  },
-                  listingStartDate: { type: 'string', format: 'date-time', description: 'Schedule listing start' },
-
-                  // Policies
-                  listingPolicies: {
-                    type: 'object',
-                    properties: {
-                      fulfillmentPolicyId: { type: 'string', description: 'Shipping policy ID' },
-                      paymentPolicyId: { type: 'string', description: 'Payment policy ID' },
-                      returnPolicyId: { type: 'string', description: 'Return policy ID' },
-                      eBayPlusIfEligible: { type: 'boolean', description: 'Enable eBay Plus if eligible' }
-                    }
-                  },
-
-                  // Shipping
-                  shippingCostOverrides: {
+                  itemSpecifics: {
                     type: 'array',
                     items: {
                       type: 'object',
                       properties: {
-                        priority: { type: 'integer', example: 1 },
-                        shippingCost: {
-                          type: 'object',
-                          properties: {
-                            value: { type: 'string', example: '5.99' },
-                            currency: { type: 'string', example: 'EUR' }
-                          }
-                        },
-                        shippingServiceType: {
-                          type: 'string',
-                          enum: ['ECONOMY', 'STANDARD', 'EXPEDITED', 'ONE_DAY', 'FREIGHT'],
-                          example: 'STANDARD'
+                        name: { type: 'string', description: 'Auto-translated for EBAY_DE', example: 'Brand' },
+                        value: { description: 'String or array', example: 'Apple' }
+                      }
+                    }
+                  },
+                  productListingDetails: {
+                    type: 'object',
+                    properties: {
+                      upc: { type: 'string' },
+                      ean: { type: 'string' },
+                      brandMPN: {
+                        type: 'object',
+                        properties: {
+                          brand: { type: 'string' },
+                          mpn: { type: 'string' }
                         }
                       }
                     }
                   },
-
-                  // Package dimensions
-                  packageWeightAndSize: {
+                  shippingDetails: {
                     type: 'object',
-                    properties: {
-                      weight: {
-                        type: 'object',
-                        properties: {
-                          value: { type: 'number', example: 0.5 },
-                          unit: { type: 'string', enum: ['POUND', 'KILOGRAM', 'OUNCE', 'GRAM'], example: 'KILOGRAM' }
-                        }
-                      },
-                      packageType: {
-                        type: 'string',
-                        enum: ['PACKAGE_THICK_ENVELOPE', 'BULKY_GOODS', 'CARTON', 'ENVELOPE', 'FLAT_RATE_ENVELOPE', 'LARGE_ENVELOPE', 'LARGE_PACKAGE', 'LETTER', 'MEDIUM_PACKAGE', 'PACKAGE', 'PARCEL'],
-                        example: 'PACKAGE'
-                      },
-                      dimensions: {
-                        type: 'object',
-                        properties: {
-                          length: { type: 'number', example: 20 },
-                          width: { type: 'number', example: 15 },
-                          height: { type: 'number', example: 10 },
-                          unit: { type: 'string', enum: ['INCH', 'CENTIMETER'], example: 'CENTIMETER' }
-                        }
-                      }
-                    }
+                    description: 'Shipping configuration (auto-defaults if missing)'
                   },
-
-                  // Tax
-                  tax: {
+                  returnPolicy: {
                     type: 'object',
-                    properties: {
-                      vatPercentage: { type: 'number', description: 'VAT percentage for EU', example: 19 },
-                      applyTax: { type: 'boolean' }
-                    }
+                    description: 'Return policy (auto-defaults if missing)'
                   },
-
-                  // Best Offer
-                  bestOfferEnabled: { type: 'boolean', description: 'Enable Best Offer' },
-                  bestOfferAutoAcceptPrice: {
-                    type: 'object',
-                    properties: {
-                      value: { type: 'string', example: '800.00' },
-                      currency: { type: 'string', example: 'EUR' }
-                    }
-                  },
-
-                  // EU Regulatory
                   regulatory: {
                     type: 'object',
+                    description: 'EU compliance (manufacturer, responsible persons)',
                     properties: {
-                      manufacturer: {
-                        type: 'object',
-                        properties: {
-                          companyName: { type: 'string', example: 'Apple Inc.' },
-                          addressLine1: { type: 'string' },
-                          city: { type: 'string' },
-                          country: { type: 'string' }
-                        }
-                      },
-                      responsiblePersons: {
-                        type: 'array',
-                        items: {
-                          type: 'object',
-                          properties: {
-                            companyName: { type: 'string' },
-                            types: { type: 'array', items: { type: 'string' } },
-                            country: { type: 'string' }
-                          }
-                        }
-                      }
+                      manufacturer: { type: 'object' },
+                      responsiblePersons: { type: 'array' }
                     }
                   },
-
-                  // Control flags
-                  publish: { type: 'boolean', default: false, description: 'Auto-publish after creation' },
-                  validateOnly: { type: 'boolean', default: false, description: 'Only validate without creating' }
+                  verifyOnly: { type: 'boolean', description: 'Validate without creating', default: false }
                 }
               }
             }
@@ -736,18 +143,572 @@ const swaggerDocument = {
                 schema: {
                   type: 'object',
                   properties: {
+                    success: { type: 'boolean', example: true },
+                    message: { type: 'string', example: 'Listing created successfully on eBay' },
+                    data: {
+                      type: 'object',
+                      properties: {
+                        itemId: { type: 'string', example: '123456789012' },
+                        sku: { type: 'string' },
+                        startTime: { type: 'string', format: 'date-time' },
+                        endTime: { type: 'string', format: 'date-time' },
+                        fees: { type: 'array' },
+                        listingUrl: { type: 'string' }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      put: {
+        tags: ['Trading Listing'],
+        summary: 'Update existing listing (ReviseFixedPriceItem)',
+        description: `Updates an active listing. Non-updatable fields are automatically filtered out.
+
+Can update: title, price, quantity, images, item specifics, shipping, return policy
+Cannot update: category, condition ID, listing type, country, currency`,
+        parameters: [
+          {
+            name: 'accountId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          },
+          {
+            name: 'debug',
+            in: 'query',
+            schema: { type: 'string', enum: ['1'] }
+          }
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  itemId: { type: 'string', description: 'eBay ItemID (or use sku)', example: '123456789012' },
+                  sku: { type: 'string', description: 'Your SKU (or use itemId)' },
+                  title: { type: 'string', description: 'Updated title' },
+                  startPrice: { type: 'number', description: 'Updated price' },
+                  quantity: { type: 'integer', description: 'Updated quantity' },
+                  pictureDetails: { type: 'object', description: 'Updated images' },
+                  itemSpecifics: { type: 'array', description: 'Updated item specifics' }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          '200': {
+            description: 'Listing updated successfully',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
                     success: { type: 'boolean' },
                     message: { type: 'string' },
                     data: {
                       type: 'object',
                       properties: {
-                        sku: { type: 'string' },
-                        offerId: { type: 'string' },
-                        listingId: { type: 'string' },
-                        status: { type: 'string' }
+                        itemId: { type: 'string' },
+                        fees: { type: 'array' }
+                      }
+                    },
+                    debug: {
+                      type: 'object',
+                      properties: {
+                        removedFields: { type: 'array', items: { type: 'string' } },
+                        note: { type: 'string' }
                       }
                     }
                   }
+                }
+              }
+            }
+          }
+        }
+      },
+      patch: {
+        tags: ['Trading Listing'],
+        summary: 'Relist ended listing (RelistFixedPriceItem)',
+        description: `Re-creates an ended listing with a new ItemID. Must be within 90 days of listing end.
+
+Benefits:
+- Preserves watchers from original listing
+- May receive insertion fee credits
+- Can update any field during relist
+- Faster than creating from scratch`,
+        parameters: [
+          {
+            name: 'accountId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          },
+          {
+            name: 'debug',
+            in: 'query',
+            schema: { type: 'string', enum: ['1'] }
+          }
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['itemId'],
+                properties: {
+                  itemId: { type: 'string', description: 'Original ended listing ItemID', example: '123456789012' },
+                  marketplace: { type: 'string', example: 'EBAY_US' },
+                  startPrice: { type: 'number', description: 'New price (optional)' },
+                  quantity: { type: 'integer', description: 'New quantity (optional)' },
+                  title: { type: 'string', description: 'Updated title (optional)' }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          '200': {
+            description: 'Listing relisted successfully',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean' },
+                    message: { type: 'string' },
+                    data: {
+                      type: 'object',
+                      properties: {
+                        itemId: { type: 'string', description: 'NEW ItemID' },
+                        originalItemId: { type: 'string', description: 'Original ItemID' },
+                        fees: { type: 'array' }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      get: {
+        tags: ['Trading Listing'],
+        summary: 'Get listing details (GetItem)',
+        description: 'Retrieves details of a specific listing by ItemID',
+        parameters: [
+          {
+            name: 'accountId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          },
+          {
+            name: 'itemId',
+            in: 'query',
+            required: true,
+            schema: { type: 'string' },
+            description: 'eBay ItemID',
+            example: '123456789012'
+          },
+          {
+            name: 'debug',
+            in: 'query',
+            schema: { type: 'string', enum: ['1'] }
+          }
+        ],
+        responses: {
+          '200': {
+            description: 'Listing details retrieved',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean' },
+                    data: {
+                      type: 'object',
+                      properties: {
+                        itemId: { type: 'string' },
+                        title: { type: 'string' },
+                        currentPrice: { type: 'string' },
+                        quantity: { type: 'string' },
+                        sellingStatus: { type: 'string' }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      delete: {
+        tags: ['Trading Listing'],
+        summary: 'End listing (EndFixedPriceItem)',
+        description: 'Ends an active listing',
+        parameters: [
+          {
+            name: 'accountId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          },
+          {
+            name: 'itemId',
+            in: 'query',
+            required: true,
+            schema: { type: 'string' },
+            description: 'eBay ItemID'
+          },
+          {
+            name: 'reason',
+            in: 'query',
+            schema: { type: 'string', enum: ['Incorrect', 'LostOrBroken', 'NotAvailable', 'OtherListingError', 'ProductDeleted'], default: 'NotAvailable' },
+            description: 'Reason for ending'
+          },
+          {
+            name: 'debug',
+            in: 'query',
+            schema: { type: 'string', enum: ['1'] }
+          }
+        ],
+        responses: {
+          '200': {
+            description: 'Listing ended successfully',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean' },
+                    message: { type: 'string' },
+                    data: {
+                      type: 'object',
+                      properties: {
+                        itemId: { type: 'string' },
+                        endTime: { type: 'string' }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    // Trading Listing API - Bulk Operations
+    '/api/ebay/{accountId}/trading/listing/bulk': {
+      post: {
+        tags: ['Trading Listing'],
+        summary: 'Bulk create listings',
+        description: `Creates multiple listings in one request.
+
+- Parallel processing (default) or sequential (?parallel=false)
+- Partial success support
+- Individual item error tracking
+- Recommended batch size: 10-50 items`,
+        parameters: [
+          {
+            name: 'accountId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          },
+          {
+            name: 'parallel',
+            in: 'query',
+            schema: { type: 'boolean', default: true },
+            description: 'Process items in parallel (faster) or sequential'
+          },
+          {
+            name: 'debug',
+            in: 'query',
+            schema: { type: 'string', enum: ['1'] }
+          }
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  marketplace: { type: 'string', example: 'EBAY_DE' },
+                  items: {
+                    type: 'array',
+                    description: 'Array of listing data (same format as single POST)',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        title: { type: 'string' },
+                        description: { type: 'string' },
+                        primaryCategory: { type: 'object' },
+                        startPrice: { type: 'number' },
+                        quantity: { type: 'integer' },
+                        sku: { type: 'string' }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          '200': {
+            description: 'Bulk operation completed',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean' },
+                    message: { type: 'string', example: 'Bulk create completed: 18 successful, 2 failed' },
+                    data: {
+                      type: 'object',
+                      properties: {
+                        total: { type: 'integer' },
+                        successful: { type: 'integer' },
+                        failed: { type: 'integer' },
+                        results: {
+                          type: 'array',
+                          items: {
+                            type: 'object',
+                            properties: {
+                              index: { type: 'integer' },
+                              success: { type: 'boolean' },
+                              sku: { type: 'string' },
+                              data: { type: 'object' },
+                              error: { type: 'string' }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    metadata: {
+                      type: 'object',
+                      properties: {
+                        operation: { type: 'string', example: 'BULK_CREATE' },
+                        parallel: { type: 'boolean' },
+                        duration: { type: 'string', example: '3450ms' }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      put: {
+        tags: ['Trading Listing'],
+        summary: 'Bulk update listings',
+        description: 'Updates multiple listings. Same format as single PUT, batched.',
+        parameters: [
+          {
+            name: 'accountId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          },
+          {
+            name: 'parallel',
+            in: 'query',
+            schema: { type: 'boolean', default: true }
+          },
+          {
+            name: 'debug',
+            in: 'query',
+            schema: { type: 'string', enum: ['1'] }
+          }
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  marketplace: { type: 'string' },
+                  items: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        itemId: { type: 'string', description: 'ItemID or SKU required' },
+                        sku: { type: 'string' },
+                        startPrice: { type: 'number' },
+                        quantity: { type: 'integer' }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          '200': {
+            description: 'Bulk update completed',
+            content: {
+              'application/json': {
+                schema: {
+                  $ref: '#/paths/~1api~1ebay~1{accountId}~1trading~1listing~1bulk/post/responses/200/content/application~1json/schema'
+                }
+              }
+            }
+          }
+        }
+      },
+      patch: {
+        tags: ['Trading Listing'],
+        summary: 'Bulk relist listings',
+        description: 'Relists multiple ended listings. Each creates a new ItemID.',
+        parameters: [
+          {
+            name: 'accountId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          },
+          {
+            name: 'parallel',
+            in: 'query',
+            schema: { type: 'boolean', default: true }
+          },
+          {
+            name: 'debug',
+            in: 'query',
+            schema: { type: 'string', enum: ['1'] }
+          }
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  marketplace: { type: 'string' },
+                  items: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      required: ['itemId'],
+                      properties: {
+                        itemId: { type: 'string', description: 'Original ended listing ItemID' },
+                        startPrice: { type: 'number', description: 'Optional: new price' },
+                        quantity: { type: 'integer', description: 'Optional: new quantity' }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          '200': {
+            description: 'Bulk relist completed',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean' },
+                    message: { type: 'string' },
+                    data: {
+                      type: 'object',
+                      properties: {
+                        total: { type: 'integer' },
+                        successful: { type: 'integer' },
+                        failed: { type: 'integer' },
+                        results: {
+                          type: 'array',
+                          items: {
+                            type: 'object',
+                            properties: {
+                              index: { type: 'integer' },
+                              success: { type: 'boolean' },
+                              originalItemId: { type: 'string' },
+                              newItemId: { type: 'string' },
+                              error: { type: 'string' }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      delete: {
+        tags: ['Trading Listing'],
+        summary: 'Bulk end listings',
+        description: 'Ends multiple active listings',
+        parameters: [
+          {
+            name: 'accountId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          },
+          {
+            name: 'parallel',
+            in: 'query',
+            schema: { type: 'boolean', default: true }
+          },
+          {
+            name: 'debug',
+            in: 'query',
+            schema: { type: 'string', enum: ['1'] }
+          }
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  marketplace: { type: 'string' },
+                  reason: { type: 'string', enum: ['Incorrect', 'LostOrBroken', 'NotAvailable', 'OtherListingError', 'ProductDeleted'], description: 'Default reason for all' },
+                  items: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        itemId: { type: 'string' },
+                        sku: { type: 'string' },
+                        reason: { type: 'string', description: 'Optional: override default reason' }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          '200': {
+            description: 'Bulk delete completed',
+            content: {
+              'application/json': {
+                schema: {
+                  $ref: '#/paths/~1api~1ebay~1{accountId}~1trading~1listing~1bulk/post/responses/200/content/application~1json/schema'
                 }
               }
             }
@@ -907,341 +868,6 @@ const swaggerDocument = {
         responses: {
           '200': {
             description: 'Migration completed'
-          }
-        }
-      }
-    },
-
-    // Offers APIs
-    '/api/ebay/{accountId}/offers': {
-      get: {
-        tags: ['Offers'],
-        summary: 'Get all offers',
-        description: 'Retrieves all offers (active listings) for the account',
-        parameters: [
-          {
-            name: 'accountId',
-            in: 'path',
-            required: true,
-            schema: { type: 'string' }
-          },
-          {
-            name: 'sku',
-            in: 'query',
-            schema: { type: 'string' },
-            description: 'Filter by SKU'
-          },
-          {
-            name: 'limit',
-            in: 'query',
-            schema: { type: 'integer', default: 50 }
-          },
-          {
-            name: 'offset',
-            in: 'query',
-            schema: { type: 'integer', default: 0 }
-          }
-        ],
-        responses: {
-          '200': {
-            description: 'Successful response',
-            content: {
-              'application/json': {
-                schema: {
-                  type: 'object',
-                  properties: {
-                    success: { type: 'boolean' },
-                    data: {
-                      type: 'object',
-                      properties: {
-                        total: { type: 'integer' },
-                        limit: { type: 'integer' },
-                        offers: {
-                          type: 'array',
-                          items: {
-                            type: 'object',
-                            properties: {
-                              offerId: { type: 'string' },
-                              sku: { type: 'string' },
-                              marketplaceId: { type: 'string' },
-                              format: { type: 'string' },
-                              listingDescription: { type: 'string' },
-                              status: { type: 'string', enum: ['PUBLISHED', 'UNPUBLISHED'] },
-                              pricingSummary: { type: 'object' },
-                              listing: {
-                                type: 'object',
-                                properties: {
-                                  listingId: { type: 'string' },
-                                  listingStatus: { type: 'string' }
-                                }
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      post: {
-        tags: ['Offers'],
-        summary: 'Create new offer',
-        description: 'Creates a new offer from an existing inventory item',
-        parameters: [
-          {
-            name: 'accountId',
-            in: 'path',
-            required: true,
-            schema: { type: 'string' }
-          }
-        ],
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                required: ['sku', 'marketplaceId', 'format', 'pricingSummary'],
-                properties: {
-                  sku: { type: 'string', example: 'PROD-001' },
-                  marketplaceId: { type: 'string', example: 'EBAY_US' },
-                  format: { type: 'string', enum: ['FIXED_PRICE', 'AUCTION'] },
-                  listingDescription: { type: 'string' },
-                  availableQuantity: { type: 'integer', example: 10 },
-                  pricingSummary: {
-                    type: 'object',
-                    properties: {
-                      price: {
-                        type: 'object',
-                        properties: {
-                          value: { type: 'string', example: '49.99' },
-                          currency: { type: 'string', example: 'USD' }
-                        }
-                      }
-                    }
-                  },
-                  listingPolicies: {
-                    type: 'object',
-                    properties: {
-                      fulfillmentPolicyId: { type: 'string' },
-                      paymentPolicyId: { type: 'string' },
-                      returnPolicyId: { type: 'string' }
-                    }
-                  },
-                  categoryId: { type: 'string', example: '15032' },
-                  merchantLocationKey: { type: 'string' },
-                  tax: {
-                    type: 'object',
-                    properties: {
-                      vatPercentage: { type: 'number' },
-                      applyTax: { type: 'boolean' }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        responses: {
-          '201': {
-            description: 'Offer created successfully',
-            content: {
-              'application/json': {
-                schema: {
-                  type: 'object',
-                  properties: {
-                    success: { type: 'boolean' },
-                    message: { type: 'string' },
-                    data: {
-                      type: 'object',
-                      properties: {
-                        offerId: { type: 'string' }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          '400': {
-            description: 'Bad request - Invalid input'
-          },
-          '404': {
-            description: 'SKU not found in inventory'
-          }
-        }
-      }
-    },
-    '/api/ebay/{accountId}/offers/{offerId}': {
-      get: {
-        tags: ['Offers'],
-        summary: 'Get specific offer',
-        description: 'Retrieves a single offer by ID',
-        parameters: [
-          {
-            name: 'accountId',
-            in: 'path',
-            required: true,
-            schema: { type: 'string' }
-          },
-          {
-            name: 'offerId',
-            in: 'path',
-            required: true,
-            schema: { type: 'string' }
-          }
-        ],
-        responses: {
-          '200': {
-            description: 'Successful response'
-          }
-        }
-      },
-      put: {
-        tags: ['Offers'],
-        summary: 'Update offer',
-        description: 'Updates price, quantity, or other offer details',
-        parameters: [
-          {
-            name: 'accountId',
-            in: 'path',
-            required: true,
-            schema: { type: 'string' }
-          },
-          {
-            name: 'offerId',
-            in: 'path',
-            required: true,
-            schema: { type: 'string' }
-          }
-        ],
-        requestBody: {
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                properties: {
-                  availableQuantity: { type: 'integer' },
-                  pricingSummary: {
-                    type: 'object',
-                    properties: {
-                      price: {
-                        type: 'object',
-                        properties: {
-                          value: { type: 'string' },
-                          currency: { type: 'string' }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        responses: {
-          '200': {
-            description: 'Offer updated successfully'
-          }
-        }
-      },
-      delete: {
-        tags: ['Offers'],
-        summary: 'Delete offer',
-        description: 'Deletes an unpublished offer',
-        parameters: [
-          {
-            name: 'accountId',
-            in: 'path',
-            required: true,
-            schema: { type: 'string' }
-          },
-          {
-            name: 'offerId',
-            in: 'path',
-            required: true,
-            schema: { type: 'string' }
-          }
-        ],
-        responses: {
-          '204': {
-            description: 'Offer deleted successfully'
-          },
-          '400': {
-            description: 'Cannot delete published offer - withdraw first'
-          }
-        }
-      }
-    },
-    '/api/ebay/{accountId}/offers/{offerId}/publish': {
-      post: {
-        tags: ['Offers'],
-        summary: 'Publish offer',
-        description: 'Publishes an offer to make it live on eBay',
-        parameters: [
-          {
-            name: 'accountId',
-            in: 'path',
-            required: true,
-            schema: { type: 'string' }
-          },
-          {
-            name: 'offerId',
-            in: 'path',
-            required: true,
-            schema: { type: 'string' }
-          }
-        ],
-        responses: {
-          '200': {
-            description: 'Offer published successfully',
-            content: {
-              'application/json': {
-                schema: {
-                  type: 'object',
-                  properties: {
-                    success: { type: 'boolean' },
-                    message: { type: 'string' },
-                    data: {
-                      type: 'object',
-                      properties: {
-                        listingId: { type: 'string' }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    '/api/ebay/{accountId}/offers/{offerId}/withdraw': {
-      post: {
-        tags: ['Offers'],
-        summary: 'Withdraw offer',
-        description: 'Withdraws a published offer from eBay',
-        parameters: [
-          {
-            name: 'accountId',
-            in: 'path',
-            required: true,
-            schema: { type: 'string' }
-          },
-          {
-            name: 'offerId',
-            in: 'path',
-            required: true,
-            schema: { type: 'string' }
-          }
-        ],
-        responses: {
-          '200': {
-            description: 'Offer withdrawn successfully'
           }
         }
       }
@@ -1431,450 +1057,6 @@ const swaggerDocument = {
           },
           '404': {
             description: 'Migration API not available - Business Policies may be required'
-          }
-        }
-      }
-    },
-
-    // Location APIs
-    '/api/ebay/{accountId}/locations': {
-      get: {
-        tags: ['Locations'],
-        summary: 'Get all merchant locations',
-        description: 'Retrieves all merchant location definitions',
-        parameters: [
-          {
-            name: 'accountId',
-            in: 'path',
-            required: true,
-            schema: { type: 'string' }
-          },
-          {
-            name: 'limit',
-            in: 'query',
-            schema: { type: 'integer', default: 100 }
-          },
-          {
-            name: 'offset',
-            in: 'query',
-            schema: { type: 'integer', default: 0 }
-          }
-        ],
-        responses: {
-          '200': {
-            description: 'Successful response'
-          }
-        }
-      },
-      post: {
-        tags: ['Locations'],
-        summary: 'Create new location',
-        description: 'Creates a new merchant location',
-        parameters: [
-          {
-            name: 'accountId',
-            in: 'path',
-            required: true,
-            schema: { type: 'string' }
-          }
-        ],
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                required: ['merchantLocationKey', 'name', 'location'],
-                properties: {
-                  merchantLocationKey: { type: 'string', example: 'WAREHOUSE-01' },
-                  name: { type: 'string', example: 'Main Warehouse' },
-                  location: {
-                    type: 'object',
-                    properties: {
-                      address: {
-                        type: 'object',
-                        properties: {
-                          addressLine1: { type: 'string' },
-                          addressLine2: { type: 'string' },
-                          city: { type: 'string' },
-                          stateOrProvince: { type: 'string' },
-                          postalCode: { type: 'string' },
-                          country: { type: 'string' }
-                        }
-                      }
-                    }
-                  },
-                  locationTypes: {
-                    type: 'array',
-                    items: { type: 'string', enum: ['STORE', 'WAREHOUSE'] }
-                  },
-                  merchantLocationStatus: {
-                    type: 'string',
-                    enum: ['ENABLED', 'DISABLED']
-                  }
-                }
-              }
-            }
-          }
-        },
-        responses: {
-          '201': {
-            description: 'Location created successfully'
-          }
-        }
-      }
-    },
-    '/api/ebay/{accountId}/locations/{locationKey}': {
-      get: {
-        tags: ['Locations'],
-        summary: 'Get specific location',
-        parameters: [
-          {
-            name: 'accountId',
-            in: 'path',
-            required: true,
-            schema: { type: 'string' }
-          },
-          {
-            name: 'locationKey',
-            in: 'path',
-            required: true,
-            schema: { type: 'string' }
-          }
-        ],
-        responses: {
-          '200': {
-            description: 'Successful response'
-          }
-        }
-      },
-      put: {
-        tags: ['Locations'],
-        summary: 'Update location',
-        parameters: [
-          {
-            name: 'accountId',
-            in: 'path',
-            required: true,
-            schema: { type: 'string' }
-          },
-          {
-            name: 'locationKey',
-            in: 'path',
-            required: true,
-            schema: { type: 'string' }
-          }
-        ],
-        responses: {
-          '200': {
-            description: 'Location updated'
-          }
-        }
-      },
-      delete: {
-        tags: ['Locations'],
-        summary: 'Delete location',
-        parameters: [
-          {
-            name: 'accountId',
-            in: 'path',
-            required: true,
-            schema: { type: 'string' }
-          },
-          {
-            name: 'locationKey',
-            in: 'path',
-            required: true,
-            schema: { type: 'string' }
-          }
-        ],
-        responses: {
-          '204': {
-            description: 'Location deleted'
-          }
-        }
-      }
-    },
-
-    // Policies API
-    '/api/ebay/{accountId}/policies': {
-      get: {
-        tags: ['Policies'],
-        summary: 'Get business policies',
-        description: 'Retrieves payment, return, and fulfillment policies',
-        parameters: [
-          {
-            name: 'accountId',
-            in: 'path',
-            required: true,
-            schema: { type: 'string' }
-          },
-          {
-            name: 'type',
-            in: 'query',
-            schema: {
-              type: 'string',
-              enum: ['payment', 'return', 'fulfillment']
-            },
-            description: 'Filter by policy type'
-          }
-        ],
-        responses: {
-          '200': {
-            description: 'Successful response',
-            content: {
-              'application/json': {
-                schema: {
-                  type: 'object',
-                  properties: {
-                    success: { type: 'boolean' },
-                    data: {
-                      type: 'object',
-                      properties: {
-                        paymentPolicies: { type: 'array' },
-                        returnPolicies: { type: 'array' },
-                        fulfillmentPolicies: { type: 'array' }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-
-    // Item Management APIs
-    '/api/ebay/{accountId}/check-item': {
-      get: {
-        tags: ['Item Management'],
-        summary: 'Check if item exists',
-        description: 'Checks if an item exists by SKU or Item ID in both Inventory and Trading APIs',
-        parameters: [
-          {
-            name: 'accountId',
-            in: 'path',
-            required: true,
-            schema: { type: 'string' }
-          },
-          {
-            name: 'sku',
-            in: 'query',
-            schema: { type: 'string' },
-            description: 'SKU to check',
-            example: 'PROD-001'
-          },
-          {
-            name: 'itemId',
-            in: 'query',
-            schema: { type: 'string' },
-            description: 'Item ID to check',
-            example: '123456789012'
-          }
-        ],
-        responses: {
-          '200': {
-            description: 'Check completed',
-            content: {
-              'application/json': {
-                schema: {
-                  type: 'object',
-                  properties: {
-                    success: { type: 'boolean' },
-                    data: {
-                      type: 'object',
-                      properties: {
-                        exists: { type: 'boolean', example: true },
-                        location: {
-                          type: 'string',
-                          enum: ['inventory_api', 'trading_api'],
-                          description: 'Where the item was found'
-                        },
-                        item: { type: 'object', description: 'Item details if found' },
-                        searchCriteria: {
-                          type: 'object',
-                          properties: {
-                            sku: { type: 'string' },
-                            itemId: { type: 'string' }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          '400': {
-            description: 'Bad request - SKU or Item ID required'
-          }
-        }
-      }
-    },
-    '/api/ebay/{accountId}/inventory-group': {
-      post: {
-        tags: ['Item Management'],
-        summary: 'Create inventory item group',
-        description: 'Creates an inventory item group for product variations',
-        parameters: [
-          {
-            name: 'accountId',
-            in: 'path',
-            required: true,
-            schema: { type: 'string' }
-          }
-        ],
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                required: ['inventoryItemGroupKey', 'variantSKUs'],
-                properties: {
-                  inventoryItemGroupKey: {
-                    type: 'string',
-                    example: 'SHIRT-GROUP-001',
-                    description: 'Unique key for the group'
-                  },
-                  title: { type: 'string', example: 'Cotton T-Shirt' },
-                  description: { type: 'string' },
-                  imageUrls: {
-                    type: 'array',
-                    items: { type: 'string' }
-                  },
-                  aspects: {
-                    type: 'object',
-                    example: {
-                      Brand: 'YourBrand',
-                      Material: 'Cotton'
-                    }
-                  },
-                  variantSKUs: {
-                    type: 'array',
-                    items: { type: 'string' },
-                    example: ['SHIRT-RED-S', 'SHIRT-RED-M', 'SHIRT-BLUE-S'],
-                    description: 'SKUs of inventory items to group'
-                  }
-                }
-              }
-            }
-          }
-        },
-        responses: {
-          '200': {
-            description: 'Group created successfully'
-          },
-          '400': {
-            description: 'Invalid input or SKUs not found'
-          }
-        }
-      },
-      put: {
-        tags: ['Item Management'],
-        summary: 'Create multiple variations',
-        description: 'Creates multiple inventory items as variations with different SKUs',
-        parameters: [
-          {
-            name: 'accountId',
-            in: 'path',
-            required: true,
-            schema: { type: 'string' }
-          }
-        ],
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                required: ['baseSKU', 'variations', 'commonData'],
-                properties: {
-                  baseSKU: {
-                    type: 'string',
-                    example: 'SHIRT',
-                    description: 'Base SKU prefix'
-                  },
-                  commonData: {
-                    type: 'object',
-                    properties: {
-                      title: { type: 'string', example: 'Cotton T-Shirt' },
-                      description: { type: 'string' },
-                      imageUrls: { type: 'array', items: { type: 'string' } },
-                      condition: { type: 'string', example: 'NEW' },
-                      aspects: {
-                        type: 'object',
-                        example: {
-                          Brand: 'YourBrand',
-                          Material: '100% Cotton'
-                        }
-                      }
-                    }
-                  },
-                  variations: {
-                    type: 'array',
-                    items: {
-                      type: 'object',
-                      properties: {
-                        suffix: { type: 'string', example: 'RED-S' },
-                        name: { type: 'string', example: 'Red Small' },
-                        quantity: { type: 'integer', example: 10 },
-                        aspects: {
-                          type: 'object',
-                          example: {
-                            Color: 'Red',
-                            Size: 'Small'
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        responses: {
-          '200': {
-            description: 'Variations created',
-            content: {
-              'application/json': {
-                schema: {
-                  type: 'object',
-                  properties: {
-                    success: { type: 'boolean' },
-                    message: { type: 'string' },
-                    data: {
-                      type: 'object',
-                      properties: {
-                        baseSKU: { type: 'string' },
-                        variations: {
-                          type: 'array',
-                          items: {
-                            type: 'object',
-                            properties: {
-                              sku: { type: 'string' },
-                              success: { type: 'boolean' },
-                              variation: { type: 'string' },
-                              error: { type: 'string' }
-                            }
-                          }
-                        },
-                        summary: {
-                          type: 'object',
-                          properties: {
-                            total: { type: 'integer' },
-                            succeeded: { type: 'integer' },
-                            failed: { type: 'integer' }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
           }
         }
       }
