@@ -21,6 +21,8 @@ const postHandler = withEbayAuth(
           {
             success: false,
             message: 'Request body is required',
+            errors: [],
+            ack: 'Failure'
           },
           { status: 400 }
         );
@@ -47,6 +49,8 @@ const postHandler = withEbayAuth(
           {
             success: false,
             message: 'Missing required fields: title, description, primaryCategory.categoryId, startPrice, quantity',
+            errors: [],
+            ack: 'Failure'
           },
           { status: 400 }
         );
@@ -169,10 +173,21 @@ const postHandler = withEbayAuth(
 
         // Parse Trading API errors
         if (apiError.errors) {
+          // Extract detailed error messages from eBay errors array
+          const errorMessages = apiError.errors
+            .map((err: any) => {
+              const parts = [`[${err.code}]`, err.shortMessage];
+              if (err.longMessage && err.longMessage !== err.shortMessage) {
+                parts.push(`- ${err.longMessage}`);
+              }
+              return parts.join(' ');
+            })
+            .join(' | ');
+
           return NextResponse.json(
             {
               success: false,
-              message: 'eBay Trading API error',
+              message: `eBay Trading API error: ${errorMessages}`,
               errors: apiError.errors,
               ack: apiError.ack,
             },
@@ -193,9 +208,9 @@ const postHandler = withEbayAuth(
       return NextResponse.json(
         {
           success: false,
-          message: 'Failed to create listing via Trading API',
-          error: error.message,
-          details: error.stack,
+          message: `Failed to create listing via Trading API: ${error.message}`,
+          errors: [],
+          ack: 'Failure'
         },
         { status: 500 }
       );
@@ -226,6 +241,8 @@ const getHandler = withEbayAuth(
           {
             success: false,
             message: 'Item ID is required',
+            errors: [],
+            ack: 'Failure'
           },
           { status: 400 }
         );
@@ -272,11 +289,35 @@ const getHandler = withEbayAuth(
         });
       }
 
+      // Check if it's an eBay API error
+      if (error.errors) {
+        const errorMessages = error.errors
+          .map((err: any) => {
+            const parts = [`[${err.code}]`, err.shortMessage];
+            if (err.longMessage && err.longMessage !== err.shortMessage) {
+              parts.push(`- ${err.longMessage}`);
+            }
+            return parts.join(' ');
+          })
+          .join(' | ');
+
+        return NextResponse.json(
+          {
+            success: false,
+            message: `eBay Trading API error: ${errorMessages}`,
+            errors: error.errors,
+            ack: error.ack || 'Failure'
+          },
+          { status: 500 }
+        );
+      }
+
       return NextResponse.json(
         {
           success: false,
-          message: 'Failed to get listing details',
-          error: error.message,
+          message: `Failed to get listing details: ${error.message}`,
+          errors: [],
+          ack: 'Failure'
         },
         { status: 500 }
       );
@@ -300,6 +341,8 @@ const putHandler = withEbayAuth(
           {
             success: false,
             message: 'Request body is required',
+            errors: [],
+            ack: 'Failure'
           },
           { status: 400 }
         );
@@ -324,6 +367,8 @@ const putHandler = withEbayAuth(
           {
             success: false,
             message: 'Either Item ID or SKU is required',
+            errors: [],
+            ack: 'Failure'
           },
           { status: 400 }
         );
@@ -379,10 +424,21 @@ const putHandler = withEbayAuth(
         }
 
         if (apiError.errors) {
+          // Extract detailed error messages from eBay errors array
+          const errorMessages = apiError.errors
+            .map((err: any) => {
+              const parts = [`[${err.code}]`, err.shortMessage];
+              if (err.longMessage && err.longMessage !== err.shortMessage) {
+                parts.push(`- ${err.longMessage}`);
+              }
+              return parts.join(' ');
+            })
+            .join(' | ');
+
           return NextResponse.json(
             {
               success: false,
-              message: 'eBay Trading API error',
+              message: `eBay Trading API error: ${errorMessages}`,
               errors: apiError.errors,
               ack: apiError.ack,
             },
@@ -403,8 +459,9 @@ const putHandler = withEbayAuth(
       return NextResponse.json(
         {
           success: false,
-          message: 'Failed to update listing',
-          error: error.message,
+          message: `Failed to update listing: ${error.message}`,
+          errors: [],
+          ack: 'Failure'
         },
         { status: 500 }
       );
@@ -431,6 +488,8 @@ const deleteHandler = withEbayAuth(
           {
             success: false,
             message: 'Either Item ID or SKU is required',
+            errors: [],
+            ack: 'Failure'
           },
           { status: 400 }
         );
@@ -514,10 +573,21 @@ const deleteHandler = withEbayAuth(
         }
 
         if (apiError.errors) {
+          // Extract detailed error messages from eBay errors array
+          const errorMessages = apiError.errors
+            .map((err: any) => {
+              const parts = [`[${err.code}]`, err.shortMessage];
+              if (err.longMessage && err.longMessage !== err.shortMessage) {
+                parts.push(`- ${err.longMessage}`);
+              }
+              return parts.join(' ');
+            })
+            .join(' | ');
+
           return NextResponse.json(
             {
               success: false,
-              message: 'eBay Trading API error',
+              message: `eBay Trading API error: ${errorMessages}`,
               errors: apiError.errors,
               ack: apiError.ack,
             },
@@ -538,8 +608,9 @@ const deleteHandler = withEbayAuth(
       return NextResponse.json(
         {
           success: false,
-          message: 'Failed to end listing',
-          error: error.message,
+          message: `Failed to end listing: ${error.message}`,
+          errors: [],
+          ack: 'Failure'
         },
         { status: 500 }
       );
@@ -563,6 +634,8 @@ const patchHandler = withEbayAuth(
           {
             success: false,
             message: 'Request body is required',
+            errors: [],
+            ack: 'Failure'
           },
           { status: 400 }
         );
@@ -587,6 +660,8 @@ const patchHandler = withEbayAuth(
           {
             success: false,
             message: 'Item ID is required for relisting',
+            errors: [],
+            ack: 'Failure'
           },
           { status: 400 }
         );
@@ -658,10 +733,21 @@ const patchHandler = withEbayAuth(
         }
 
         if (apiError.errors) {
+          // Extract detailed error messages from eBay errors array
+          const errorMessages = apiError.errors
+            .map((err: any) => {
+              const parts = [`[${err.code}]`, err.shortMessage];
+              if (err.longMessage && err.longMessage !== err.shortMessage) {
+                parts.push(`- ${err.longMessage}`);
+              }
+              return parts.join(' ');
+            })
+            .join(' | ');
+
           return NextResponse.json(
             {
               success: false,
-              message: 'eBay Trading API error',
+              message: `eBay Trading API error: ${errorMessages}`,
               errors: apiError.errors,
               ack: apiError.ack,
             },
@@ -682,8 +768,9 @@ const patchHandler = withEbayAuth(
       return NextResponse.json(
         {
           success: false,
-          message: 'Failed to relist listing',
-          error: error.message,
+          message: `Failed to relist listing: ${error.message}`,
+          errors: [],
+          ack: 'Failure'
         },
         { status: 500 }
       );

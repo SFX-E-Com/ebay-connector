@@ -4,6 +4,21 @@ import { EbayTradingApiService } from '@/app/lib/services/ebay-trading-api';
 import { RealtimeDebugLogger } from '@/app/lib/services/realtimeDebugLogger';
 import { EbayTradingItem } from '@/app/lib/types/ebay-trading-api.types';
 
+/**
+ * Helper function to format eBay API error messages
+ */
+function formatEbayErrors(errors: any[]): string {
+  return errors
+    .map((err: any) => {
+      const parts = [`[${err.code}]`, err.shortMessage];
+      if (err.longMessage && err.longMessage !== err.shortMessage) {
+        parts.push(`- ${err.longMessage}`);
+      }
+      return parts.join(' ');
+    })
+    .join(' | ');
+}
+
 // POST /api/ebay/[accountId]/trading/listing/bulk - Bulk create listings
 const postHandler = withEbayAuth(
   '/ebay/{accountId}/inventory',
@@ -20,6 +35,8 @@ const postHandler = withEbayAuth(
           {
             success: false,
             message: 'Request body is required',
+            errors: [],
+            ack: 'Failure'
           },
           { status: 400 }
         );
@@ -32,6 +49,8 @@ const postHandler = withEbayAuth(
           {
             success: false,
             message: 'Items array is required and must not be empty',
+            errors: [],
+            ack: 'Failure'
           },
           { status: 400 }
         );
@@ -72,10 +91,15 @@ const postHandler = withEbayAuth(
               sku: item.sku,
             };
           } catch (error: any) {
+            // Format detailed error message
+            const errorMessage = error.errors
+              ? formatEbayErrors(error.errors)
+              : error.message;
+
             return {
               index,
               success: false,
-              error: error.message,
+              error: errorMessage,
               errors: error.errors,
               sku: item.sku,
             };
@@ -101,10 +125,15 @@ const postHandler = withEbayAuth(
               sku: item.sku,
             });
           } catch (error: any) {
+            // Format detailed error message
+            const errorMessage = error.errors
+              ? formatEbayErrors(error.errors)
+              : error.message;
+
             results.push({
               index: i,
               success: false,
-              error: error.message,
+              error: errorMessage,
               errors: error.errors,
               sku: item.sku,
             });
@@ -156,8 +185,9 @@ const postHandler = withEbayAuth(
       return NextResponse.json(
         {
           success: false,
-          message: 'Failed to process bulk create',
-          error: error.message,
+          message: `Failed to process bulk create: ${error.message}`,
+          errors: [],
+          ack: 'Failure'
         },
         { status: 500 }
       );
@@ -181,6 +211,8 @@ const putHandler = withEbayAuth(
           {
             success: false,
             message: 'Request body is required',
+            errors: [],
+            ack: 'Failure'
           },
           { status: 400 }
         );
@@ -193,6 +225,8 @@ const putHandler = withEbayAuth(
           {
             success: false,
             message: 'Items array is required and must not be empty',
+            errors: [],
+            ack: 'Failure'
           },
           { status: 400 }
         );
@@ -241,10 +275,15 @@ const putHandler = withEbayAuth(
               sku,
             };
           } catch (error: any) {
+            // Format detailed error message
+            const errorMessage = error.errors
+              ? formatEbayErrors(error.errors)
+              : error.message;
+
             return {
               index,
               success: false,
-              error: error.message,
+              error: errorMessage,
               errors: error.errors,
               itemId: item.itemId,
               sku: item.sku,
@@ -281,10 +320,15 @@ const putHandler = withEbayAuth(
               sku,
             });
           } catch (error: any) {
+            // Format detailed error message
+            const errorMessage = error.errors
+              ? formatEbayErrors(error.errors)
+              : error.message;
+
             results.push({
               index: i,
               success: false,
-              error: error.message,
+              error: errorMessage,
               errors: error.errors,
               itemId: item.itemId,
               sku: item.sku,
@@ -336,8 +380,9 @@ const putHandler = withEbayAuth(
       return NextResponse.json(
         {
           success: false,
-          message: 'Failed to process bulk update',
-          error: error.message,
+          message: `Failed to process bulk update: ${error.message}`,
+          errors: [],
+          ack: 'Failure'
         },
         { status: 500 }
       );
@@ -361,6 +406,8 @@ const patchHandler = withEbayAuth(
           {
             success: false,
             message: 'Request body is required',
+            errors: [],
+            ack: 'Failure'
           },
           { status: 400 }
         );
@@ -373,6 +420,8 @@ const patchHandler = withEbayAuth(
           {
             success: false,
             message: 'Items array is required and must not be empty',
+            errors: [],
+            ack: 'Failure'
           },
           { status: 400 }
         );
@@ -424,10 +473,15 @@ const patchHandler = withEbayAuth(
               newItemId: result.itemId,
             };
           } catch (error: any) {
+            // Format detailed error message
+            const errorMessage = error.errors
+              ? formatEbayErrors(error.errors)
+              : error.message;
+
             return {
               index,
               success: false,
-              error: error.message,
+              error: errorMessage,
               errors: error.errors,
               originalItemId: item.itemId,
             };
@@ -466,10 +520,15 @@ const patchHandler = withEbayAuth(
               newItemId: result.itemId,
             });
           } catch (error: any) {
+            // Format detailed error message
+            const errorMessage = error.errors
+              ? formatEbayErrors(error.errors)
+              : error.message;
+
             results.push({
               index: i,
               success: false,
-              error: error.message,
+              error: errorMessage,
               errors: error.errors,
               originalItemId: item.itemId,
             });
@@ -520,8 +579,9 @@ const patchHandler = withEbayAuth(
       return NextResponse.json(
         {
           success: false,
-          message: 'Failed to process bulk relist',
-          error: error.message,
+          message: `Failed to process bulk relist: ${error.message}`,
+          errors: [],
+          ack: 'Failure'
         },
         { status: 500 }
       );
@@ -545,6 +605,8 @@ const deleteHandler = withEbayAuth(
           {
             success: false,
             message: 'Request body is required',
+            errors: [],
+            ack: 'Failure'
           },
           { status: 400 }
         );
@@ -557,6 +619,8 @@ const deleteHandler = withEbayAuth(
           {
             success: false,
             message: 'Items array is required and must not be empty',
+            errors: [],
+            ack: 'Failure'
           },
           { status: 400 }
         );
@@ -606,10 +670,15 @@ const deleteHandler = withEbayAuth(
               sku: item.sku,
             };
           } catch (error: any) {
+            // Format detailed error message
+            const errorMessage = error.errors
+              ? formatEbayErrors(error.errors)
+              : error.message;
+
             return {
               index,
               success: false,
-              error: error.message,
+              error: errorMessage,
               errors: error.errors,
               itemId: item.itemId,
               sku: item.sku,
@@ -646,10 +715,15 @@ const deleteHandler = withEbayAuth(
               sku: item.sku,
             });
           } catch (error: any) {
+            // Format detailed error message
+            const errorMessage = error.errors
+              ? formatEbayErrors(error.errors)
+              : error.message;
+
             results.push({
               index: i,
               success: false,
-              error: error.message,
+              error: errorMessage,
               errors: error.errors,
               itemId: item.itemId,
               sku: item.sku,
@@ -701,8 +775,9 @@ const deleteHandler = withEbayAuth(
       return NextResponse.json(
         {
           success: false,
-          message: 'Failed to process bulk delete',
-          error: error.message,
+          message: `Failed to process bulk delete: ${error.message}`,
+          errors: [],
+          ack: 'Failure'
         },
         { status: 500 }
       );
