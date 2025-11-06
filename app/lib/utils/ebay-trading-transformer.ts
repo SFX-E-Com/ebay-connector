@@ -4,6 +4,7 @@
  */
 
 import { EbayTradingItem, CONDITION_IDS } from '../types/ebay-trading-api.types';
+import { normalizeCountry } from './country-normalizer';
 
 /**
  * Transform a TypeScript item object to eBay Trading API XML format
@@ -17,7 +18,8 @@ export function transformItemToEbayFormat(item: EbayTradingItem, marketplace: st
   // Basic required fields
   if (item.sku) ebayItem.SKU = item.sku;
   if (item.title) ebayItem.Title = item.title;
-  if (item.description) ebayItem.Description = `<![CDATA[${item.description}]]>`;
+  // Description needs to be a simple string - CDATA wrapping happens in buildXmlRequest
+  if (item.description) ebayItem.Description = item.description;
 
   // Categories
   if (item.primaryCategory) {
@@ -58,10 +60,11 @@ export function transformItemToEbayFormat(item: EbayTradingItem, marketplace: st
   if (item.quantity !== undefined) ebayItem.Quantity = item.quantity;
   if (item.lotSize) ebayItem.LotSize = item.lotSize;
 
-  // Location
-  ebayItem.Country = item.country || country;
+  // Location - normalize country to ISO 2-letter code (e.g., "Germany" -> "DE")
+  const normalizedCountry = item.country ? normalizeCountry(item.country) : country;
+  ebayItem.Country = normalizedCountry;
   // Location is required - use provided location, or default to country
-  ebayItem.Location = item.location || item.country || country;
+  ebayItem.Location = item.location || normalizedCountry;
   if (item.postalCode) ebayItem.PostalCode = item.postalCode;
   ebayItem.Currency = item.currency || getCurrencyForMarketplace(marketplace);
 
@@ -494,7 +497,7 @@ export function transformItemToEbayFormat(item: EbayTradingItem, marketplace: st
     if (item.customPolicies.regionalProductCompliancePolicies) {
       cp.RegionalProductCompliancePolicies = {
         CountryPolicies: item.customPolicies.regionalProductCompliancePolicies.map(policy => ({
-          Country: policy.country,
+          Country: normalizeCountry(policy.country),
           PolicyID: policy.policyId
         }))
       };
@@ -502,7 +505,7 @@ export function transformItemToEbayFormat(item: EbayTradingItem, marketplace: st
     if (item.customPolicies.regionalTakeBackPolicies) {
       cp.RegionalTakeBackPolicies = {
         CountryPolicies: item.customPolicies.regionalTakeBackPolicies.map(policy => ({
-          Country: policy.country,
+          Country: normalizeCountry(policy.country),
           PolicyID: policy.policyId
         }))
       };
@@ -644,13 +647,15 @@ export function transformItemToEbayFormat(item: EbayTradingItem, marketplace: st
 
 /**
  * Transform address-like objects
+ * Normalizes country to ISO 2-letter code
  */
 function transformAddress(address: any): any {
   const transformed: any = {};
 
   if (address.companyName) transformed.CompanyName = address.companyName;
   if (address.cityName) transformed.CityName = address.cityName;
-  if (address.country) transformed.Country = address.country;
+  // Normalize country to ISO 2-letter code (e.g., "Germany" -> "DE", "France" -> "FR")
+  if (address.country) transformed.Country = normalizeCountry(address.country);
   if (address.email) transformed.Email = address.email;
   if (address.phone) transformed.Phone = address.phone;
   if (address.postalCode) transformed.PostalCode = address.postalCode;

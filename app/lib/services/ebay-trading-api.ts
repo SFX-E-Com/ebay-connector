@@ -52,6 +52,7 @@ export class EbayTradingApiService {
       textNodeName: '_value',
       format: true,
       indentBy: '  ',
+      cdataPropName: '__cdata', // Enable CDATA support
     });
   }
 
@@ -128,8 +129,33 @@ export class EbayTradingApiService {
       },
     };
 
-    const xml = '<?xml version="1.0" encoding="utf-8"?>\n' + this.xmlBuilder.build(request);
+    let xml = '<?xml version="1.0" encoding="utf-8"?>\n' + this.xmlBuilder.build(request);
+
+    // Wrap Description content in CDATA if it exists and contains HTML
+    // The XML builder escapes HTML, so we need to manually wrap it in CDATA
+    if (body.Item && body.Item.Description) {
+      const description = body.Item.Description;
+      // Replace the escaped description with CDATA-wrapped version
+      const escapedDesc = this.escapeXml(description);
+      xml = xml.replace(
+        `<Description>${escapedDesc}</Description>`,
+        `<Description><![CDATA[${description}]]></Description>`
+      );
+    }
+
     return xml;
+  }
+
+  /**
+   * Escape XML special characters (used for comparison)
+   */
+  private escapeXml(str: string): string {
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&apos;');
   }
 
   /**
