@@ -13,7 +13,7 @@ export async function GET(
     console.log(`[TRADING API] Getting seller's items for account: ${accountId}`);
 
     const { searchParams } = new URL(request.url);
-    const marketplace = searchParams.get('marketplace') || 'EBAY_US';
+    const marketplace = searchParams.get('marketplace') || 'EBAY_DE';
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
     const sku = searchParams.get('sku'); // Optional: filter by specific SKU

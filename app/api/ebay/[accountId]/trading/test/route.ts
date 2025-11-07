@@ -56,7 +56,7 @@ export async function GET(
 
     // Get marketplace from query params
     const { searchParams } = new URL(request.url);
-    const marketplace = searchParams.get('marketplace') || 'EBAY_US';
+    const marketplace = searchParams.get('marketplace') || 'EBAY_DE';
 
     console.log('[TRADING API TEST] Testing with marketplace:', marketplace);
     console.log('[TRADING API TEST] Environment:', process.env.EBAY_SANDBOX === 'true' ? 'SANDBOX' : 'PRODUCTION');

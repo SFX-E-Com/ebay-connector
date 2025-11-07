@@ -456,17 +456,17 @@ export class EbayListingService {
   // === BUSINESS POLICIES ===
 
   async getPaymentPolicies(): Promise<BusinessPolicy[]> {
-    const result = await this.makeAccountRequest('/payment_policy?marketplace_id=EBAY_US');
+    const result = await this.makeAccountRequest('/payment_policy?marketplace_id=EBAY_DE');
     return result.paymentPolicies || [];
   }
 
   async getFulfillmentPolicies(): Promise<BusinessPolicy[]> {
-    const result = await this.makeAccountRequest('/fulfillment_policy?marketplace_id=EBAY_US');
+    const result = await this.makeAccountRequest('/fulfillment_policy?marketplace_id=EBAY_DE');
     return result.fulfillmentPolicies || [];
   }
 
   async getReturnPolicies(): Promise<BusinessPolicy[]> {
-    const result = await this.makeAccountRequest('/return_policy?marketplace_id=EBAY_US');
+    const result = await this.makeAccountRequest('/return_policy?marketplace_id=EBAY_DE');
     return result.returnPolicies || [];
   }
 

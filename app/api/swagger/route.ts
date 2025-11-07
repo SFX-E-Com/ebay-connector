@@ -717,6 +717,256 @@ Benefits:
       }
     },
 
+    // Trading Listing API - Status Check
+    '/api/ebay/{accountId}/trading/status': {
+      get: {
+        tags: ['Trading Listing'],
+        summary: 'Check item status (GetItem)',
+        description: `Checks the status of an eBay listing by ItemID.
+
+Returns:
+- Listing status (Active, Completed, Ended, NotFound)
+- Quantity information (total, sold, available)
+- Current pricing
+- Listing timing (start/end times)
+- Performance metrics (views, watchers)
+
+Use Cases:
+- Verify if item is still active
+- Check available quantity
+- Monitor listing performance
+- Detect deleted items`,
+        parameters: [
+          {
+            name: 'accountId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' },
+            description: 'eBay account ID'
+          },
+          {
+            name: 'itemId',
+            in: 'query',
+            required: true,
+            schema: { type: 'string' },
+            description: 'eBay Item ID to check',
+            example: '123456789012'
+          },
+          {
+            name: 'marketplace',
+            in: 'query',
+            schema: { type: 'string', enum: ['EBAY_US', 'EBAY_UK', 'EBAY_DE', 'EBAY_AU', 'EBAY_CA', 'EBAY_FR', 'EBAY_IT', 'EBAY_ES'], default: 'EBAY_DE' },
+            description: 'eBay marketplace'
+          },
+          {
+            name: 'debug',
+            in: 'query',
+            schema: { type: 'string', enum: ['1'] },
+            description: 'Enable debug logging'
+          }
+        ],
+        responses: {
+          '200': {
+            description: 'Status check successful',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean', example: true },
+                    data: {
+                      type: 'object',
+                      properties: {
+                        success: { type: 'boolean', example: true },
+                        itemId: { type: 'string', example: '123456789012' },
+                        sku: { type: 'string', example: 'PROD-001' },
+                        title: { type: 'string', example: 'Product Title' },
+                        status: {
+                          type: 'object',
+                          properties: {
+                            listingStatus: {
+                              type: 'string',
+                              enum: ['Active', 'Completed', 'Ended', 'NotFound'],
+                              example: 'Active',
+                              description: 'Current status of the listing'
+                            },
+                            isActive: { type: 'boolean', example: true, description: 'Whether item is currently active' },
+                            isEnded: { type: 'boolean', example: false, description: 'Whether listing has ended' },
+                            isDeleted: { type: 'boolean', description: 'Only present when NotFound' }
+                          }
+                        },
+                        quantity: {
+                          type: 'object',
+                          properties: {
+                            total: { type: 'integer', example: 10, description: 'Total quantity listed' },
+                            sold: { type: 'integer', example: 2, description: 'Number sold' },
+                            available: { type: 'integer', example: 8, description: 'Remaining quantity' }
+                          }
+                        },
+                        pricing: {
+                          type: 'object',
+                          properties: {
+                            currentPrice: { type: 'number', example: 99.99, description: 'Current item price' },
+                            currency: { type: 'string', example: 'EUR', description: 'Price currency' },
+                            convertedPrice: { type: 'number', description: 'Price in buyer currency (if applicable)' },
+                            convertedCurrency: { type: 'string', description: 'Converted currency code (if applicable)' }
+                          }
+                        },
+                        timing: {
+                          type: 'object',
+                          properties: {
+                            startTime: { type: 'string', format: 'date-time', example: '2024-01-01T10:00:00.000Z' },
+                            endTime: { type: 'string', format: 'date-time', example: '2024-12-31T23:59:59.000Z' },
+                            listingDuration: { type: 'string', example: 'GTC', description: 'Duration type (GTC, Days_7, Days_30, etc.)' }
+                          }
+                        },
+                        listingType: { type: 'string', example: 'FixedPriceItem', enum: ['FixedPriceItem', 'Auction'] },
+                        viewCount: { type: 'integer', example: 150, description: 'Number of views' },
+                        watchCount: { type: 'integer', example: 5, description: 'Number of watchers' }
+                      }
+                    },
+                    metadata: {
+                      type: 'object',
+                      properties: {
+                        account_used: { type: 'string', example: 'seller_username' },
+                        account_id: { type: 'string', example: 'acc_123456' },
+                        marketplace: { type: 'string', example: 'EBAY_DE' },
+                        api_type: { type: 'string', example: 'TRADING' },
+                        operation: { type: 'string', example: 'CHECK_STATUS' }
+                      }
+                    }
+                  }
+                },
+                examples: {
+                  'Active Item': {
+                    value: {
+                      success: true,
+                      data: {
+                        success: true,
+                        itemId: '123456789012',
+                        sku: 'PROD-001',
+                        title: 'Product Title',
+                        status: {
+                          listingStatus: 'Active',
+                          isActive: true,
+                          isEnded: false
+                        },
+                        quantity: {
+                          total: 10,
+                          sold: 2,
+                          available: 8
+                        },
+                        pricing: {
+                          currentPrice: 99.99,
+                          currency: 'EUR'
+                        },
+                        timing: {
+                          startTime: '2024-01-01T10:00:00.000Z',
+                          endTime: '2024-12-31T23:59:59.000Z',
+                          listingDuration: 'GTC'
+                        },
+                        listingType: 'FixedPriceItem',
+                        viewCount: 150,
+                        watchCount: 5
+                      },
+                      metadata: {
+                        account_used: 'seller_username',
+                        account_id: 'acc_123456',
+                        marketplace: 'EBAY_DE',
+                        api_type: 'TRADING',
+                        operation: 'CHECK_STATUS'
+                      }
+                    }
+                  },
+                  'Item Not Found': {
+                    value: {
+                      success: true,
+                      data: {
+                        success: true,
+                        itemId: '999999999999',
+                        status: {
+                          listingStatus: 'NotFound',
+                          isActive: false,
+                          isEnded: true,
+                          isDeleted: true
+                        },
+                        message: 'Item not found or has been deleted'
+                      },
+                      metadata: {
+                        account_used: 'seller_username',
+                        account_id: 'acc_123456',
+                        marketplace: 'EBAY_DE',
+                        api_type: 'TRADING',
+                        operation: 'CHECK_STATUS'
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          '400': {
+            description: 'Bad request - Missing or invalid ItemID',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean', example: false },
+                    message: { type: 'string', example: 'Item ID is required' },
+                    errors: { type: 'array', items: { type: 'object' } },
+                    ack: { type: 'string', example: 'Failure' }
+                  }
+                },
+                examples: {
+                  'Missing ItemID': {
+                    value: {
+                      success: false,
+                      message: 'Item ID is required',
+                      errors: [],
+                      ack: 'Failure'
+                    }
+                  },
+                  'Invalid ItemID': {
+                    value: {
+                      success: false,
+                      message: 'eBay Trading API error: [21917062] Invalid or missing ItemID - ItemID 123 is invalid',
+                      errors: [
+                        {
+                          shortMessage: 'Invalid or missing ItemID',
+                          longMessage: 'ItemID 123 is invalid',
+                          errorCode: '21917062',
+                          severityCode: 'Error',
+                          errorClassification: 'RequestError'
+                        }
+                      ],
+                      ack: 'Failure'
+                    }
+                  }
+                }
+              }
+            }
+          },
+          '500': {
+            description: 'Internal server error',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean', example: false },
+                    message: { type: 'string', example: 'Failed to get item status: Network error' },
+                    errors: { type: 'array', items: { type: 'object' } },
+                    ack: { type: 'string', example: 'Failure' }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+
     // Legacy Listings (Trading API)
     '/api/ebay/{accountId}/legacy-listings': {
       get: {

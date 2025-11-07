@@ -1,5 +1,5 @@
 import { XMLBuilder, XMLParser } from 'fast-xml-parser';
-import { TRADING_API_CONFIG, getSiteId, getCountryCode } from '../config/trading-api';
+import { TRADING_API_CONFIG, getSiteId } from '../config/trading-api';
 import { RealtimeDebugLogger } from './realtimeDebugLogger';
 import { transformItemToEbayFormat } from '../utils/ebay-trading-transformer';
 import { EbayTradingItem } from '../types/ebay-trading-api.types';
@@ -28,7 +28,7 @@ export class EbayTradingApiService {
   private apiUrl: string;
   private debugMode: boolean = false;
 
-  constructor(account: EbayUserToken, marketplace: string = 'EBAY_US', debugMode: boolean = false) {
+  constructor(account: EbayUserToken, marketplace: string = 'EBAY_DE', debugMode: boolean = false) {
     this.accessToken = account.accessToken;
     this.siteId = getSiteId(marketplace);
     this.debugMode = debugMode;
@@ -207,7 +207,7 @@ export class EbayTradingApiService {
   async addFixedPriceItem(listing: EbayTradingItem): Promise<any> {
     const marketplace = Object.keys(TRADING_API_CONFIG.siteIds).find(
       key => TRADING_API_CONFIG.siteIds[key as keyof typeof TRADING_API_CONFIG.siteIds] === this.siteId
-    ) || 'EBAY_US';
+    ) || 'EBAY_DE';
 
     // Use the transformer to convert TypeScript types to eBay XML format
     const item = transformItemToEbayFormat(listing, marketplace);
@@ -266,7 +266,7 @@ export class EbayTradingApiService {
   async verifyAddFixedPriceItem(listing: EbayTradingItem): Promise<any> {
     const marketplace = Object.keys(TRADING_API_CONFIG.siteIds).find(
       key => TRADING_API_CONFIG.siteIds[key as keyof typeof TRADING_API_CONFIG.siteIds] === this.siteId
-    ) || 'EBAY_US';
+    ) || 'EBAY_DE';
 
     // Use the transformer to convert TypeScript types to eBay XML format
     const item = transformItemToEbayFormat(listing, marketplace);
@@ -451,7 +451,7 @@ export class EbayTradingApiService {
   async reviseFixedPriceItem(identifier: string, updates: Partial<EbayTradingItem>): Promise<any> {
     const marketplace = Object.keys(TRADING_API_CONFIG.siteIds).find(
       key => TRADING_API_CONFIG.siteIds[key as keyof typeof TRADING_API_CONFIG.siteIds] === this.siteId
-    ) || 'EBAY_US';
+    ) || 'EBAY_DE';
 
     // Fields that CANNOT be updated after listing is created
     const nonUpdatableFields = [
@@ -543,7 +543,7 @@ export class EbayTradingApiService {
   async relistFixedPriceItem(itemId: string, updates?: Partial<EbayTradingItem>): Promise<any> {
     const marketplace = Object.keys(TRADING_API_CONFIG.siteIds).find(
       key => TRADING_API_CONFIG.siteIds[key as keyof typeof TRADING_API_CONFIG.siteIds] === this.siteId
-    ) || 'EBAY_US';
+    ) || 'EBAY_DE';
 
     // Build item data - start with ItemID (required)
     const item: any = {
@@ -683,5 +683,102 @@ export class EbayTradingApiService {
       site: response.User?.Site,
       status: response.User?.Status,
     };
+  }
+
+  /**
+   * Check Item Status - Get status information for a specific item
+   * Returns whether item is active, ended, or deleted
+   */
+  async getItemStatus(itemId: string): Promise<any> {
+    const requestBody: any = {
+      ItemID: itemId,
+      IncludeWatchCount: false,
+      IncludeItemSpecifics: false,
+      DetailLevel: 'ReturnAll', // We need full details to get SellingStatus
+    };
+
+    if (this.debugMode) {
+      await RealtimeDebugLogger.debug('TRADING_API', `Checking status for ItemID: ${itemId}`, { itemId });
+    }
+
+    try {
+      const response = await this.callAPI('GetItem', requestBody);
+
+      const item = response.Item;
+      const sellingStatus = item.SellingStatus;
+      const listingStatus = sellingStatus?.ListingStatus || 'Unknown';
+
+      // Determine if item is active
+      const isActive = listingStatus === 'Active';
+      const isEnded = listingStatus === 'Completed' || listingStatus === 'Ended';
+
+      if (this.debugMode) {
+        await RealtimeDebugLogger.info('TRADING_API', `Item status retrieved`, {
+          itemId,
+          listingStatus,
+          isActive,
+          quantityAvailable: item.Quantity,
+          quantitySold: sellingStatus?.QuantitySold
+        });
+      }
+
+      return {
+        success: true,
+        itemId: item.ItemID,
+        sku: item.SKU,
+        title: item.Title,
+        status: {
+          listingStatus: listingStatus,
+          isActive: isActive,
+          isEnded: isEnded,
+        },
+        quantity: {
+          total: item.Quantity,
+          sold: sellingStatus?.QuantitySold || 0,
+          available: (item.Quantity || 0) - (sellingStatus?.QuantitySold || 0),
+        },
+        pricing: {
+          currentPrice: sellingStatus?.CurrentPrice?._value || sellingStatus?.CurrentPrice || 0,
+          currency: sellingStatus?.CurrentPrice?._currencyID || item.Currency || 'USD',
+        },
+        timing: {
+          startTime: item.StartTime || item.ListingDetails?.StartTime,
+          endTime: item.EndTime || item.ListingDetails?.EndTime,
+          listingDuration: item.ListingDuration,
+        },
+        listingType: item.ListingType,
+        viewCount: item.HitCount || 0,
+        watchCount: item.WatchCount || 0,
+      };
+    } catch (error: any) {
+      // If item is not found or deleted, eBay returns an error
+      if (error.errors) {
+        const notFoundCodes = ['17', '361']; // Item not found error codes
+        const errorCodes = error.errors.map((e: any) => e.code?.toString());
+
+        const isNotFound = errorCodes.some((code: string) => notFoundCodes.includes(code));
+
+        if (isNotFound) {
+          if (this.debugMode) {
+            await RealtimeDebugLogger.warn('TRADING_API', `Item not found or deleted: ${itemId}`, { itemId });
+          }
+
+          return {
+            success: true,
+            itemId: itemId,
+            status: {
+              listingStatus: 'NotFound',
+              isActive: false,
+              isEnded: true,
+              isDeleted: true,
+            },
+            message: 'Item not found or has been deleted',
+          };
+        }
+      }
+
+      // Re-throw other errors
+      throw error;
+    }
   }
 }

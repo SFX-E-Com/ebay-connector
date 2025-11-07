@@ -13,7 +13,7 @@ export async function GET(
     const { searchParams } = new URL(request.url);
     const itemId = searchParams.get('itemId');
     const sku = searchParams.get('sku');
-    const marketplace = searchParams.get('marketplace') || 'EBAY_US';
+    const marketplace = searchParams.get('marketplace') || 'EBAY_DE';
 
     // Require either itemId or sku
     if (!itemId && !sku) {

@@ -74,7 +74,7 @@ const postHandler = withEbayAuth(
           'BE': 'EBAY_BE',
           'NL': 'EBAY_NL',
         };
-        marketplace = countryToMarketplace[body.country] || 'EBAY_US';
+        marketplace = countryToMarketplace[body.country] || 'EBAY_DE';
 
         if (debugMode) {
           await RealtimeDebugLogger.info('TRADING_API_CREATE', 'Inferred marketplace from country', {
@@ -83,7 +83,7 @@ const postHandler = withEbayAuth(
           });
         }
       } else if (!marketplace) {
-        marketplace = 'EBAY_US';
+        marketplace = 'EBAY_DE';
       }
 
       // Initialize Trading API service with debug mode
@@ -251,7 +251,7 @@ const getHandler = withEbayAuth(
       // Initialize Trading API service with debug mode
       const tradingApi = new EbayTradingApiService(
         authData.ebayAccount as any,
-        'EBAY_US',
+        'EBAY_DE',
         debugMode
       );
 
@@ -348,7 +348,7 @@ const putHandler = withEbayAuth(
         );
       }
 
-      const { itemId, sku, marketplace = 'EBAY_US', ...updates } = body;
+      const { itemId, sku, marketplace = 'EBAY_DE', ...updates } = body;
 
       if (debugMode) {
         await RealtimeDebugLogger.info('TRADING_API_UPDATE', 'PUT request received', {
@@ -480,7 +480,7 @@ const deleteHandler = withEbayAuth(
       const itemId = searchParams.get('itemId');
       const sku = searchParams.get('sku');
       const reason = searchParams.get('reason') || 'NotAvailable';
-      const marketplace = searchParams.get('marketplace') || 'EBAY_US';
+      const marketplace = searchParams.get('marketplace') || 'EBAY_DE';
 
       // Need either itemId or SKU
       if (!itemId && !sku) {
@@ -641,7 +641,7 @@ const patchHandler = withEbayAuth(
         );
       }
 
-      const { itemId, marketplace = 'EBAY_US', ...updates } = body;
+      const { itemId, marketplace = 'EBAY_DE', ...updates } = body;
 
       if (debugMode) {
         await RealtimeDebugLogger.info('TRADING_API_RELIST', 'PATCH request received', {
