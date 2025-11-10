@@ -43,8 +43,8 @@ const postHandler = withEbayAuth(
         });
       }
 
-      // Validate required fields
-      if (!body.title || !body.description || !body.primaryCategory?.categoryId || !body.startPrice || !body.quantity) {
+      // Validate required fields (use == null to allow 0 for quantity and startPrice)
+      if (!body.title || !body.description || !body.primaryCategory?.categoryId || body.startPrice == null || body.quantity == null) {
         return NextResponse.json(
           {
             success: false,
