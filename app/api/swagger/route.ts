@@ -717,6 +717,206 @@ Benefits:
       }
     },
 
+    // Trading Listing API - Search
+    '/api/ebay/{accountId}/trading/search': {
+      get: {
+        tags: ['Trading Listing'],
+        summary: 'Search items by title and/or SKU',
+        description: `Search for items in seller's inventory by title and/or SKU.
+
+Search Behavior:
+- **Title only**: Case-insensitive partial match
+- **SKU only**: Exact match
+- **Both title AND SKU**: Items must match BOTH conditions (AND logic)
+
+Examples:
+- \`title=iPhone\` → Finds all items with "iPhone" in title
+- \`sku=PROD-001\` → Finds item with exact SKU
+- \`title=iPhone&sku=PROD-001\` → Finds items with "iPhone" in title AND SKU "PROD-001"`,
+        parameters: [
+          {
+            name: 'accountId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' },
+            description: 'eBay account ID'
+          },
+          {
+            name: 'title',
+            in: 'query',
+            required: false,
+            schema: { type: 'string' },
+            description: 'Search by title (case-insensitive, partial match)',
+            example: 'iPhone'
+          },
+          {
+            name: 'sku',
+            in: 'query',
+            required: false,
+            schema: { type: 'string' },
+            description: 'Search by SKU (exact match)',
+            example: 'PROD-001'
+          },
+          {
+            name: 'marketplace',
+            in: 'query',
+            schema: { type: 'string', enum: ['EBAY_US', 'EBAY_UK', 'EBAY_DE', 'EBAY_AU', 'EBAY_CA', 'EBAY_FR', 'EBAY_IT', 'EBAY_ES'], default: 'EBAY_DE' },
+            description: 'eBay marketplace'
+          },
+          {
+            name: 'limit',
+            in: 'query',
+            schema: { type: 'integer', default: 50, maximum: 200 },
+            description: 'Maximum number of results to return'
+          },
+          {
+            name: 'debug',
+            in: 'query',
+            schema: { type: 'string', enum: ['1'] },
+            description: 'Enable debug logging'
+          }
+        ],
+        responses: {
+          '200': {
+            description: 'Search completed successfully',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean', example: true },
+                    data: {
+                      type: 'object',
+                      properties: {
+                        searchCriteria: {
+                          type: 'object',
+                          properties: {
+                            title: { type: 'string', example: 'iPhone', nullable: true },
+                            sku: { type: 'string', example: 'PROD-001', nullable: true },
+                            matchBoth: { type: 'boolean', example: true, description: 'true if both title and SKU were provided' }
+                          }
+                        },
+                        totalFound: { type: 'integer', example: 2, description: 'Number of items found' },
+                        items: {
+                          type: 'array',
+                          items: {
+                            type: 'object',
+                            properties: {
+                              itemId: { type: 'string', example: '123456789012' },
+                              sku: { type: 'string', example: 'PROD-001' },
+                              title: { type: 'string', example: 'Apple iPhone 13 Pro Max 256GB' },
+                              currentPrice: { type: 'number', example: 999.99 },
+                              currency: { type: 'string', example: 'EUR' },
+                              quantity: {
+                                type: 'object',
+                                properties: {
+                                  total: { type: 'integer', example: 10 },
+                                  sold: { type: 'integer', example: 3 },
+                                  available: { type: 'integer', example: 7 }
+                                }
+                              },
+                              listingStatus: { type: 'string', example: 'Active' },
+                              listingType: { type: 'string', example: 'FixedPriceItem' },
+                              startTime: { type: 'string', format: 'date-time' },
+                              endTime: { type: 'string', format: 'date-time' },
+                              pictureUrls: { type: 'array', items: { type: 'string' } },
+                              categoryId: { type: 'string', example: '9355' },
+                              categoryName: { type: 'string', example: 'Cell Phones & Smartphones' },
+                              listingUrl: { type: 'string', example: 'https://www.ebay.de/itm/123456789012' }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    metadata: {
+                      type: 'object',
+                      properties: {
+                        account_used: { type: 'string' },
+                        account_id: { type: 'string' },
+                        marketplace: { type: 'string' },
+                        api_type: { type: 'string', example: 'TRADING' },
+                        operation: { type: 'string', example: 'SEARCH_ITEMS' },
+                        limit: { type: 'integer' }
+                      }
+                    }
+                  }
+                },
+                examples: {
+                  'Search by Title Only': {
+                    value: {
+                      success: true,
+                      data: {
+                        searchCriteria: {
+                          title: 'iPhone',
+                          sku: null,
+                          matchBoth: false
+                        },
+                        totalFound: 5,
+                        items: [
+                          {
+                            itemId: '123456789012',
+                            sku: 'PROD-001',
+                            title: 'Apple iPhone 13 Pro Max 256GB',
+                            currentPrice: 999.99,
+                            currency: 'EUR',
+                            quantity: {
+                              total: 10,
+                              sold: 3,
+                              available: 7
+                            },
+                            listingStatus: 'Active',
+                            listingType: 'FixedPriceItem'
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  'Search by Both (AND)': {
+                    value: {
+                      success: true,
+                      data: {
+                        searchCriteria: {
+                          title: 'iPhone',
+                          sku: 'PROD-001',
+                          matchBoth: true
+                        },
+                        totalFound: 1,
+                        items: [
+                          {
+                            itemId: '123456789012',
+                            sku: 'PROD-001',
+                            title: 'Apple iPhone 13 Pro Max 256GB',
+                            currentPrice: 999.99,
+                            currency: 'EUR'
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          '400': {
+            description: 'Missing search parameters',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean', example: false },
+                    message: { type: 'string', example: 'At least one search parameter is required (title or sku)' },
+                    errors: { type: 'array', items: { type: 'object' } },
+                    ack: { type: 'string', example: 'Failure' }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+
     // Trading Listing API - Status Check
     '/api/ebay/{accountId}/trading/status': {
       get: {
