@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '../../../../lib/services/database';
+import { EbayAccountService } from '../../../../lib/services/ebayAccountService';
 import { EbayListingService, OfferRequest, validateOfferRequest } from '../../../../lib/services/ebay-listing';
 
 // GET /api/ebay/[accountId]/offers - Get all offers
@@ -17,9 +17,7 @@ export async function GET(
     const sku = searchParams.get('sku') || undefined;
 
     // Get the eBay account
-    const account = await prisma.ebayUserToken.findUnique({
-      where: { id: accountId },
-    });
+    const account = await EbayAccountService.getAccountById(accountId);
 
     if (!account) {
       return NextResponse.json(
@@ -96,9 +94,7 @@ export async function POST(
     }
 
     // Get the eBay account
-    const account = await prisma.ebayUserToken.findUnique({
-      where: { id: accountId },
-    });
+    const account = await EbayAccountService.getAccountById(accountId);
 
     if (!account) {
       return NextResponse.json(

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/app/lib/services/database';
+import { EbayAccountService } from '@/app/lib/services/ebayAccountService';
 import { EbayTradingApiService } from '@/app/lib/services/ebay-trading-api';
 
 // GET /api/ebay/[accountId]/trading/item - Get item details by ItemID or SKU
@@ -35,9 +35,7 @@ export async function GET(
     console.log('[TRADING API ITEM] ==============================');
 
     // Get the eBay account
-    const account = await prisma.ebayUserToken.findUnique({
-      where: { id: accountId },
-    });
+    const account = await EbayAccountService.getAccountById(accountId);
 
     if (!account) {
       return NextResponse.json(
@@ -166,9 +164,9 @@ export async function GET(
         images: item.PictureDetails?.PictureURL || [],
         itemSpecifics: item.ItemSpecifics?.NameValueList
           ? item.ItemSpecifics.NameValueList.reduce((acc: any, spec: any) => {
-              acc[spec.Name] = spec.Value;
-              return acc;
-            }, {})
+            acc[spec.Name] = spec.Value;
+            return acc;
+          }, {})
           : {},
         shipping: {
           shippingType: item.ShippingDetails?.ShippingType,

@@ -1,4 +1,17 @@
-import prisma from './database';
+import {
+  db,
+  Collections,
+  ApiToken,
+  ApiTokenPermissions,
+  ApiUsage,
+  User,
+  getDoc,
+  queryDocs,
+  createDoc,
+  updateDoc,
+  countDocs,
+  generateId
+} from './firestore';
 import crypto from 'crypto';
 import { DEFAULT_ENDPOINTS } from '../config/endpoints';
 
@@ -15,7 +28,7 @@ export interface ApiTokenResponse {
   id: string;
   name: string;
   token: string;
-  permissions: any;
+  permissions: Record<string, unknown>;
   isActive: boolean;
   isDeleted: boolean;
   lastUsedAt: Date | null;
@@ -59,31 +72,31 @@ export class ApiTokenService {
       ...data.permissions
     };
 
-    const apiToken = await prisma.apiToken.create({
-      data: {
-        userId,
-        name: data.name,
-        token,
-        permissions: defaultPermissions,
-        scopes: data.permissions?.endpoints || DEFAULT_ENDPOINTS, // Use selected endpoints
-        expiresAt: data.expiresAt
-      },
-      select: {
-        id: true,
-        name: true,
-        token: true,
-        permissions: true,
-        scopes: true,
-        isActive: true,
-        isDeleted: true,
-        lastUsedAt: true,
-        expiresAt: true,
-        createdAt: true,
-        updatedAt: true
-      }
-    } as any);
+    const apiToken = await createDoc<ApiToken>(Collections.API_TOKENS, {
+      id: generateId(),
+      userId,
+      name: data.name,
+      token,
+      permissions: defaultPermissions,
+      isActive: true,
+      isDeleted: false,
+      expiresAt: data.expiresAt,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
 
-    return apiToken as ApiTokenResponse;
+    return {
+      id: apiToken.id,
+      name: apiToken.name,
+      token: apiToken.token,
+      permissions: apiToken.permissions,
+      isActive: apiToken.isActive,
+      isDeleted: apiToken.isDeleted,
+      lastUsedAt: apiToken.lastUsedAt || null,
+      expiresAt: apiToken.expiresAt || null,
+      createdAt: apiToken.createdAt,
+      updatedAt: apiToken.updatedAt,
+    };
   }
 
   /**
@@ -95,89 +108,95 @@ export class ApiTokenService {
       status?: 'active' | 'inactive' | 'all'
     }
   ): Promise<ApiTokenResponse[]> {
-    const whereClause: any = {
-      userId,
-      isDeleted: false // Exclude deleted tokens by default
-    };
+    const conditions: Array<{ field: string; op: FirebaseFirestore.WhereFilterOp; value: unknown }> = [
+      { field: 'userId', op: '==', value: userId },
+      { field: 'isDeleted', op: '==', value: false }
+    ];
 
     // Add status filtering
     if (options?.status === 'active') {
-      whereClause.isActive = true;
+      conditions.push({ field: 'isActive', op: '==', value: true });
     } else if (options?.status === 'inactive') {
-      whereClause.isActive = false;
+      conditions.push({ field: 'isActive', op: '==', value: false });
     }
 
-    const tokens = await prisma.apiToken.findMany({
-      where: whereClause,
-      orderBy: { createdAt: 'desc' },
-      select: {
-        id: true,
-        name: true,
-        token: true,
-        permissions: true,
-        isActive: true,
-        isDeleted: true,
-        lastUsedAt: true,
-        expiresAt: true,
-        createdAt: true,
-        updatedAt: true
-      }
-    });
+    const tokens = await queryDocs<ApiToken>(
+      Collections.API_TOKENS,
+      conditions,
+      { orderBy: { field: 'createdAt', direction: 'desc' } }
+    );
 
-    return tokens as ApiTokenResponse[];
+    return tokens.map(t => ({
+      id: t.id,
+      name: t.name,
+      token: t.token,
+      permissions: t.permissions,
+      isActive: t.isActive,
+      isDeleted: t.isDeleted,
+      lastUsedAt: t.lastUsedAt || null,
+      expiresAt: t.expiresAt || null,
+      createdAt: t.createdAt,
+      updatedAt: t.updatedAt,
+    }));
   }
 
   /**
    * Get API token by token string (for authentication)
    */
   static async getTokenByString(token: string): Promise<ApiTokenWithUser | null> {
-    const apiToken = await prisma.apiToken.findFirst({
-      where: {
-        token,
-        isActive: true,
-        isDeleted: false // Exclude deleted tokens
-      },
-      select: {
-        id: true,
-        name: true,
-        token: true,
-        permissions: true,
-        isActive: true,
-        isDeleted: true,
-        lastUsedAt: true,
-        expiresAt: true,
-        createdAt: true,
-        updatedAt: true,
-        user: {
-          select: {
-            id: true,
-            email: true,
-            name: true,
-            role: true
-          }
-        }
-      }
-    });
+    const tokens = await queryDocs<ApiToken>(
+      Collections.API_TOKENS,
+      [
+        { field: 'token', op: '==', value: token },
+        { field: 'isActive', op: '==', value: true },
+        { field: 'isDeleted', op: '==', value: false }
+      ]
+    );
 
-    if (!apiToken) {
+    if (tokens.length === 0) {
       return null;
     }
+
+    const apiToken = tokens[0];
 
     // Check if token is expired
     if (apiToken.expiresAt && apiToken.expiresAt < new Date()) {
       return null;
     }
 
-    return apiToken as ApiTokenWithUser;
+    // Get the associated user
+    const user = await getDoc<User>(Collections.USERS, apiToken.userId);
+
+    if (!user) {
+      return null;
+    }
+
+    return {
+      id: apiToken.id,
+      name: apiToken.name,
+      token: apiToken.token,
+      permissions: apiToken.permissions,
+      isActive: apiToken.isActive,
+      isDeleted: apiToken.isDeleted,
+      lastUsedAt: apiToken.lastUsedAt || null,
+      expiresAt: apiToken.expiresAt || null,
+      createdAt: apiToken.createdAt,
+      updatedAt: apiToken.updatedAt,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name || null,
+        role: user.role,
+      }
+    };
   }
 
   /**
    * Update token last used timestamp
    */
   static async updateLastUsed(tokenId: string): Promise<void> {
-    await prisma.apiToken.update({
-      where: { id: tokenId },
-      data: { lastUsedAt: new Date() }
+    await updateDoc<ApiToken>(Collections.API_TOKENS, tokenId, {
+      lastUsedAt: new Date()
     });
   }
 
@@ -185,12 +204,14 @@ export class ApiTokenService {
    * Revoke (deactivate) an API token
    */
   static async revokeToken(tokenId: string, userId: string): Promise<void> {
-    await prisma.apiToken.update({
-      where: {
-        id: tokenId,
-        userId // Ensure user owns the token
-      },
-      data: { isActive: false }
+    // Verify ownership first
+    const token = await getDoc<ApiToken>(Collections.API_TOKENS, tokenId);
+    if (!token || token.userId !== userId) {
+      throw new Error('Token not found or access denied');
+    }
+
+    await updateDoc<ApiToken>(Collections.API_TOKENS, tokenId, {
+      isActive: false
     });
   }
 
@@ -198,64 +219,75 @@ export class ApiTokenService {
    * Activate an API token
    */
   static async activateToken(tokenId: string, userId: string): Promise<ApiTokenResponse> {
-    const updatedToken = await prisma.apiToken.update({
-      where: {
-        id: tokenId,
-        userId
-      },
-      data: {
-        isActive: true,
-        updatedAt: new Date()
-      },
-      select: {
-        id: true,
-        name: true,
-        token: true,
-        permissions: true,
-        isActive: true,
-        isDeleted: true,
-        lastUsedAt: true,
-        expiresAt: true,
-        createdAt: true,
-        updatedAt: true
-      }
+    // Verify ownership first
+    const token = await getDoc<ApiToken>(Collections.API_TOKENS, tokenId);
+    if (!token || token.userId !== userId) {
+      throw new Error('Token not found or access denied');
+    }
+
+    await updateDoc<ApiToken>(Collections.API_TOKENS, tokenId, {
+      isActive: true
     });
 
-    return updatedToken as ApiTokenResponse;
+    const updatedToken = await getDoc<ApiToken>(Collections.API_TOKENS, tokenId);
+
+    return {
+      id: updatedToken!.id,
+      name: updatedToken!.name,
+      token: updatedToken!.token,
+      permissions: updatedToken!.permissions,
+      isActive: updatedToken!.isActive,
+      isDeleted: updatedToken!.isDeleted,
+      lastUsedAt: updatedToken!.lastUsedAt || null,
+      expiresAt: updatedToken!.expiresAt || null,
+      createdAt: updatedToken!.createdAt,
+      updatedAt: updatedToken!.updatedAt,
+    };
   }
 
   /**
    * Deactivate an API token
    */
   static async deactivateToken(tokenId: string, userId: string): Promise<ApiTokenResponse> {
-    const updatedToken = await prisma.apiToken.update({
-      where: {
-        id: tokenId,
-        userId
-      },
-      data: {
-        isActive: false,
-        updatedAt: new Date()
-      }
+    // Verify ownership first
+    const token = await getDoc<ApiToken>(Collections.API_TOKENS, tokenId);
+    if (!token || token.userId !== userId) {
+      throw new Error('Token not found or access denied');
+    }
+
+    await updateDoc<ApiToken>(Collections.API_TOKENS, tokenId, {
+      isActive: false
     });
 
-    return updatedToken as ApiTokenResponse;
+    const updatedToken = await getDoc<ApiToken>(Collections.API_TOKENS, tokenId);
+
+    return {
+      id: updatedToken!.id,
+      name: updatedToken!.name,
+      token: updatedToken!.token,
+      permissions: updatedToken!.permissions,
+      isActive: updatedToken!.isActive,
+      isDeleted: updatedToken!.isDeleted,
+      lastUsedAt: updatedToken!.lastUsedAt || null,
+      expiresAt: updatedToken!.expiresAt || null,
+      createdAt: updatedToken!.createdAt,
+      updatedAt: updatedToken!.updatedAt,
+    };
   }
 
   /**
    * Soft delete an API token (mark as deleted)
    */
   static async deleteToken(tokenId: string, userId: string): Promise<void> {
-    await prisma.apiToken.update({
-      where: {
-        id: tokenId,
-        userId
-      },
-      data: {
-        isActive: false,
-        isDeleted: true,
-        updatedAt: new Date()
-      }
+    // Verify ownership first
+    const token = await getDoc<ApiToken>(Collections.API_TOKENS, tokenId);
+    if (!token || token.userId !== userId) {
+      throw new Error('Token not found or access denied');
+    }
+
+    await updateDoc<ApiToken>(Collections.API_TOKENS, tokenId, {
+      isActive: false,
+      isDeleted: true
     });
   }
 
@@ -267,64 +299,68 @@ export class ApiTokenService {
     userId: string,
     updateData: {
       name?: string;
-      permissions?: any;
+      permissions?: ApiTokenPermissions;
       expiresAt?: Date;
     }
   ): Promise<ApiTokenResponse> {
-    const { name, permissions, expiresAt, ...rest } = updateData;
+    // Verify ownership first
+    const token = await getDoc<ApiToken>(Collections.API_TOKENS, tokenId);
+    if (!token || token.userId !== userId) {
+      throw new Error('Token not found or access denied');
+    }
 
-    const dataToUpdate: any = {
-      updatedAt: new Date(),
-      ...rest
+    const dataToUpdate: Partial<ApiToken> = {};
+
+    if (updateData.name !== undefined) {
+      dataToUpdate.name = updateData.name;
+    }
+    if (updateData.permissions !== undefined) {
+      dataToUpdate.permissions = updateData.permissions;
+    }
+    if (updateData.expiresAt !== undefined) {
+      dataToUpdate.expiresAt = updateData.expiresAt;
+    }
+
+    await updateDoc<ApiToken>(Collections.API_TOKENS, tokenId, dataToUpdate);
+
+    const updatedToken = await getDoc<ApiToken>(Collections.API_TOKENS, tokenId);
+
+    return {
+      id: updatedToken!.id,
+      name: updatedToken!.name,
+      token: updatedToken!.token,
+      permissions: updatedToken!.permissions,
+      isActive: updatedToken!.isActive,
+      isDeleted: updatedToken!.isDeleted,
+      lastUsedAt: updatedToken!.lastUsedAt || null,
+      expiresAt: updatedToken!.expiresAt || null,
+      createdAt: updatedToken!.createdAt,
+      updatedAt: updatedToken!.updatedAt,
     };
-
-    // Add fields only if they are provided
-    if (name !== undefined) {
-      dataToUpdate.name = name;
-    }
-    if (permissions !== undefined) {
-      dataToUpdate.permissions = permissions as any;
-    }
-    if (expiresAt !== undefined) {
-      dataToUpdate.expiresAt = expiresAt;
-    }
-
-    const updatedToken = await prisma.apiToken.update({
-      where: {
-        id: tokenId,
-        userId
-      },
-      data: dataToUpdate
-    } as any);
-
-    return updatedToken as ApiTokenResponse;
   }
 
   /**
    * Get token by ID (for user's own tokens)
    */
   static async getTokenById(tokenId: string, userId: string): Promise<ApiTokenResponse | null> {
-    const token = await prisma.apiToken.findFirst({
-      where: {
-        id: tokenId,
-        userId,
-        isDeleted: false // Exclude deleted tokens
-      },
-      select: {
-        id: true,
-        name: true,
-        token: true,
-        permissions: true,
-        isActive: true,
-        isDeleted: true,
-        lastUsedAt: true,
-        expiresAt: true,
-        createdAt: true,
-        updatedAt: true
-      }
-    });
+    const token = await getDoc<ApiToken>(Collections.API_TOKENS, tokenId);
 
-    return token as ApiTokenResponse | null;
+    if (!token || token.userId !== userId || token.isDeleted) {
+      return null;
+    }
+
+    return {
+      id: token.id,
+      name: token.name,
+      token: token.token,
+      permissions: token.permissions,
+      isActive: token.isActive,
+      isDeleted: token.isDeleted,
+      lastUsedAt: token.lastUsedAt || null,
+      expiresAt: token.expiresAt || null,
+      createdAt: token.createdAt,
+      updatedAt: token.updatedAt,
+    };
   }
 
   /**
@@ -349,32 +385,35 @@ export class ApiTokenService {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    const usage = await prisma.apiUsage.aggregate({
-      where: {
-        apiTokenId: tokenId,
-        createdAt: { gte: thirtyDaysAgo }
-      },
-      _count: { id: true },
-      _avg: { responseTimeMs: true }
-    });
+    // Get all usage records for this token in the last 30 days
+    const usageRecords = await queryDocs<ApiUsage>(
+      Collections.API_USAGE,
+      [
+        { field: 'apiTokenId', op: '==', value: tokenId },
+        { field: 'createdAt', op: '>=', value: thirtyDaysAgo }
+      ]
+    );
 
-    // Get usage by endpoint
-    const usageByEndpoint = await prisma.apiUsage.groupBy({
-      by: ['endpoint'],
-      where: {
-        apiTokenId: tokenId,
-        createdAt: { gte: thirtyDaysAgo }
-      },
-      _count: { id: true }
-    });
+    // Calculate stats in memory (Firestore doesn't support aggregate queries like Prisma)
+    const totalRequests = usageRecords.length;
+    const totalResponseTime = usageRecords.reduce((sum, r) => sum + (r.responseTime || 0), 0);
+    const averageResponseTime = totalRequests > 0 ? totalResponseTime / totalRequests : 0;
+
+    // Group by endpoint
+    const endpointCounts: Record<string, number> = {};
+    for (const record of usageRecords) {
+      endpointCounts[record.endpoint] = (endpointCounts[record.endpoint] || 0) + 1;
+    }
+
+    const usageByEndpoint = Object.entries(endpointCounts).map(([endpoint, requests]) => ({
+      endpoint,
+      requests
+    }));
 
     return {
-      totalRequests: usage._count.id,
-      averageResponseTime: usage._avg.responseTimeMs,
-      usageByEndpoint: usageByEndpoint.map(item => ({
-        endpoint: item.endpoint,
-        requests: item._count.id
-      })),
+      totalRequests,
+      averageResponseTime,
+      usageByEndpoint,
       period: '30 days'
     };
   }
@@ -383,13 +422,11 @@ export class ApiTokenService {
    * Check if user has reached their token limit
    */
   static async checkTokenLimit(userId: string): Promise<boolean> {
-    const activeTokens = await prisma.apiToken.count({
-      where: {
-        userId,
-        isActive: true,
-        isDeleted: false // Exclude deleted tokens
-      }
-    });
+    const activeTokens = await countDocs(Collections.API_TOKENS, [
+      { field: 'userId', op: '==', value: userId },
+      { field: 'isActive', op: '==', value: true },
+      { field: 'isDeleted', op: '==', value: false }
+    ]);
 
     // For now, limit to 10 tokens per user
     const TOKEN_LIMIT = 10;

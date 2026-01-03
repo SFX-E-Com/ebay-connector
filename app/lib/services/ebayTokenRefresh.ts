@@ -1,5 +1,5 @@
 import { getEbayConfig, getEbayUrls } from '@/app/lib/config/ebay';
-import prisma from './database';
+import { EbayAccountService } from './ebayAccountService';
 import { logToDebug } from '@/app/lib/middleware/queryDebugMiddleware';
 
 interface EbayTokenResponse {
@@ -68,16 +68,12 @@ export class EbayTokenRefreshService {
   ): Promise<void> {
     const expiresAt = new Date(Date.now() + (tokenData.expires_in * 1000));
 
-    await prisma.ebayUserToken.update({
-      where: { id: accountId },
-      data: {
-        accessToken: tokenData.access_token,
-        refreshToken: tokenData.refresh_token,
-        expiresAt: expiresAt,
-        tokenType: tokenData.token_type,
-        lastUsedAt: new Date(),
-      },
-    });
+    await EbayAccountService.updateTokens(
+      accountId,
+      tokenData.access_token,
+      expiresAt,
+      tokenData.refresh_token
+    );
 
     await logToDebug('EBAY', 'Token refreshed successfully', {
       accountId,

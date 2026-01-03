@@ -1,16 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withEbayAuth, EbayAuthData } from '@/app/lib/middleware/ebayAuth';
 import { withQueryDebugLogging } from '@/app/lib/middleware/queryDebugMiddleware';
-import prisma from '@/app/lib/services/database';
+import { EbayAccountService } from '@/app/lib/services/ebayAccountService';
 
 const getHandler = withEbayAuth('/ebay/{accountId}/scopes', async (request: NextRequest, authData: EbayAuthData, { params }: { params: Promise<{ accountId: string }> }) => {
     const { accountId } = await params;
 
     try {
         // Fetch full account data from database to get all fields
-        const fullAccount = await prisma.ebayUserToken.findUnique({
-            where: { id: authData.ebayAccount.id },
-        });
+        const fullAccount = await EbayAccountService.getAccountById(authData.ebayAccount.id);
 
         if (!fullAccount) {
             return NextResponse.json(
@@ -19,39 +17,36 @@ const getHandler = withEbayAuth('/ebay/{accountId}/scopes', async (request: Next
             );
         }
 
-        // Parse scopes safely with type casting
-        const account = fullAccount as any;
-        const grantedScopes = Array.isArray(account.scopes)
-            ? account.scopes.map((scope: any) => String(scope))
+        // Get scopes - they're already arrays in Firestore
+        const grantedScopes = Array.isArray(fullAccount.scopes)
+            ? fullAccount.scopes.map((scope: string) => String(scope))
             : [];
 
-        const userSelectedScopes = typeof account.userSelectedScopes === 'string'
-            ? JSON.parse(account.userSelectedScopes)
-            : Array.isArray(account.userSelectedScopes)
-                ? account.userSelectedScopes
-                : [];
+        const userSelectedScopes = Array.isArray(fullAccount.userSelectedScopes)
+            ? fullAccount.userSelectedScopes
+            : [];
 
         return NextResponse.json({
             success: true,
             data: {
                 account: {
-                    id: account.id,
-                    friendlyName: account.friendlyName,
-                    ebayUsername: account.ebayUsername,
-                    status: account.status,
+                    id: fullAccount.id,
+                    friendlyName: fullAccount.friendlyName,
+                    ebayUsername: fullAccount.ebayUsername,
+                    status: fullAccount.status,
                 },
                 scopes: {
                     granted: grantedScopes, // What eBay actually granted
                     userSelected: userSelectedScopes, // What user selected in UI
                     grantedCount: grantedScopes.length,
                     userSelectedCount: userSelectedScopes.length,
-                    lastUpdated: account.updatedAt,
-                    createdAt: account.createdAt,
+                    lastUpdated: fullAccount.updatedAt,
+                    createdAt: fullAccount.createdAt,
                 },
                 token: {
-                    type: account.tokenType,
-                    expiresAt: account.expiresAt,
-                    lastUsedAt: account.lastUsedAt,
+                    type: fullAccount.tokenType,
+                    expiresAt: fullAccount.expiresAt,
+                    lastUsedAt: fullAccount.lastUsedAt,
                 },
                 permissions: {
                     canReadInventory: grantedScopes.some((scope: string) =>

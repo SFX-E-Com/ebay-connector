@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '../../../../lib/services/database';
+import { EbayAccountService } from '../../../../lib/services/ebayAccountService';
 import { EbayListingService } from '../../../../lib/services/ebay-listing';
 
 // POST /api/ebay/[accountId]/inventory-group - Create inventory item group for variations
@@ -24,9 +24,7 @@ export async function POST(
     }
 
     // Get the eBay account
-    const account = await prisma.ebayUserToken.findUnique({
-      where: { id: accountId },
-    });
+    const account = await EbayAccountService.getAccountById(accountId);
 
     if (!account) {
       return NextResponse.json(
@@ -130,9 +128,7 @@ export async function PUT(
     }
 
     // Get the eBay account
-    const account = await prisma.ebayUserToken.findUnique({
-      where: { id: accountId },
-    });
+    const account = await EbayAccountService.getAccountById(accountId);
 
     if (!account) {
       return NextResponse.json(

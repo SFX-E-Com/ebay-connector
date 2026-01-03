@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/app/lib/services/database';
 import { TokenService } from '@/app/lib/services/auth';
 import { ebayOAuthService } from '@/app/lib/services/ebayOAuth';
+import { EbayAccountService } from '@/app/lib/services/ebayAccountService';
 
 export async function POST(request: NextRequest) {
   try {
@@ -34,14 +34,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Find the account that needs token refresh
-    const account = await prisma.ebayUserToken.findFirst({
-      where: {
-        id: accountId,
-        userId: decoded.userId,
-      },
-    });
+    const account = await EbayAccountService.getAccountById(accountId);
 
-    if (!account) {
+    if (!account || account.userId !== decoded.userId) {
       return NextResponse.json(
         { success: false, message: 'Account not found' },
         { status: 404 }
@@ -57,10 +52,17 @@ export async function POST(request: NextRequest) {
 
     // Check if token is actually expired
     if (!ebayOAuthService.isTokenExpired(account.expiresAt)) {
-      return NextResponse.json(
-        { success: true, message: 'Token is still valid', data: account },
-        { status: 200 }
-      );
+      return NextResponse.json({
+        success: true,
+        message: 'Token is still valid',
+        data: {
+          id: account.id,
+          ebayUserId: account.ebayUserId,
+          ebayUsername: account.ebayUsername,
+          expiresAt: account.expiresAt,
+          status: account.status,
+        }
+      });
     }
 
     // Refresh the access token using the official eBay client
@@ -70,26 +72,23 @@ export async function POST(request: NextRequest) {
     const newExpiresAt = ebayOAuthService.calculateExpirationDate(newTokenData.expires_in);
 
     // Update the account with new token data
-    const updatedAccount = await prisma.ebayUserToken.update({
-      where: { id: accountId },
-      data: {
-        accessToken: newTokenData.access_token,
-        refreshToken: newTokenData.refresh_token || account.refreshToken, // Keep old refresh token if new one not provided
-        expiresAt: newExpiresAt,
-        tokenType: newTokenData.token_type || account.tokenType,
-        scopes: JSON.stringify(newTokenData.scope ? newTokenData.scope.split(' ') : JSON.parse(account.scopes as string)),
-        lastUsedAt: new Date(),
-      },
+    const newScopes = newTokenData.scope ? newTokenData.scope.split(' ') : account.scopes;
+
+    await EbayAccountService.updateAccount(accountId, {
+      accessToken: newTokenData.access_token,
+      refreshToken: newTokenData.refresh_token || account.refreshToken,
+      expiresAt: newExpiresAt,
+      tokenType: newTokenData.token_type || account.tokenType,
+      scopes: newScopes,
     });
+
+    // Get updated account
+    const updatedAccount = await EbayAccountService.getAccountById(accountId);
 
     return NextResponse.json({
       success: true,
       message: 'Token refreshed successfully',
-      data: {
-        ...updatedAccount,
-        scopes: JSON.parse(updatedAccount.scopes as string),
-        tags: JSON.parse(updatedAccount.tags as string),
-      },
+      data: updatedAccount,
     });
   } catch (error) {
     console.error('Error refreshing eBay token:', error);

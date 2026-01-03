@@ -1,4 +1,11 @@
-import { EbayUserToken } from '@prisma/client';
+// Interface for account data needed by Trading API
+interface EbayAccountData {
+  accessToken: string;
+  refreshToken?: string | null;
+  ebayUserId?: string;
+  ebayUsername?: string | null;
+  friendlyName?: string | null;
+}
 
 interface TradingApiConfig {
   apiUrl: string;
@@ -7,11 +14,11 @@ interface TradingApiConfig {
 }
 
 export class EbayTradingService {
-  private account: EbayUserToken;
+  private account: EbayAccountData;
   private isSandbox: boolean;
   private config: TradingApiConfig;
 
-  constructor(account: EbayUserToken) {
+  constructor(account: EbayAccountData) {
     this.account = account;
     this.isSandbox = process.env.EBAY_SANDBOX === 'true';
 

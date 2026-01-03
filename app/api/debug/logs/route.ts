@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { TokenService } from '@/app/lib/services/auth';
-import prisma from '@/app/lib/services/database';
+import { UserService } from '@/app/lib/services/userService';
 import { RealtimeDebugLogger } from '@/app/lib/services/realtimeDebugLogger';
 
 // Get debug logs from database
@@ -24,10 +24,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Check if user is super admin
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.userId },
-      select: { role: true, email: true }
-    });
+    const user = await UserService.findUserById(decoded.userId);
 
     if (!user || user.role !== 'SUPER_ADMIN') {
       return NextResponse.json(
@@ -84,10 +81,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Check if user is super admin
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.userId },
-      select: { role: true, email: true }
-    });
+    const user = await UserService.findUserById(decoded.userId);
 
     if (!user || user.role !== 'SUPER_ADMIN') {
       return NextResponse.json(

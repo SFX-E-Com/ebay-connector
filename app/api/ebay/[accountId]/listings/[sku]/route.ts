@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '../../../../../lib/services/database';
+import { EbayAccountService } from '../../../../../lib/services/ebayAccountService';
 import { EbayListingService } from '../../../../../lib/services/ebay-listing';
 
 // GET /api/ebay/[accountId]/listings/[sku] - Get single inventory item
@@ -13,9 +13,7 @@ export async function GET(
     console.log(`[LISTINGS API] GET single item request for account: ${accountId}, SKU: ${sku}`);
 
     // Get the eBay account
-    const account = await prisma.ebayUserToken.findUnique({
-      where: { id: accountId },
-    });
+    const account = await EbayAccountService.getAccountById(accountId);
 
     if (!account) {
       return NextResponse.json(
@@ -96,9 +94,7 @@ export async function PUT(
     const body = await request.json();
 
     // Get the eBay account
-    const account = await prisma.ebayUserToken.findUnique({
-      where: { id: accountId },
-    });
+    const account = await EbayAccountService.getAccountById(accountId);
 
     if (!account) {
       return NextResponse.json(
@@ -167,9 +163,7 @@ export async function DELETE(
     console.log(`[LISTINGS API] DELETE request for account: ${accountId}, SKU: ${sku}`);
 
     // Get the eBay account
-    const account = await prisma.ebayUserToken.findUnique({
-      where: { id: accountId },
-    });
+    const account = await EbayAccountService.getAccountById(accountId);
 
     if (!account) {
       return NextResponse.json(

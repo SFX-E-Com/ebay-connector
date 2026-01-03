@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/app/lib/services/database';
+import { EbayAccountService } from '@/app/lib/services/ebayAccountService';
 import { EbayTradingApiService } from '@/app/lib/services/ebay-trading-api';
 
 // GET /api/ebay/[accountId]/trading/test - Test Trading API connection
@@ -13,9 +13,7 @@ export async function GET(
     console.log(`[TRADING API TEST] Testing connection for account: ${accountId}`);
 
     // Get the eBay account with OAuth token
-    const account = await prisma.ebayUserToken.findUnique({
-      where: { id: accountId },
-    });
+    const account = await EbayAccountService.getAccountById(accountId);
 
     if (!account) {
       return NextResponse.json(

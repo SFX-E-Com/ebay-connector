@@ -1,7 +1,7 @@
 'use client';
 
 import { VStack, HStack, Box, Text } from "@chakra-ui/react";
-import { MdOutlineSpaceDashboard, MdLogout, MdOutlinePeople, MdVpnKey, MdOutlineStore, MdBugReport, MdBook, MdInventory, MdApi } from "react-icons/md";
+import { MdOutlineSpaceDashboard, MdLogout, MdOutlinePeople, MdVpnKey, MdOutlineStore, MdBugReport, MdBook, MdInventory, MdApi, MdShoppingCart } from "react-icons/md";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 
@@ -20,21 +20,21 @@ function NavigationItem({ icon: Icon, text, isActive, collapse, onClick }: Navig
       gap={3}
       p={3}
       cursor="pointer"
-      _hover={{ bg: "blue.50" }}
-      bg={isActive ? "blue.100" : "transparent"}
+      _hover={{ bg: { base: "gray.100", _dark: "gray.700" } }}
+      bg={isActive ? { base: "orange.50", _dark: "gray.600" } : "transparent"}
       borderRadius="md"
       w="full"
       onClick={onClick}
       justify={collapse ? "center" : "flex-start"}
     >
-      <Box display="flex" alignItems="center" fontSize="16px" color={isActive ? "blue.600" : "gray.600"}>
+      <Box display="flex" alignItems="center" fontSize="16px" color={isActive ? "orange.500" : { base: "gray.600", _dark: "gray.300" }}>
         <Icon size={16} />
       </Box>
       {!collapse && text && (
         <Text
           fontSize="sm"
           fontWeight={isActive ? "semibold" : "medium"}
-          color={isActive ? "blue.600" : "gray.700"}
+          color={isActive ? "orange.500" : { base: "gray.600", _dark: "gray.300" }}
         >
           {text}
         </Text>
@@ -82,6 +82,7 @@ export function Navigation({ collapse }: NavigationProps) {
     ];
 
     if (isSuperAdmin) {
+      baseItems.push({ text: "Orders Debug", icon: MdShoppingCart, path: "/orders-debug" });
       baseItems.push({ text: "Debug Logs", icon: MdBugReport, path: "/debug-logs" });
     }
 
@@ -131,6 +132,10 @@ export function Navigation({ collapse }: NavigationProps) {
     // For Debug Logs, check if we're on debug-logs page
     if (item.text === "Debug Logs") {
       return pathname === "/debug-logs";
+    }
+    // For Orders Debug, check if we're on orders-debug page
+    if (item.text === "Orders Debug") {
+      return pathname === "/orders-debug";
     }
     // For Logout, never mark as active
     if (item.text === "Logout") {

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ebayOAuthService } from '@/app/lib/services/ebayOAuth';
-import prisma from '@/app/lib/services/database';
+import { EbayAccountService } from '@/app/lib/services/ebayAccountService';
 import { EBAY_OAUTH_SCOPES } from '@/app/lib/constants/ebayScopes';
 import { EBAY_SCOPES, getEbayConfig, getEbayUrls } from '@/app/lib/config/ebay';
 
@@ -27,9 +26,7 @@ export async function GET(request: NextRequest) {
     const urls = getEbayUrls(config.isProduction);
 
     // Fetch the account to get its selected scopes
-    const account = await prisma.ebayUserToken.findUnique({
-      where: { id: accountId }
-    }) as any;
+    const account = await EbayAccountService.getAccountById(accountId);
 
     if (!account) {
       return NextResponse.json(
@@ -38,13 +35,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Parse the selected scopes from the database with type casting
-    const accountData = account as any;
-    const selectedScopeIds = Array.isArray(accountData.userSelectedScopes)
-      ? accountData.userSelectedScopes
-      : typeof accountData.userSelectedScopes === 'string'
-        ? (accountData.userSelectedScopes ? JSON.parse(accountData.userSelectedScopes) : [])
-        : [];
+    // Get the selected scopes from the account
+    const selectedScopeIds = Array.isArray(account.userSelectedScopes)
+      ? account.userSelectedScopes
+      : [];
 
     // Convert user selected scope IDs to eBay scope URLs dynamically
     console.log('=== DYNAMIC SCOPE SELECTION ===');

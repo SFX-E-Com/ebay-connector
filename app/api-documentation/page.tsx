@@ -44,9 +44,16 @@ export default function APIDocumentationPage() {
             showCommonExtensions: true,
             customCss: `
               .topbar { display: none }
+              .swagger-ui { filter: invert(0.88) hue-rotate(180deg); }
               .swagger-ui .info { margin: 20px 0 }
               .swagger-ui .info .title { font-size: 2em }
               .swagger-ui .opblock-tag { font-size: 1.2em }
+              
+              /* Fix images/logos inversion */
+              .swagger-ui img { filter: invert(1) hue-rotate(180deg); }
+              
+              /* Adjust specific colors after inversion if needed */
+              .swagger-ui .scheme-container { background: transparent; box-shadow: none; }
             `
           });
         }
@@ -69,7 +76,10 @@ export default function APIDocumentationPage() {
   return (
     <Box
       id="swagger-ui"
-      backgroundColor="white"
+      bg={{ base: "white", _dark: "gray.900" }}
+      borderRadius="xl"
+      minH="100%"
+      p={4}
     />
   );
 }

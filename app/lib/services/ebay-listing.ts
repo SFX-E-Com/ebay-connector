@@ -189,15 +189,13 @@ export class EbayListingService {
 
       // Update the database with new token
       if (typeof window === 'undefined') {
-        // Server-side: Direct database update
-        const prisma = await import('@/app/lib/services/database').then(m => m.default);
-        await prisma.ebayUserToken.update({
-          where: { id: this.accountId },
-          data: {
-            accessToken: tokenData.access_token,
-            expiresAt: this.tokenExpiresAt
-          } as any
-        });
+        // Server-side: Use EbayAccountService to update tokens
+        const { EbayAccountService } = await import('./ebayAccountService');
+        await EbayAccountService.updateTokens(
+          this.accountId,
+          tokenData.access_token,
+          this.tokenExpiresAt
+        );
       } else {
         // Client-side: Call an API endpoint to update the token
         console.log('⚠️ Client-side token refresh - database update skipped');

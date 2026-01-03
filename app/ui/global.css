@@ -11,3 +11,25 @@ html, body {
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
 }
+
+/* Light Mode (default) */
+:root {
+  color-scheme: light;
+}
+
+html {
+  background-color: #f7fafc;
+  color: #1a202c;
+}
+
+/* Dark Mode */
+html.dark {
+  color-scheme: dark;
+  background-color: #1a1a2e;
+  color: #ffffff;
+}
+
+html.dark body {
+  background-color: #1a1a2e;
+  color: #ffffff;
+}

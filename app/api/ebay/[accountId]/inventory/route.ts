@@ -8,7 +8,6 @@ import { withEbayAuth, EbayAuthData } from "@/app/lib/middleware/ebayAuth";
 import { EbayTokenRefreshService } from "@/app/lib/services/ebayTokenRefresh";
 import { EbayErrorHandler, EbayApiError } from "@/app/lib/services/ebayErrorHandler";
 import { getEbayConfig, getEbayUrls } from "@/app/lib/config/ebay";
-import prisma from "@/app/lib/services/database";
 
 interface InventoryItem {
     sku: string;

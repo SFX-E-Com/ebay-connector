@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '../../../lib/services/database';
 import { TokenService } from '../../../lib/services/auth';
+import { EbayAccountService } from '../../../lib/services/ebayAccountService';
 
 export async function GET(
   request: NextRequest,
@@ -28,46 +28,18 @@ export async function GET(
 
     // Await params and fetch specific eBay account
     const { id } = await params;
-    const ebayAccount = await prisma.ebayUserToken.findFirst({
-      where: {
-        id: id,
-        userId: decoded.userId,
-      },
-      select: {
-        id: true,
-        ebayUserId: true,
-        ebayUsername: true,
-        expiresAt: true,
-        tokenType: true,
-        scopes: true,
-        userSelectedScopes: true,
-        status: true,
-        friendlyName: true,
-        tags: true,
-        lastUsedAt: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-    });
+    const ebayAccount = await EbayAccountService.getAccountById(id);
 
-    if (!ebayAccount) {
+    if (!ebayAccount || ebayAccount.userId !== decoded.userId) {
       return NextResponse.json(
         { success: false, message: 'eBay account not found' },
         { status: 404 }
       );
     }
 
-    // Parse JSON fields for client consumption
-    const parsedAccount = {
-      ...ebayAccount,
-      scopes: typeof ebayAccount.scopes === 'string' ? JSON.parse(ebayAccount.scopes) : ebayAccount.scopes,
-      userSelectedScopes: typeof ebayAccount.userSelectedScopes === 'string' ? JSON.parse(ebayAccount.userSelectedScopes) : ebayAccount.userSelectedScopes,
-      tags: typeof ebayAccount.tags === 'string' ? JSON.parse(ebayAccount.tags) : ebayAccount.tags,
-    };
-
     return NextResponse.json({
       success: true,
-      data: parsedAccount,
+      data: ebayAccount,
     });
   } catch (error) {
     console.error('Error fetching eBay account:', error);
@@ -104,54 +76,43 @@ export async function PUT(
 
     const updateData = await request.json();
 
-    // Convert arrays to JSON strings for database storage
-    const processedData = {
-      ...updateData,
-      userSelectedScopes: Array.isArray(updateData.selectedScopes) ? JSON.stringify(updateData.selectedScopes) : updateData.userSelectedScopes,
-      tags: Array.isArray(updateData.tags) ? JSON.stringify(updateData.tags) : updateData.tags,
-      updatedAt: new Date(),
-    } as any;
-
-    // Remove selectedScopes as it's not a database field
-    delete processedData.selectedScopes;
-
-    // Await params and update eBay account
+    // Await params and verify ownership
     const { id } = await params;
-    const ebayAccount = await prisma.ebayUserToken.update({
-      where: {
-        id: id,
-        userId: decoded.userId,
-      },
-      data: processedData,
-      select: {
-        id: true,
-        ebayUserId: true,
-        ebayUsername: true,
-        expiresAt: true,
-        tokenType: true,
-        scopes: true,
-        userSelectedScopes: true,
-        status: true,
-        friendlyName: true,
-        tags: true,
-        lastUsedAt: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-    });
+    const existingAccount = await EbayAccountService.getAccountById(id);
 
-    // Parse JSON fields for client consumption
-    const parsedAccount = {
-      ...ebayAccount,
-      scopes: typeof ebayAccount.scopes === 'string' ? JSON.parse(ebayAccount.scopes) : ebayAccount.scopes,
-      userSelectedScopes: typeof ebayAccount.userSelectedScopes === 'string' ? JSON.parse(ebayAccount.userSelectedScopes) : ebayAccount.userSelectedScopes,
-      tags: typeof ebayAccount.tags === 'string' ? JSON.parse(ebayAccount.tags) : ebayAccount.tags,
-    };
+    if (!existingAccount || existingAccount.userId !== decoded.userId) {
+      return NextResponse.json(
+        { success: false, message: 'eBay account not found' },
+        { status: 404 }
+      );
+    }
+
+    // Process update data
+    const processedData: Record<string, unknown> = {};
+
+    if (updateData.friendlyName !== undefined) {
+      processedData.friendlyName = updateData.friendlyName;
+    }
+    if (updateData.status !== undefined) {
+      processedData.status = updateData.status;
+    }
+    if (updateData.tags !== undefined) {
+      processedData.tags = updateData.tags;
+    }
+    if (updateData.selectedScopes !== undefined) {
+      processedData.userSelectedScopes = updateData.selectedScopes;
+    }
+    if (updateData.userSelectedScopes !== undefined) {
+      processedData.userSelectedScopes = updateData.userSelectedScopes;
+    }
+
+    // Update eBay account
+    const updatedAccount = await EbayAccountService.updateAccount(id, processedData);
 
     return NextResponse.json({
       success: true,
       message: 'eBay account updated successfully',
-      data: parsedAccount,
+      data: updatedAccount,
     });
   } catch (error) {
     console.error('Error updating eBay account:', error);
@@ -188,12 +149,14 @@ export async function DELETE(
 
     // Await params and delete eBay account
     const { id } = await params;
-    await prisma.ebayUserToken.delete({
-      where: {
-        id: id,
-        userId: decoded.userId,
-      },
-    });
+    const deleted = await EbayAccountService.deleteAccount(id, decoded.userId);
+
+    if (!deleted) {
+      return NextResponse.json(
+        { success: false, message: 'eBay account not found' },
+        { status: 404 }
+      );
+    }
 
     return NextResponse.json({
       success: true,

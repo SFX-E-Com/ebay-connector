@@ -15,8 +15,8 @@ interface InfoCardProps {
   title: string;
   description: string;
   icon?: string;
-  iconColor?: string;
-  iconBgColor?: string;
+  iconColor?: any;
+  iconBgColor?: any;
   badgeText?: string;
   badgeColorPalette?: string;
   onClick?: () => void;
@@ -40,38 +40,38 @@ const InfoCard: React.FC<InfoCardProps> = ({
   const colorSchemes = {
     blue: {
       iconColor: iconColor || 'blue.600',
-      iconBgColor: iconBgColor || 'blue.50',
-      borderColor: 'blue.200',
+      iconBgColor: iconBgColor || { base: 'blue.50', _dark: 'rgba(66, 153, 225, 0.2)' },
+      borderColor: { base: 'blue.200', _dark: 'blue.800' },
       badgeColor: badgeColorPalette || 'blue',
     },
     green: {
       iconColor: iconColor || 'green.600',
-      iconBgColor: iconBgColor || 'green.50',
-      borderColor: 'green.200',
+      iconBgColor: iconBgColor || { base: 'green.50', _dark: 'rgba(72, 187, 120, 0.2)' },
+      borderColor: { base: 'green.200', _dark: 'green.800' },
       badgeColor: badgeColorPalette || 'green',
     },
     purple: {
       iconColor: iconColor || 'purple.600',
-      iconBgColor: iconBgColor || 'purple.50',
-      borderColor: 'purple.200',
+      iconBgColor: iconBgColor || { base: 'purple.50', _dark: 'rgba(128, 90, 213, 0.2)' },
+      borderColor: { base: 'purple.200', _dark: 'purple.800' },
       badgeColor: badgeColorPalette || 'purple',
     },
     orange: {
       iconColor: iconColor || 'orange.600',
-      iconBgColor: iconBgColor || 'orange.50',
-      borderColor: 'orange.200',
+      iconBgColor: iconBgColor || { base: 'orange.50', _dark: 'rgba(237, 137, 54, 0.2)' },
+      borderColor: { base: 'orange.200', _dark: 'orange.800' },
       badgeColor: badgeColorPalette || 'orange',
     },
     red: {
       iconColor: iconColor || 'red.600',
-      iconBgColor: iconBgColor || 'red.50',
-      borderColor: 'red.200',
+      iconBgColor: iconBgColor || { base: 'red.50', _dark: 'rgba(245, 101, 101, 0.2)' },
+      borderColor: { base: 'red.200', _dark: 'red.800' },
       badgeColor: badgeColorPalette || 'red',
     },
     teal: {
       iconColor: iconColor || 'teal.600',
-      iconBgColor: iconBgColor || 'teal.50',
-      borderColor: 'teal.200',
+      iconBgColor: iconBgColor || { base: 'teal.50', _dark: 'rgba(56, 178, 172, 0.2)' },
+      borderColor: { base: 'teal.200', _dark: 'teal.800' },
       badgeColor: badgeColorPalette || 'teal',
     },
   };
@@ -89,7 +89,7 @@ const InfoCard: React.FC<InfoCardProps> = ({
         overflow="hidden"
         border="1px solid"
         borderColor={colors.borderColor}
-        bg="white"
+        bg={{ base: "white", _dark: "gray.800" }}
         boxShadow="md"
       >
         <Card.Body p={6}>
@@ -111,10 +111,10 @@ const InfoCard: React.FC<InfoCardProps> = ({
                 </Box>
               )}
               <VStack gap={1} align="start" flex={1}>
-                <Text fontWeight="semibold" color="gray.900" fontSize="lg">
+                <Text fontWeight="semibold" color={{ base: "gray.900", _dark: "white" }} fontSize="lg">
                   {title}
                 </Text>
-                <Text fontSize="sm" color="gray.600" lineHeight="1.4">
+                <Text fontSize="sm" color={{ base: "gray.600", _dark: "gray.400" }} lineHeight="1.4">
                   {description}
                 </Text>
                 {badgeText && (

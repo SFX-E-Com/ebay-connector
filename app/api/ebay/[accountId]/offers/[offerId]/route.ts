@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '../../../../../lib/services/database';
+import { EbayAccountService } from '../../../../../lib/services/ebayAccountService';
 import { EbayListingService, OfferRequest } from '../../../../../lib/services/ebay-listing';
 
 // GET /api/ebay/[accountId]/offers/[offerId] - Get specific offer
@@ -12,9 +12,7 @@ export async function GET(
     console.log(`[OFFER API] GET request for account: ${accountId}, offer: ${offerId}`);
 
     // Get the eBay account
-    const account = await prisma.ebayUserToken.findUnique({
-      where: { id: accountId },
-    });
+    const account = await EbayAccountService.getAccountById(accountId);
 
     if (!account) {
       return NextResponse.json(
@@ -68,9 +66,7 @@ export async function PUT(
     const body = await request.json();
 
     // Get the eBay account
-    const account = await prisma.ebayUserToken.findUnique({
-      where: { id: accountId },
-    });
+    const account = await EbayAccountService.getAccountById(accountId);
 
     if (!account) {
       return NextResponse.json(
@@ -123,9 +119,7 @@ export async function DELETE(
     console.log(`[OFFER API] DELETE request for account: ${accountId}, offer: ${offerId}`);
 
     // Get the eBay account
-    const account = await prisma.ebayUserToken.findUnique({
-      where: { id: accountId },
-    });
+    const account = await EbayAccountService.getAccountById(accountId);
 
     if (!account) {
       return NextResponse.json(

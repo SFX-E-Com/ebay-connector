@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/app/lib/services/database';
+import { EbayAccountService } from '@/app/lib/services/ebayAccountService';
 import { EBAY_SCOPES } from '@/app/lib/config/ebay';
-
-const EbayAuthToken = require('ebay-oauth-nodejs-client');
 
 export async function GET(request: NextRequest) {
   try {
@@ -117,7 +115,7 @@ export async function GET(request: NextRequest) {
     console.log('Expires In (seconds):', tokenData.expires_in);
     console.log('Granted Scopes:', tokenData.scope);
     console.log('Scope Array:', tokenData.scope ? tokenData.scope.split(' ') : 'No scopes');
-    
+
     let ebayUserId = `ebay_user_${Date.now()}`;
     let ebayUsername = null;
 
@@ -130,18 +128,18 @@ export async function GET(request: NextRequest) {
       console.log('User Info URL:', `${baseApiUrl}/commerce/identity/v1/user/`);
       console.log('Authorization Header:', `Bearer ${tokenData.access_token?.substring(0, 20)}...`);
 
-      const response = await fetch(`${baseApiUrl}/commerce/identity/v1/user/`, {
+      const userResponse = await fetch(`${baseApiUrl}/commerce/identity/v1/user/`, {
         headers: {
           'Authorization': `Bearer ${tokenData.access_token}`,
           'Content-Type': 'application/json',
         },
       });
 
-      console.log('User Info Response Status:', response.status);
-      console.log('User Info Response Headers:', Object.fromEntries(response.headers.entries()));
+      console.log('User Info Response Status:', userResponse.status);
+      console.log('User Info Response Headers:', Object.fromEntries(userResponse.headers.entries()));
 
-      if (response.ok) {
-        const userData = await response.json();
+      if (userResponse.ok) {
+        const userData = await userResponse.json();
 
         // DEBUG: Log complete user data response
         console.log('=== OAUTH CALLBACK DEBUG - COMPLETE USER DATA ===');
@@ -154,8 +152,8 @@ export async function GET(request: NextRequest) {
         ebayUserId = userData.userId || ebayUserId;
         ebayUsername = userData.username || null;
       } else {
-        const errorText = await response.text();
-        console.error('User info request failed:', response.status, response.statusText);
+        const errorText = await userResponse.text();
+        console.error('User info request failed:', userResponse.status, userResponse.statusText);
         console.error('User info error response:', errorText);
       }
     } catch (userInfoError) {
@@ -166,9 +164,7 @@ export async function GET(request: NextRequest) {
     const expiresAt = new Date(Date.now() + (tokenData.expires_in * 1000));
 
     // Get the account's selected scopes before updating
-    const existingAccount = await prisma.ebayUserToken.findUnique({
-      where: { id: accountId }
-    }) as any;
+    const existingAccount = await EbayAccountService.getAccountById(accountId);
 
     // DEBUG: Log existing account data
     console.log('=== OAUTH CALLBACK DEBUG - EXISTING ACCOUNT ===');
@@ -176,8 +172,7 @@ export async function GET(request: NextRequest) {
     console.log('Existing Account userSelectedScopes:', existingAccount?.userSelectedScopes);
 
     // PRESERVE the original userSelectedScopes format during reconnection
-    // Don't convert or modify them - keep them exactly as they were
-    const preservedUserSelectedScopes = existingAccount?.userSelectedScopes || JSON.stringify(['api_scope']);
+    const preservedUserSelectedScopes = existingAccount?.userSelectedScopes || ['api_scope'];
 
     // DEBUG: Log preserved scopes
     console.log('=== OAUTH CALLBACK DEBUG - PRESERVED SCOPES ===');
@@ -189,13 +184,12 @@ export async function GET(request: NextRequest) {
       ebayUserId: ebayUserId,
       ebayUsername: ebayUsername,
       accessToken: tokenData.access_token,
-      refreshToken: tokenData.refresh_token || null,
+      refreshToken: tokenData.refresh_token || undefined,
       expiresAt: expiresAt,
       tokenType: tokenData.token_type || 'Bearer',
       scopes: tokenData.scope ? tokenData.scope.split(' ') : [EBAY_SCOPES.READ_BASIC],
       userSelectedScopes: preservedUserSelectedScopes,
       status: 'active',
-      lastUsedAt: new Date(),
     };
 
     console.log('=== DATABASE UPDATE DEBUG ===');
@@ -208,17 +202,14 @@ export async function GET(request: NextRequest) {
     console.log('Granted Scopes List:', updateData.scopes);
 
     // Update the placeholder account with real OAuth data
-    const updatedAccount = await prisma.ebayUserToken.update({
-      where: { id: accountId },
-      data: updateData as any, // Cast to any to handle the userSelectedScopes field
-    });
+    const updatedAccount = await EbayAccountService.updateAccount(accountId, updateData);
 
     console.log('=== DATABASE UPDATE RESULT ===');
-    console.log('Updated Account ID:', updatedAccount.id);
-    console.log('Updated eBay User ID:', updatedAccount.ebayUserId);
-    console.log('Updated eBay Username:', updatedAccount.ebayUsername);
-    console.log('Updated Status:', updatedAccount.status);
-    console.log('Updated Scopes:', updatedAccount.scopes);
+    console.log('Updated Account ID:', updatedAccount?.id);
+    console.log('Updated eBay User ID:', updatedAccount?.ebayUserId);
+    console.log('Updated eBay Username:', updatedAccount?.ebayUsername);
+    console.log('Updated Status:', updatedAccount?.status);
+    console.log('Updated Scopes:', updatedAccount?.scopes);
     console.log('Database Update Successful!');
 
     // Clear the OAuth state cookie

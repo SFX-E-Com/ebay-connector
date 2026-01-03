@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/app/lib/services/database';
+import { EbayAccountService } from '@/app/lib/services/ebayAccountService';
 import { EbayTradingApiService } from '@/app/lib/services/ebay-trading-api';
 
 // GET /api/ebay/[accountId]/trading/items - Get seller's active listings
@@ -19,9 +19,7 @@ export async function GET(
     const sku = searchParams.get('sku'); // Optional: filter by specific SKU
 
     // Get the eBay account
-    const account = await prisma.ebayUserToken.findUnique({
-      where: { id: accountId },
-    });
+    const account = await EbayAccountService.getAccountById(accountId);
 
     if (!account) {
       return NextResponse.json(

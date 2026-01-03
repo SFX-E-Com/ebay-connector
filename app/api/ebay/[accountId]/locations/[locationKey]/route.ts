@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '../../../../../lib/services/database';
+import { EbayAccountService } from '../../../../../lib/services/ebayAccountService';
 import { EbayListingService, InventoryLocation } from '../../../../../lib/services/ebay-listing';
 
 // GET /api/ebay/[accountId]/locations/[locationKey] - Get specific inventory location
@@ -12,9 +12,7 @@ export async function GET(
     console.log(`[LOCATION API] GET request for account: ${accountId}, location: ${locationKey}`);
 
     // Get the eBay account
-    const account = await prisma.ebayUserToken.findUnique({
-      where: { id: accountId },
-    });
+    const account = await EbayAccountService.getAccountById(accountId);
 
     if (!account) {
       return NextResponse.json(
@@ -68,9 +66,7 @@ export async function PUT(
     const body = await request.json();
 
     // Get the eBay account
-    const account = await prisma.ebayUserToken.findUnique({
-      where: { id: accountId },
-    });
+    const account = await EbayAccountService.getAccountById(accountId);
 
     if (!account) {
       return NextResponse.json(
@@ -123,9 +119,7 @@ export async function DELETE(
     console.log(`[LOCATION API] DELETE request for account: ${accountId}, location: ${locationKey}`);
 
     // Get the eBay account
-    const account = await prisma.ebayUserToken.findUnique({
-      where: { id: accountId },
-    });
+    const account = await EbayAccountService.getAccountById(accountId);
 
     if (!account) {
       return NextResponse.json(

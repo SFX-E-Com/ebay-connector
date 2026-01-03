@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '../../../../lib/services/database';
+import { EbayAccountService } from '../../../../lib/services/ebayAccountService';
 import { EbayListingService } from '../../../../lib/services/ebay-listing';
 
 // GET /api/ebay/[accountId]/policies - Get all business policies
@@ -15,9 +15,7 @@ export async function GET(
     const type = searchParams.get('type'); // payment, fulfillment, return
 
     // Get the eBay account
-    const account = await prisma.ebayUserToken.findUnique({
-      where: { id: accountId },
-    });
+    const account = await EbayAccountService.getAccountById(accountId);
 
     if (!account) {
       return NextResponse.json(
@@ -55,8 +53,8 @@ export async function GET(
     }
 
     const totalPolicies = (policies.paymentPolicies?.length || 0) +
-                         (policies.fulfillmentPolicies?.length || 0) +
-                         (policies.returnPolicies?.length || 0);
+      (policies.fulfillmentPolicies?.length || 0) +
+      (policies.returnPolicies?.length || 0);
 
     console.log(`[POLICIES API] Retrieved ${totalPolicies} total policies`);
 

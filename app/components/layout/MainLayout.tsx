@@ -12,13 +12,13 @@ interface MainLayoutProps {
 export default function MainLayout({ children }: MainLayoutProps) {
 
   return (
-    <HStack w="full" h="100vh" bg="gray.100" padding={10}>
+    <HStack w="full" h="100vh" bg={{ base: "gray.100", _dark: "gray.900" }} padding={10}>
       <Flex
         as="aside"
         w="full"
         h="full"
         maxW={350}
-        bg="white"
+        bg={{ base: "white", _dark: "gray.800" }}
         alignItems="start"
         padding={6}
         flexDirection="column"
@@ -29,14 +29,14 @@ export default function MainLayout({ children }: MainLayoutProps) {
         <Sidebar />
       </Flex>
       <Flex
-       as="main"
+        as="main"
         w="full"
         direction="column"
         h="full"
-        bg="white"
+        bg={{ base: "white", _dark: "gray.800" }}
         overflowY="auto"
         borderRadius="3xl"
-      > 
+      >
         {children}
 
         <Footer />

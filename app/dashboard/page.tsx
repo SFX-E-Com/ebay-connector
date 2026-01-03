@@ -65,11 +65,11 @@ export default function DashboardPage() {
         minH="100vh"
         align="center"
         justify="center"
-        bg="gray.50"
+        bg={{ base: "gray.50", _dark: "gray.900" }}
       >
         <VStack gap={4}>
           <Spinner size="xl" color="orange.500" />
-          <Text fontSize="lg" color="gray.600">Loading...</Text>
+          <Text fontSize="lg" color={{ base: "gray.600", _dark: "gray.300" }}>Loading...</Text>
         </VStack>
       </Flex>
     );
@@ -80,64 +80,64 @@ export default function DashboardPage() {
   }
 
   return (
-      <React.Fragment>
-          {/* Main content */}
-          <Box py={6} px={{ base: 4, sm: 6, lg: 8 }}>
-              <VStack gap={6} align="stretch">
-                  <Box>
-                      <Heading size="xl" color="gray.900" mb={2}>
-                          Welcome to eBay Connector Dashboard
-                      </Heading>
-                      <Text color="gray.600">
-                          Manage your authentication and account settings.
-                      </Text>
-                  </Box>
-
-                  <Grid
-                      templateColumns={{ base: "1fr", md: "repeat(2, 1fr)" }}
-                      gap={6}
-                  >
-                      <InfoCard
-                          title="Account Settings"
-                          description="Manage your profile and security"
-                          icon="⚙️"
-                          iconBgColor="orange.100"
-                          iconColor="orange.600"
-                      >
-                          <Button
-                              onClick={handleChangePassword}
-                              colorScheme="orange"
-                              variant="outline"
-                              w="full"
-                          >
-                              Change Password
-                          </Button>
-                      </InfoCard>
-
-                      <InfoCard
-                          title="User Information"
-                          description="Your account details"
-                          icon="👤"
-                          iconBgColor="blue.100"
-                          iconColor="blue.600"
-                      >
-                          <VStack gap={2} align="start">
-                              <Text fontSize="sm" color="gray.600">
-                                  Email: {user.email}
-                              </Text>
-                              <Text fontSize="sm" color="gray.600">
-                                  Role: {user.role}
-                              </Text>
-                              {user.name && (
-                                  <Text fontSize="sm" color="gray.600">
-                                      Name: {user.name}
-                                  </Text>
-                              )}
-                          </VStack>
-                      </InfoCard>
-                  </Grid>
-              </VStack>
+    <React.Fragment>
+      {/* Main content */}
+      <Box py={6} px={{ base: 4, sm: 6, lg: 8 }}>
+        <VStack gap={6} align="stretch">
+          <Box>
+            <Heading size="xl" color={{ base: "gray.900", _dark: "white" }} mb={2}>
+              Welcome to eBay Connector Dashboard
+            </Heading>
+            <Text color={{ base: "gray.600", _dark: "gray.400" }}>
+              Manage your authentication and account settings.
+            </Text>
           </Box>
-      </React.Fragment>
+
+          <Grid
+            templateColumns={{ base: "1fr", md: "repeat(2, 1fr)" }}
+            gap={6}
+          >
+            <InfoCard
+              title="Account Settings"
+              description="Manage your profile and security"
+              icon="⚙️"
+              iconBgColor={{ base: "orange.100", _dark: "rgba(237, 137, 54, 0.2)" }}
+              iconColor="orange.600"
+            >
+              <Button
+                onClick={handleChangePassword}
+                colorPalette="orange"
+                variant="outline"
+                w="full"
+              >
+                Change Password
+              </Button>
+            </InfoCard>
+
+            <InfoCard
+              title="User Information"
+              description="Your account details"
+              icon="👤"
+              iconBgColor={{ base: "blue.100", _dark: "rgba(66, 153, 225, 0.2)" }}
+              iconColor="blue.600"
+            >
+              <VStack gap={2} align="start">
+                <Text fontSize="sm" color={{ base: "gray.600", _dark: "gray.300" }}>
+                  Email: {user.email}
+                </Text>
+                <Text fontSize="sm" color={{ base: "gray.600", _dark: "gray.300" }}>
+                  Role: {user.role}
+                </Text>
+                {user.name && (
+                  <Text fontSize="sm" color={{ base: "gray.600", _dark: "gray.300" }}>
+                    Name: {user.name}
+                  </Text>
+                )}
+              </VStack>
+            </InfoCard>
+          </Grid>
+        </VStack>
+      </Box>
+    </React.Fragment>
   );
 }

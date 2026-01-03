@@ -18,12 +18,12 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Set HTTP-only cookie
+    // Set HTTP-only cookie with 7 day expiry
     response.cookies.set('token', result.token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      sameSite: 'lax',  // 'lax' allows redirects, 'strict' is too restrictive
+      maxAge: 7 * 24 * 60 * 60, // 7 days in seconds
       path: '/',
     });
 
@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
 
     // Handle authentication errors
     if (error.message.includes('Email and password are required') ||
-        error.message.includes('Invalid email or password')) {
+      error.message.includes('Invalid email or password')) {
       return NextResponse.json(
         {
           success: false,

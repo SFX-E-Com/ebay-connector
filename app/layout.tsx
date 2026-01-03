@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import { Providers } from './providers'
 import ConditionalLayout from './components/layout/ConditionalLayout'
+import './ui/global.css'
 
 const inter = Inter({ subsets: ['latin'] })
 

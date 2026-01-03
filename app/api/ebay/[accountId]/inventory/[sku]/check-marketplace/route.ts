@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '../../../../../../lib/services/database';
+import { EbayAccountService } from '../../../../../../lib/services/ebayAccountService';
 
 // GET /api/ebay/[accountId]/inventory/[sku]/check-marketplace - Check inventory item availability across marketplaces
 export async function GET(
@@ -12,9 +12,7 @@ export async function GET(
     console.log(`[CHECK MARKETPLACE API] Checking SKU ${sku} across marketplaces`);
 
     // Get the eBay account
-    const account = await prisma.ebayUserToken.findUnique({
-      where: { id: accountId },
-    });
+    const account = await EbayAccountService.getAccountById(accountId);
 
     if (!account) {
       return NextResponse.json(

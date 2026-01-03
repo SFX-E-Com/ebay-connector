@@ -23,10 +23,16 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+build_errors.txt
 
 # local env files
 .env*.local
 .env
+
+# GCP Service Account Keys (NEVER commit!)
+service-account*.json
+*-credentials.json
+/secrets/
 
 # vercel
 .vercel

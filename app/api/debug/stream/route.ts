@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { TokenService } from '@/app/lib/services/auth';
-import prisma from '@/app/lib/services/database';
+import { UserService } from '@/app/lib/services/userService';
 import { RealtimeDebugLogger } from '@/app/lib/services/realtimeDebugLogger';
 
 // Server-Sent Events endpoint for real-time log streaming
@@ -18,10 +18,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Check if user is super admin
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.userId },
-      select: { role: true, email: true }
-    });
+    const user = await UserService.findUserById(decoded.userId);
 
     if (!user || user.role !== 'SUPER_ADMIN') {
       return new Response('Super Admin access required', { status: 403 });
@@ -33,7 +30,7 @@ export async function GET(request: NextRequest) {
         const encoder = new TextEncoder();
 
         // Helper function to send SSE data
-        const send = (data: any) => {
+        const send = (data: unknown) => {
           controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
         };
 
@@ -98,7 +95,7 @@ export async function GET(request: NextRequest) {
         request.signal.addEventListener('abort', cleanup);
 
         // Store cleanup function for potential use
-        (controller as any).cleanup = cleanup;
+        (controller as unknown as { cleanup: () => void }).cleanup = cleanup;
       }
     });
 

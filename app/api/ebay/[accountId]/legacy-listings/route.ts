@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '../../../../lib/services/database';
+import { EbayAccountService } from '../../../../lib/services/ebayAccountService';
 import { EbayTradingService } from '../../../../lib/services/ebay-trading';
 
 // GET /api/ebay/[accountId]/legacy-listings - Get all listings using Trading API
@@ -21,9 +21,7 @@ export async function GET(
     const endTime = searchParams.get('endTime');
 
     // Get the eBay account
-    const account = await prisma.ebayUserToken.findUnique({
-      where: { id: accountId },
-    });
+    const account = await EbayAccountService.getAccountById(accountId);
 
     if (!account) {
       return NextResponse.json(
@@ -145,9 +143,7 @@ export async function POST(
     }
 
     // Get the eBay account
-    const account = await prisma.ebayUserToken.findUnique({
-      where: { id: accountId },
-    });
+    const account = await EbayAccountService.getAccountById(accountId);
 
     if (!account) {
       return NextResponse.json(

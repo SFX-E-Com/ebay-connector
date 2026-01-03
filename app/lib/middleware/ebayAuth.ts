@@ -4,7 +4,7 @@ import { logToDebug } from "./queryDebugMiddleware";
 import { EbayTokenRefreshService } from "../services/ebayTokenRefresh";
 import { validateEndpointAccess } from "./endpointValidation";
 import { validateEbayOperation } from "./ebayScopeValidation";
-import prisma from "../services/database";
+import { EbayAccountService } from "../services/ebayAccountService";
 
 export interface EbayAuthData {
     user: {
@@ -104,25 +104,10 @@ export function withEbayAuth(
                     return endpointValidation.errorResponse!;
                 }
 
-                const ebayAccount = await prisma.ebayUserToken.findFirst({
-                    where: {
-                        id: accountId,
-                        userId: apiAuthData.user.id,
-                    },
-                    select: {
-                        id: true,
-                        friendlyName: true,
-                        ebayUserId: true,
-                        ebayUsername: true,
-                        accessToken: true,
-                        refreshToken: true,
-                        expiresAt: true,
-                        status: true,
-                        userSelectedScopes: true,
-                    } as any,
-                });
+                const ebayAccount = await EbayAccountService.getAccountById(accountId);
 
-                if (!ebayAccount) {
+                // Verify the account belongs to the user
+                if (!ebayAccount || ebayAccount.userId !== apiAuthData.user.id) {
                     await logToDebug(
                         "EBAY_AUTH",
                         "eBay account not found",

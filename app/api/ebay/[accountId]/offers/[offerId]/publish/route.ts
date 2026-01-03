@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '../../../../../../lib/services/database';
+import { EbayAccountService } from '../../../../../../lib/services/ebayAccountService';
 import { EbayListingService } from '../../../../../../lib/services/ebay-listing';
 
 // POST /api/ebay/[accountId]/offers/[offerId]/publish - Publish offer (make listing live)
@@ -12,9 +12,7 @@ export async function POST(
     console.log(`[PUBLISH OFFER API] POST request for account: ${accountId}, offer: ${offerId}`);
 
     // Get the eBay account
-    const account = await prisma.ebayUserToken.findUnique({
-      where: { id: accountId },
-    });
+    const account = await EbayAccountService.getAccountById(accountId);
 
     if (!account) {
       return NextResponse.json(

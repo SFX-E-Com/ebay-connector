@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { UserService } from '@/app/lib/services/userService';
+import { EbayAccountService } from '@/app/lib/services/ebayAccountService';
 import { getEbayConfig, getEbayUrls } from '@/app/lib/config/ebay';
-
-const prisma = new PrismaClient();
 
 export async function GET(request: NextRequest) {
   try {
@@ -30,9 +29,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(redirectUrl);
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id: userId }
-    });
+    const user = await UserService.findUserById(userId);
 
     if (!user) {
       const redirectUrl = new URL('/ebay-connections', request.url);
@@ -75,46 +72,27 @@ export async function GET(request: NextRequest) {
     });
 
     let ebayUserId = 'unknown';
-    let ebayUsername = null;
+    let ebayUsername: string | undefined = undefined;
 
     if (userInfoResponse.ok) {
       const userInfo = await userInfoResponse.json();
       ebayUserId = userInfo.userId || userInfo.username || 'unknown';
-      ebayUsername = userInfo.username || null;
+      ebayUsername = userInfo.username || undefined;
     }
 
     const expiresAt = new Date(Date.now() + (tokenData.expires_in * 1000));
     const scopes = tokenData.scope ? tokenData.scope.split(' ') : [];
 
-    await prisma.ebayUserToken.upsert({
-      where: {
-        userId_ebayUserId: {
-          userId: user.id,
-          ebayUserId: ebayUserId,
-        }
-      },
-      update: {
-        accessToken: tokenData.access_token,
-        refreshToken: tokenData.refresh_token || null,
-        expiresAt: expiresAt,
-        tokenType: tokenData.token_type || 'Bearer',
-        scopes: scopes,
-        status: 'active',
-        lastUsedAt: new Date(),
-        updatedAt: new Date(),
-      },
-      create: {
-        userId: user.id,
-        ebayUserId: ebayUserId,
-        ebayUsername: ebayUsername,
-        accessToken: tokenData.access_token,
-        refreshToken: tokenData.refresh_token || null,
-        expiresAt: expiresAt,
-        tokenType: tokenData.token_type || 'Bearer',
-        scopes: scopes,
-        status: 'active',
-        lastUsedAt: new Date(),
-      },
+    await EbayAccountService.upsertAccount({
+      userId: user.id,
+      ebayUserId: ebayUserId,
+      ebayUsername: ebayUsername,
+      accessToken: tokenData.access_token,
+      refreshToken: tokenData.refresh_token || undefined,
+      expiresAt: expiresAt,
+      tokenType: tokenData.token_type || 'Bearer',
+      scopes: scopes,
+      status: 'active',
     });
 
     const redirectUrl = new URL('/ebay-connections', request.url);
