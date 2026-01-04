@@ -207,6 +207,7 @@ export interface EbayAccount {
   scopes: string[];
   userSelectedScopes: string[];
   status: string;
+  environment: 'sandbox' | 'production';
   friendlyName?: string;
   tags: string[];
   lastUsedAt?: Date;

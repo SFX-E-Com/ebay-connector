@@ -30,7 +30,7 @@ export default function EbayAccountCard({
 }: EbayAccountCardProps) {
   const isActive = account.status === 'active';
   const isExpired = new Date(account.expiresAt) < new Date();
-  const environment = process.env.NEXT_PUBLIC_EBAY_SANDBOX === 'true' ? 'sandbox' : 'production';
+  const environment = account.environment || 'production';
 
   // Determine if this account has ever been connected to eBay
   const hasBeenConnected = account.ebayUserId &&

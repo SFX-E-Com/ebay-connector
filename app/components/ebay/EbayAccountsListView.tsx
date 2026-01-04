@@ -71,9 +71,6 @@ export default function EbayAccountsListView({
 
   const enhancedAccounts = accounts.map(account => ({
     ...account,
-    environment: typeof window !== 'undefined'
-      ? (process.env.NEXT_PUBLIC_EBAY_SANDBOX === 'true' ? 'sandbox' : 'production')
-      : 'production',
     hasExpired: new Date(account.expiresAt) < new Date()
   }));
 

@@ -32,7 +32,7 @@ export default function EbayAccountViewModal({
 
   const isActive = account.status === 'active';
   const isExpired = new Date(account.expiresAt) < new Date();
-  const environment = process.env.NEXT_PUBLIC_EBAY_SANDBOX === 'true' ? 'sandbox' : 'production';
+  const environment = account.environment || 'production';
 
   // Safely parse scopes and tags
   const scopeIds = Array.isArray(account.userSelectedScopes)

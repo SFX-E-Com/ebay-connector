@@ -26,6 +26,7 @@ export interface CreateEbayAccountData {
     scopes?: string[];
     userSelectedScopes?: string[];
     status?: string;
+    environment?: 'sandbox' | 'production';
     friendlyName?: string;
     tags?: string[];
 }
@@ -39,6 +40,7 @@ export interface EbayAccountResponse {
     scopes: string[];
     userSelectedScopes: string[];
     status: string;
+    environment: 'sandbox' | 'production';
     friendlyName: string | null;
     tags: string[];
     lastUsedAt: string | null; // ISO string for JSON serialization
@@ -55,6 +57,7 @@ export interface EbayAccountWithTokens {
     scopes: string[];
     userSelectedScopes: string[];
     status: string;
+    environment: 'sandbox' | 'production';
     friendlyName: string | null;
     tags: string[];
     lastUsedAt: Date | null; // Keep as Date for internal use
@@ -96,6 +99,7 @@ export class EbayAccountService {
             scopes: account.scopes,
             userSelectedScopes: account.userSelectedScopes,
             status: account.status,
+            environment: account.environment,
             friendlyName: account.friendlyName || null,
             tags: account.tags,
             lastUsedAt: account.lastUsedAt || null,
@@ -131,6 +135,7 @@ export class EbayAccountService {
             scopes: account.scopes,
             userSelectedScopes: account.userSelectedScopes,
             status: account.status,
+            environment: account.environment,
             friendlyName: account.friendlyName || null,
             tags: account.tags,
             lastUsedAt: account.lastUsedAt || null,
@@ -140,6 +145,13 @@ export class EbayAccountService {
             refreshToken: account.refreshToken || null,
             userId: account.userId,
         };
+    }
+
+    /**
+     * Determine current environment from env var
+     */
+    private static getCurrentEnvironment(): 'sandbox' | 'production' {
+        return process.env.EBAY_SANDBOX === 'true' ? 'sandbox' : 'production';
     }
 
     /**
@@ -157,6 +169,7 @@ export class EbayAccountService {
             scopes: data.scopes || [],
             userSelectedScopes: data.userSelectedScopes || [],
             status: data.status || 'active',
+            environment: data.environment || this.getCurrentEnvironment(),
             tags: data.tags || [],
             createdAt: new Date(),
             updatedAt: new Date(),
@@ -301,6 +314,7 @@ export class EbayAccountService {
             scopes: account.scopes,
             userSelectedScopes: account.userSelectedScopes,
             status: account.status,
+            environment: account.environment,
             friendlyName: account.friendlyName || null,
             tags: account.tags,
             lastUsedAt: account.lastUsedAt ? account.lastUsedAt.toISOString() : null,
