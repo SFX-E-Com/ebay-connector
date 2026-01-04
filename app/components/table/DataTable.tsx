@@ -1,18 +1,6 @@
 'use client';
 
-import {
-  Box,
-  HStack,
-  VStack,
-  Text,
-  Button,
-  Table,
-  Card,
-  IconButton,
-  Flex,
-  Spinner,
-  Alert
-} from '@chakra-ui/react';
+import { Table, Card, Button, Alert, Spinner } from 'react-bootstrap';
 import {
   MdArrowUpward,
   MdArrowDownward,
@@ -77,84 +65,86 @@ export function DataTable<T = any>({
 
   if (loading) {
     return (
-      <Card.Root>
+      <Card>
         <Card.Body>
-          <Flex minH="200px" align="center" justify="center">
-            <VStack gap={4}>
-              <Spinner size="xl" colorPalette="blue" />
-              <Text color="gray.600">Loading data...</Text>
-            </VStack>
-          </Flex>
+          <div className="d-flex align-items-center justify-content-center" style={{ minHeight: '200px' }}>
+            <div className="d-flex flex-column gap-3 align-items-center">
+              <Spinner animation="border" variant="primary" style={{ width: '3rem', height: '3rem' }} />
+              <p className="text-dark mb-0">Loading data...</p>
+            </div>
+          </div>
         </Card.Body>
-      </Card.Root>
+      </Card>
     );
   }
 
   if (error) {
     return (
-      <Alert.Root status="error">
-        <Alert.Indicator />
-        <Alert.Content>
-          <Alert.Title>Error Loading Data</Alert.Title>
-          <Alert.Description>{error}</Alert.Description>
-        </Alert.Content>
+      <Alert variant="danger" className="d-flex align-items-center justify-content-between">
+        <div>
+          <Alert.Heading className="h6">Error Loading Data</Alert.Heading>
+          <p className="mb-0">{error}</p>
+        </div>
         {onRefresh && (
-          <IconButton
+          <Button
             aria-label="Retry"
             size="sm"
-            variant="ghost"
+            variant="outline-danger"
             onClick={onRefresh}
-            ml={2}
           >
             <MdRefresh />
-          </IconButton>
+          </Button>
         )}
-      </Alert.Root>
+      </Alert>
     );
   }
 
+  const tableSize = size === 'sm' ? 'sm' : size === 'lg' ? undefined : undefined;
+
   return (
-    <Card.Root className={className}>
-      <Table.Root variant="outline" size={size}>
-        <Table.Header>
-          <Table.Row>
+    <Card className={className}>
+      <Table striped bordered hover size={tableSize} responsive>
+        <thead>
+          <tr>
             {columns.map((column) => (
-              <Table.ColumnHeader
+              <th
                 key={column.key}
-                width={column.width}
-                cursor={column.sortable && onSort ? 'pointer' : 'default'}
+                style={{
+                  width: column.width,
+                  cursor: column.sortable && onSort ? 'pointer' : 'default'
+                }}
                 onClick={() => column.sortable && handleSort(column.key)}
-                _hover={column.sortable && onSort ? { bg: 'gray.50' } : {}}
+                className={column.sortable && onSort ? 'user-select-none' : ''}
               >
-                <HStack gap={2} justify="space-between">
-                  <Text>{column.header}</Text>
+                <div className="d-flex gap-2 justify-content-between align-items-center">
+                  <span>{column.header}</span>
                   {column.sortable && getSortIcon(column.key)}
-                </HStack>
-              </Table.ColumnHeader>
+                </div>
+              </th>
             ))}
-          </Table.Row>
-        </Table.Header>
-        <Table.Body>
+          </tr>
+        </thead>
+        <tbody>
           {data.map((item, index) => (
-            <Table.Row key={index}>
+            <tr key={index}>
               {columns.map((column) => (
-                <Table.Cell key={column.key}>
+                <td key={column.key}>
                   {column.render ?
                     column.render(item, index) :
                     String(getNestedValue(item, column.key) || '')
                   }
-                </Table.Cell>
+                </td>
               ))}
-            </Table.Row>
+            </tr>
           ))}
-        </Table.Body>
-      </Table.Root>
+        </tbody>
+      </Table>
 
       {data.length === 0 && (
-        <Box p={8} textAlign="center">
-          <Text color="gray.500">{emptyMessage}</Text>
-        </Box>
+        <div className="p-5 text-center">
+          <p className="text-muted mb-0">{emptyMessage}</p>
+        </div>
       )}
-    </Card.Root>
+    </Card>
   );
 }

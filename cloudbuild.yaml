@@ -1,0 +1,67 @@
+# Cloud Build configuration for GitHub integration
+# Triggers on push to main branch
+
+steps:
+  # Step 1: Build the Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/ebay-connector:$COMMIT_SHA'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/ebay-connector:latest'
+      - '.'
+    timeout: 1200s
+
+  # Step 2: Push the image to Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/ebay-connector:$COMMIT_SHA'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/ebay-connector:latest'
+
+  # Step 3: Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'ebay-connector'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/ebay-connector:$COMMIT_SHA'
+      - '--region'
+      - 'europe-west1'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--memory'
+      - '512Mi'
+      - '--cpu'
+      - '1'
+      - '--timeout'
+      - '300'
+      - '--concurrency'
+      - '80'
+      - '--min-instances'
+      - '0'
+      - '--max-instances'
+      - '10'
+      - '--set-env-vars'
+      - 'NODE_ENV=production,GOOGLE_CLOUD_PROJECT=$PROJECT_ID,FIRESTORE_DATABASE_ID=ebay-connector,NEXT_TELEMETRY_DISABLED=1'
+
+# Build timeout
+timeout: 1800s
+
+# Images to save
+images:
+  - 'gcr.io/$PROJECT_ID/ebay-connector:$COMMIT_SHA'
+  - 'gcr.io/$PROJECT_ID/ebay-connector:latest'
+
+# Options
+options:
+  machineType: 'N1_HIGHCPU_8'
+  logging: CLOUD_LOGGING_ONLY

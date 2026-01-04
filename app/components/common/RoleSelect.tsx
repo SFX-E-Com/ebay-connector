@@ -1,10 +1,6 @@
 'use client';
 
-import {
-  Field,
-  Select,
-  createListCollection,
-} from '@chakra-ui/react';
+import { Form } from 'react-bootstrap';
 
 interface RoleSelectProps {
   value: string;
@@ -51,38 +47,33 @@ export default function RoleSelect({
     return availableRoles;
   };
 
-  const roleCollection = createListCollection({
-    items: getAvailableRoles(),
-  });
+  const availableRoles = getAvailableRoles();
 
   const SelectComponent = (
-    <Select.Root
-      collection={roleCollection}
-      value={[value]}
-      onValueChange={(details) => onChange(details.value[0])}
-      w={width}
+    <Form.Select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      style={{ width: width }}
     >
-      <Select.Trigger>
-        <Select.ValueText placeholder={placeholder} />
-      </Select.Trigger>
-      <Select.Positioner>
-        <Select.Content>
-          {roleCollection.items.map((role) => (
-            <Select.Item key={role.value} item={role}>
-              {role.label}
-            </Select.Item>
-          ))}
-        </Select.Content>
-      </Select.Positioner>
-    </Select.Root>
+      {placeholder && !value && (
+        <option value="" disabled>
+          {placeholder}
+        </option>
+      )}
+      {availableRoles.map((role) => (
+        <option key={role.value} value={role.value}>
+          {role.label}
+        </option>
+      ))}
+    </Form.Select>
   );
 
   if (label) {
     return (
-      <Field.Root>
-        <Field.Label>{label}</Field.Label>
+      <Form.Group>
+        <Form.Label>{label}</Form.Label>
         {SelectComponent}
-      </Field.Root>
+      </Form.Group>
     );
   }
 

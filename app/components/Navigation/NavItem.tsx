@@ -1,13 +1,7 @@
 'use client';
 
 import Link from "next/link";
-import {
-  Link as LinkChakra,
-  Box,
-  Text,
-  Icon,
-} from "@chakra-ui/react";
-import React from "react";
+import React, { useState } from "react";
 import { IconType } from "react-icons";
 import { useRouter } from "next/navigation";
 
@@ -27,7 +21,8 @@ interface NavItemProps {
 
 export const NavItem = ({ item, isActive }: NavItemProps) => {
   const router = useRouter();
-  const { label, icon, path } = item;
+  const { label, icon: IconComponent, path } = item;
+  const [isHovered, setIsHovered] = useState(false);
 
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -40,32 +35,36 @@ export const NavItem = ({ item, isActive }: NavItemProps) => {
     }
   };
 
+  const getBackgroundColor = () => {
+    if (isActive) return '#ffc9a3';
+    if (isHovered) return '#f8f9fa';
+    return 'transparent';
+  };
+
+  const getTextColor = () => {
+    if (isActive) return '#ff6b35';
+    if (isHovered) return '#343a40';
+    return '#6c757d';
+  };
+
   return (
-    <Box w="full">
-      <LinkChakra
-        as={Link}
+    <div className="w-100">
+      <Link
         href={path}
         onClick={handleClick}
-        display="flex"
-        alignItems="center"
-        gap={3}
-        p={3}
-        borderRadius="lg"
-        transition="all 0.2s"
-        textDecoration="none"
-        bg={isActive ? "orange.300" : "transparent"}
-        color={isActive ? "orange.600" : "gray.600"}
-        _hover={{
-          textDecoration: "none",
-          bg: isActive ? "orange.300" : "gray.50",
-          color: isActive ? "orange.600" : "gray.800",
+        className="d-flex align-items-center gap-3 p-3 rounded text-decoration-none small"
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        style={{
+          backgroundColor: getBackgroundColor(),
+          color: getTextColor(),
+          fontWeight: isActive ? 600 : 500,
+          transition: 'all 0.2s',
         }}
-        fontWeight={isActive ? "semibold" : "medium"}
-        fontSize="sm"
       >
-        <Icon as={icon} boxSize={5} />
-        <Text>{label}</Text>
-      </LinkChakra>
-    </Box>
+        <IconComponent size={20} />
+        <span>{label}</span>
+      </Link>
+    </div>
   );
 };

@@ -2,23 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  Box,
-  VStack,
-  HStack,
-  Heading,
-  Text,
-  Button,
-  Table,
-  Badge,
-  IconButton,
-  Alert,
-  Spinner,
-  Flex,
-  Input,
-  Field,
-  Card,
-} from '@chakra-ui/react';
+import { Button, Table, Badge, Alert, Spinner, Form, Card } from 'react-bootstrap';
 import {
   MdAdd,
   MdEdit,
@@ -245,82 +229,68 @@ export default function UsersPage() {
 
   if (loading) {
     return (
-      <Flex minH="400px" align="center" justify="center">
-        <VStack gap={4}>
-          <Spinner size="xl" colorPalette="blue" />
-          <Text>Loading users...</Text>
-        </VStack>
-      </Flex>
+      <div className="d-flex align-items-center justify-content-center" style={{ minHeight: '400px' }}>
+        <div className="d-flex flex-column gap-3 align-items-center">
+          <Spinner animation="border" variant="primary" style={{ width: '3rem', height: '3rem' }} />
+          <p className="mb-0">Loading users...</p>
+        </div>
+      </div>
     );
   }
 
   return (
-    <Box p={8}>
-      <VStack gap={6} align="stretch">
+    <div className="p-4 p-md-5">
+      <div className="d-flex flex-column gap-4">
         {/* Header */}
-        <HStack justify="space-between" align="center">
-          <VStack align="start" gap={1}>
-            <Heading size="xl" color="gray.800">User Management</Heading>
-            <Text color="gray.600">Manage system users and their permissions</Text>
-          </VStack>
-          <HStack gap={3}>
-            <IconButton
+        <div className="d-flex justify-content-between align-items-center">
+          <div className="d-flex flex-column gap-1">
+            <h1 className="display-6 fw-bold text-dark mb-0">User Management</h1>
+            <p className="text-muted mb-0">Manage system users and their permissions</p>
+          </div>
+          <div className="d-flex gap-2">
+            <Button
               aria-label="Refresh"
-              variant="ghost"
+              variant="outline-secondary"
+              size="sm"
               onClick={fetchUsers}
             >
               <MdRefresh />
-            </IconButton>
+            </Button>
             {canCreateUser() && (
               <Button
-                colorPalette="orange"
+                variant="primary"
                 onClick={openCreateModal}
               >
                 <MdAdd style={{ marginRight: '8px' }} />
                 Add User
               </Button>
             )}
-          </HStack>
-        </HStack>
+          </div>
+        </div>
 
         {/* Error Alert */}
         {error && (
-          <Alert.Root status="error" borderRadius="md">
-            <Alert.Indicator />
-            <Alert.Content>
-              <Alert.Description>{error}</Alert.Description>
-            </Alert.Content>
-            <IconButton
-              aria-label="Close"
-              size="sm"
-              variant="ghost"
-              position="absolute"
-              top={2}
-              right={2}
-              onClick={() => setError('')}
-            >
-              ×
-            </IconButton>
-          </Alert.Root>
+          <Alert variant="danger" dismissible onClose={() => setError('')}>
+            {error}
+          </Alert>
         )}
 
         {/* Search and Stats */}
-        <Card.Root>
-          <Card.Body p={6}>
-            <HStack justify="space-between" align="center">
-              <HStack gap={4}>
-                <Box position="relative">
-                  <Input
+        <Card>
+          <Card.Body className="p-4">
+            <div className="d-flex justify-content-between align-items-center">
+              <div className="d-flex gap-3">
+                <div className="position-relative">
+                  <Form.Control
                     placeholder="Search users..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    pl={10}
-                    w="300px"
+                    style={{ paddingLeft: '2.5rem', width: '300px' }}
                   />
-                  <Box position="absolute" left={3} top="50%" transform="translateY(-50%)">
-                    <MdSearch color="gray.400" />
-                  </Box>
-                </Box>
+                  <div className="position-absolute top-50 translate-middle-y" style={{ left: '0.75rem' }}>
+                    <MdSearch color="#6c757d" />
+                  </div>
+                </div>
                 <RoleSelect
                   value={roleFilter}
                   onChange={setRoleFilter}
@@ -328,91 +298,90 @@ export default function UsersPage() {
                   includeAllOption={true}
                   width="200px"
                 />
-              </HStack>
-              <Text color="gray.600" fontSize="sm">
+              </div>
+              <p className="text-muted small mb-0">
                 {filteredUsers.length} of {users.length} users
-              </Text>
-            </HStack>
+              </p>
+            </div>
           </Card.Body>
-        </Card.Root>
+        </Card>
 
         {/* Users Table */}
-        <Card.Root>
-          <Table.Root variant="outline">
-            <Table.Header>
-              <Table.Row>
-                <Table.ColumnHeader>User</Table.ColumnHeader>
-                <Table.ColumnHeader>Role</Table.ColumnHeader>
-                <Table.ColumnHeader>Created</Table.ColumnHeader>
-                <Table.ColumnHeader w="120px">Actions</Table.ColumnHeader>
-              </Table.Row>
-            </Table.Header>
-            <Table.Body>
+        <Card>
+          <Table striped bordered hover responsive>
+            <thead>
+              <tr>
+                <th>User</th>
+                <th>Role</th>
+                <th>Created</th>
+                <th style={{ width: '120px' }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
               {filteredUsers.map((user) => (
-                <Table.Row key={user.id}>
-                  <Table.Cell>
-                    <VStack align="start" gap={1}>
-                      <Text fontWeight="medium" color="gray.900">
+                <tr key={user.id}>
+                  <td>
+                    <div className="d-flex flex-column gap-1">
+                      <span className="fw-medium text-dark">
                         {user.name || 'Unnamed User'}
-                      </Text>
-                      <Text fontSize="sm" color="gray.600">
+                      </span>
+                      <span className="small text-muted">
                         {user.email}
-                      </Text>
-                    </VStack>
-                  </Table.Cell>
-                  <Table.Cell>
-                    <Badge colorPalette={getRoleBadgeColor(user.role)} size="sm">
+                      </span>
+                    </div>
+                  </td>
+                  <td>
+                    <Badge bg={getRoleBadgeColor(user.role)} className="small">
                       {user.role.replace('_', ' ')}
                     </Badge>
-                  </Table.Cell>
-                  <Table.Cell>
-                    <Text fontSize="sm" color="gray.600">
+                  </td>
+                  <td>
+                    <span className="small text-muted">
                       {new Date(user.createdAt).toLocaleDateString()}
-                    </Text>
-                  </Table.Cell>
-                  <Table.Cell>
-                    <HStack gap={1}>
+                    </span>
+                  </td>
+                  <td>
+                    <div className="d-flex gap-1">
                       {canEditUser(user) && (
-                        <IconButton
+                        <Button
                           aria-label="Edit user"
                           size="sm"
-                          variant="ghost"
+                          variant="outline-secondary"
                           onClick={() => openEditModal(user)}
                         >
                           <MdEdit />
-                        </IconButton>
+                        </Button>
                       )}
                       {canDeleteUser(user) && (
-                        <IconButton
+                        <Button
                           aria-label="Delete user"
                           size="sm"
-                          variant="ghost"
-                          colorPalette="red"
+                          variant="outline-danger"
                           onClick={() => openDeleteDialog(user)}
                         >
                           <MdDelete />
-                        </IconButton>
+                        </Button>
                       )}
                       {!canEditUser(user) && !canDeleteUser(user) && (
-                        <Text fontSize="sm" color="gray.400">
+                        <span className="small text-muted">
                           No actions
-                        </Text>
+                        </span>
                       )}
-                    </HStack>
-                  </Table.Cell>
-                </Table.Row>
+                    </div>
+                  </td>
+                </tr>
               ))}
-            </Table.Body>
-          </Table.Root>
+            </tbody>
+          </Table>
 
           {filteredUsers.length === 0 && (
-            <Box p={8} textAlign="center">
-              <Text color="gray.500">
+            <div className="p-5 text-center">
+              <p className="text-muted mb-0">
                 {searchTerm ? 'No users found matching your search.' : 'No users found.'}
-              </Text>
-            </Box>
+              </p>
+            </div>
           )}
-        </Card.Root>
+        </Card>
 
         {/* User Modal */}
         <UserModal
@@ -433,7 +402,7 @@ export default function UsersPage() {
           itemType="user"
           isDeleting={isDeleting}
         />
-      </VStack>
-    </Box>
+      </div>
+    </div>
   );
 }

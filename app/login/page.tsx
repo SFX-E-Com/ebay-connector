@@ -2,20 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  Box,
-  VStack,
-  HStack,
-  Heading,
-  Text,
-  Field,
-  Input,
-  Button,
-  Alert,
-  Card,
-  Flex,
-  Icon,
-} from '@chakra-ui/react';
+import { Form, Button, Alert, Card, Spinner } from 'react-bootstrap';
 import { FiLogIn, FiShield } from 'react-icons/fi';
 import axios from 'axios';
 
@@ -69,52 +56,40 @@ export default function LoginPage() {
   };
 
   return (
-    <Flex
-      minH="100vh"
-      align="center"
-      justify="center"
-      bg={{ base: "gray.50", _dark: "gray.900" }}
-      px={4}
-    >
-      <Box maxW="md" w="full">
-        <Card.Root shadow="xl" borderRadius="xl" bg={{ base: "white", _dark: "gray.800" }}>
-          <Card.Body p={8}>
-            <VStack gap={6} align="stretch">
+    <div className="min-vh-100 d-flex align-items-center justify-content-center bg-light px-3">
+      <div style={{ maxWidth: '28rem', width: '100%' }}>
+        <Card className="shadow-lg rounded-4">
+          <Card.Body className="p-4 p-md-5">
+            <div className="d-flex flex-column gap-4">
               {/* Header */}
-              <VStack gap={2} textAlign="center">
-                <Box
-                  p={3}
-                  rounded="full"
-                  bg={{ base: "orange.100", _dark: "rgba(237, 137, 54, 0.2)" }}
-                  color="orange.500"
-                  display="inline-flex"
+              <div className="d-flex flex-column gap-2 text-center">
+                <div
+                  className="rounded-circle bg-primary bg-opacity-10 text-primary d-inline-flex align-items-center justify-content-center mx-auto"
+                  style={{ width: '3.5rem', height: '3.5rem' }}
                 >
-                  <Icon as={FiShield} boxSize={6} />
-                </Box>
-                <Heading color={{ base: "navy.800", _dark: "white" }} size="lg">
+                  <FiShield size={24} />
+                </div>
+                <h2 className="fw-bold text-dark mb-0">
                   eBay Connector
-                </Heading>
-                <Text color="gray.500">
+                </h2>
+                <p className="text-muted mb-0">
                   Admin Portal
-                </Text>
-              </VStack>
+                </p>
+              </div>
 
               {/* Error Alert */}
               {error && (
-                <Alert.Root status="error" borderRadius="md">
-                  <Alert.Indicator />
-                  <Alert.Content>
-                    <Alert.Description>{error}</Alert.Description>
-                  </Alert.Content>
-                </Alert.Root>
+                <Alert variant="danger" className="mb-0">
+                  {error}
+                </Alert>
               )}
 
               {/* Login Form */}
-              <Box as="form" onSubmit={handleSubmit}>
-                <VStack gap={4}>
-                  <Field.Root required>
-                    <Field.Label color={{ base: "gray.700", _dark: "gray.300" }}>Email Address</Field.Label>
-                    <Input
+              <Form onSubmit={handleSubmit}>
+                <div className="d-flex flex-column gap-3">
+                  <Form.Group>
+                    <Form.Label className="text-dark">Email Address</Form.Label>
+                    <Form.Control
                       type="email"
                       name="email"
                       value={credentials.email}
@@ -122,14 +97,13 @@ export default function LoginPage() {
                       autoComplete="off"
                       disabled={isLoading}
                       size="lg"
-                      bg={{ base: "white", _dark: "gray.700" }}
-                      borderColor={{ base: "gray.200", _dark: "gray.600" }}
+                      required
                     />
-                  </Field.Root>
+                  </Form.Group>
 
-                  <Field.Root required>
-                    <Field.Label color={{ base: "gray.700", _dark: "gray.300" }}>Password</Field.Label>
-                    <Input
+                  <Form.Group>
+                    <Form.Label className="text-dark">Password</Form.Label>
+                    <Form.Control
                       type="password"
                       name="password"
                       value={credentials.password}
@@ -137,36 +111,50 @@ export default function LoginPage() {
                       autoComplete="current-password"
                       disabled={isLoading}
                       size="lg"
-                      bg={{ base: "white", _dark: "gray.700" }}
-                      borderColor={{ base: "gray.200", _dark: "gray.600" }}
+                      required
                     />
-                  </Field.Root>
+                  </Form.Group>
 
                   <Button
                     type="submit"
-                    colorPalette="orange"
+                    variant="primary"
                     size="lg"
-                    w="full"
-                    loading={isLoading}
-                    loadingText="Signing In..."
+                    className="w-100"
+                    disabled={isLoading}
                   >
-                    <FiLogIn size={16} style={{ marginRight: '8px' }} />
-                    Sign In
+                    {isLoading ? (
+                      <>
+                        <Spinner
+                          as="span"
+                          animation="border"
+                          size="sm"
+                          role="status"
+                          aria-hidden="true"
+                          className="me-2"
+                        />
+                        Signing In...
+                      </>
+                    ) : (
+                      <>
+                        <FiLogIn size={16} style={{ marginRight: '8px' }} />
+                        Sign In
+                      </>
+                    )}
                   </Button>
-                </VStack>
-              </Box>
+                </div>
+              </Form>
 
               {/* Footer */}
-              <HStack gap={2} justify="center" pt={4}>
-                <Icon as={FiShield} color="green.500" />
-                <Text fontSize="sm" color="gray.500">
+              <div className="d-flex gap-2 justify-content-center pt-3">
+                <FiShield className="text-success" />
+                <p className="small text-muted mb-0">
                   Secure authentication with HTTP-only cookies
-                </Text>
-              </HStack>
-            </VStack>
+                </p>
+              </div>
+            </div>
           </Card.Body>
-        </Card.Root>
-      </Box>
-    </Flex>
+        </Card>
+      </div>
+    </div>
   );
 }

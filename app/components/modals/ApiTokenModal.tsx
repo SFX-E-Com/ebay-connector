@@ -1,19 +1,6 @@
 "use client";
 
-import {
-    Dialog,
-    Field,
-    Input,
-    Button,
-    VStack,
-    HStack,
-    Grid,
-    GridItem,
-    Heading,
-    Text,
-    Box,
-    Checkbox,
-} from "@chakra-ui/react";
+import { Modal, Button, Form, Row, Col, Spinner, Alert } from "react-bootstrap";
 import { useState, useEffect } from "react";
 import { AVAILABLE_ENDPOINTS, DEFAULT_ENDPOINTS } from "@/app/lib/config/endpoints";
 
@@ -192,194 +179,187 @@ export default function ApiTokenModal({
         });
     };
 
-    const handleRateLimitChange = (details: { valueAsString: string; valueAsNumber: number }) => {
+    const handleRateLimitChange = (value: string) => {
         setFormData({
             ...formData,
             permissions: {
                 ...formData.permissions,
-                rateLimit: details.valueAsNumber || 1000,
+                rateLimit: parseInt(value) || 1000,
             },
         });
     };
 
     return (
-        <Dialog.Root open={isOpen} onOpenChange={() => handleClose()}>
-            <Dialog.Backdrop />
-            <Dialog.Positioner>
-                <Dialog.Content maxW="8/12" p={6}>
-                    <Dialog.Header>
-                        <Dialog.Title fontSize="xl" fontWeight="bold">
-                            {isEditing ? "Edit API Token" : "Create New API Token"}
-                        </Dialog.Title>
-                    </Dialog.Header>
+        <Modal show={isOpen} onHide={handleClose} size="lg" scrollable>
+            <Modal.Header closeButton>
+                <Modal.Title className="fs-5 fw-bold">
+                    {isEditing ? "Edit API Token" : "Create New API Token"}
+                </Modal.Title>
+            </Modal.Header>
 
-                    <Dialog.Body>
-                        <form onSubmit={handleSubmit}>
-                            <VStack gap={6} align="stretch">
-                                {/* Basic Information Section */}
-                                <VStack align="stretch" gap={4}>
-                                    <Heading size="md" color="gray.700">
-                                        Basic Information
-                                    </Heading>
+            <Modal.Body>
+                <Form onSubmit={handleSubmit}>
+                    <div className="d-flex flex-column gap-4">
+                        {/* Basic Information Section */}
+                        <div className="d-flex flex-column gap-3">
+                            <h5 className="text-dark mb-0">
+                                Basic Information
+                            </h5>
 
-                                    <Grid templateColumns="repeat(2, 1fr)" gap={4}>
-                                        <GridItem colSpan={2}>
-                                            <Field.Root invalid={!!errors.name}>
-                                                <Field.Label>Token Name</Field.Label>
-                                                <Input
-                                                    value={formData.name}
-                                                    onChange={(e) =>
-                                                        setFormData({
-                                                            ...formData,
-                                                            name: e.target.value,
-                                                        })
-                                                    }
-                                                    placeholder="Enter a descriptive name for this token"
-                                                />
-                                                {errors.name && (
-                                                    <Field.ErrorText>
-                                                        {errors.name}
-                                                    </Field.ErrorText>
-                                                )}
-                                                <Field.HelperText>
-                                                    Choose a name that helps you identify where this token is used
-                                                </Field.HelperText>
-                                            </Field.Root>
-                                        </GridItem>
+                            <Row>
+                                <Col md={12}>
+                                    <Form.Group className="mb-3">
+                                        <Form.Label>Token Name</Form.Label>
+                                        <Form.Control
+                                            type="text"
+                                            value={formData.name}
+                                            onChange={(e) =>
+                                                setFormData({
+                                                    ...formData,
+                                                    name: e.target.value,
+                                                })
+                                            }
+                                            placeholder="Enter a descriptive name for this token"
+                                            isInvalid={!!errors.name}
+                                        />
+                                        <Form.Control.Feedback type="invalid">
+                                            {errors.name}
+                                        </Form.Control.Feedback>
+                                        <Form.Text className="text-muted">
+                                            Choose a name that helps you identify where this token is used
+                                        </Form.Text>
+                                    </Form.Group>
+                                </Col>
 
-                                        <GridItem>
-                                            <Field.Root invalid={!!errors.expiresAt}>
-                                                <Field.Label>Expiration Date (Optional)</Field.Label>
-                                                <Input
-                                                    type="date"
-                                                    value={formData.expiresAt}
-                                                    onChange={(e) =>
-                                                        setFormData({
-                                                            ...formData,
-                                                            expiresAt: e.target.value,
-                                                        })
-                                                    }
-                                                />
-                                                {errors.expiresAt && (
-                                                    <Field.ErrorText>
-                                                        {errors.expiresAt}
-                                                    </Field.ErrorText>
-                                                )}
-                                                <Field.HelperText>
-                                                    Leave blank for no expiration
-                                                </Field.HelperText>
-                                            </Field.Root>
-                                        </GridItem>
+                                <Col md={6}>
+                                    <Form.Group className="mb-3">
+                                        <Form.Label>Expiration Date (Optional)</Form.Label>
+                                        <Form.Control
+                                            type="date"
+                                            value={formData.expiresAt}
+                                            onChange={(e) =>
+                                                setFormData({
+                                                    ...formData,
+                                                    expiresAt: e.target.value,
+                                                })
+                                            }
+                                            isInvalid={!!errors.expiresAt}
+                                        />
+                                        <Form.Control.Feedback type="invalid">
+                                            {errors.expiresAt}
+                                        </Form.Control.Feedback>
+                                        <Form.Text className="text-muted">
+                                            Leave blank for no expiration
+                                        </Form.Text>
+                                    </Form.Group>
+                                </Col>
 
-                                        <GridItem>
-                                            <Field.Root invalid={!!errors.rateLimit}>
-                                                <Field.Label>Rate Limit (requests/hour)</Field.Label>
-                                                <Input
-                                                    type="number"
-                                                    value={formData.permissions?.rateLimit?.toString() || "1000"}
-                                                    onChange={(e) => handleRateLimitChange({ valueAsString: e.target.value, valueAsNumber: parseInt(e.target.value) || 1000 })}
-                                                    min={1}
-                                                    max={10000}
-                                                    placeholder="1000"
-                                                />
-                                                {errors.rateLimit && (
-                                                    <Field.ErrorText>
-                                                        {errors.rateLimit}
-                                                    </Field.ErrorText>
-                                                )}
-                                                <Field.HelperText>
-                                                    Maximum API requests per hour
-                                                </Field.HelperText>
-                                            </Field.Root>
-                                        </GridItem>
-                                    </Grid>
-                                </VStack>
+                                <Col md={6}>
+                                    <Form.Group className="mb-3">
+                                        <Form.Label>Rate Limit (requests/hour)</Form.Label>
+                                        <Form.Control
+                                            type="number"
+                                            value={formData.permissions?.rateLimit?.toString() || "1000"}
+                                            onChange={(e) => handleRateLimitChange(e.target.value)}
+                                            min={1}
+                                            max={10000}
+                                            placeholder="1000"
+                                            isInvalid={!!errors.rateLimit}
+                                        />
+                                        <Form.Control.Feedback type="invalid">
+                                            {errors.rateLimit}
+                                        </Form.Control.Feedback>
+                                        <Form.Text className="text-muted">
+                                            Maximum API requests per hour
+                                        </Form.Text>
+                                    </Form.Group>
+                                </Col>
+                            </Row>
+                        </div>
 
-                                {/* Permissions Section */}
-                                <VStack align="stretch" gap={4}>
-                                    <Heading size="md" color="gray.700">
-                                        API Permissions
-                                    </Heading>
+                        {/* Permissions Section */}
+                        <div className="d-flex flex-column gap-3">
+                            <h5 className="text-dark mb-0">
+                                API Permissions
+                            </h5>
 
-                                    <Box>
-                                        <Text fontSize="sm" color="gray.600" mb={3}>
-                                            Select which API endpoints this token can access:
-                                        </Text>
-                                        <Grid templateColumns="repeat(2, 1fr)" gap={3}>
-                                            {AVAILABLE_ENDPOINTS.map((endpoint) => (
-                                                <GridItem key={endpoint.id}>
-                                                    <Checkbox.Root
-                                                        checked={formData.permissions?.endpoints?.includes(endpoint.id) || false}
-                                                        onCheckedChange={(details) => handleEndpointChange(endpoint.id, !!details.checked)}
-                                                    >
-                                                        <Checkbox.HiddenInput />
-                                                        <Checkbox.Control />
-                                                        <Checkbox.Label>
-                                                            <VStack align="start" gap={0}>
-                                                                <Text fontSize="sm" fontWeight="medium">
-                                                                    {endpoint.name}
-                                                                </Text>
-                                                                <Text fontSize="xs" color="gray.500">
-                                                                    {endpoint.description}
-                                                                </Text>
-                                                                <Text fontSize="xs" color="orange.500" fontWeight="medium">
-                                                                    {endpoint.id}
-                                                                </Text>
-                                                            </VStack>
-                                                        </Checkbox.Label>
-                                                    </Checkbox.Root>
-                                                </GridItem>
-                                            ))}
-                                        </Grid>
-                                        <Text fontSize="xs" color="gray.500" mt={2}>
-                                            Token will only be able to access the selected API endpoints
-                                        </Text>
-                                    </Box>
-                                </VStack>
+                            <div>
+                                <p className="small text-secondary mb-3">
+                                    Select which API endpoints this token can access:
+                                </p>
+                                <Row>
+                                    {AVAILABLE_ENDPOINTS.map((endpoint) => (
+                                        <Col md={6} key={endpoint.id} className="mb-3">
+                                            <Form.Check
+                                                type="checkbox"
+                                                id={`endpoint-${endpoint.id}`}
+                                                checked={formData.permissions?.endpoints?.includes(endpoint.id) || false}
+                                                onChange={(e) => handleEndpointChange(endpoint.id, e.target.checked)}
+                                                label={
+                                                    <div className="d-flex flex-column">
+                                                        <span className="small fw-medium text-dark">
+                                                            {endpoint.name}
+                                                        </span>
+                                                        <span className="small text-secondary">
+                                                            {endpoint.description}
+                                                        </span>
+                                                        <span className="small text-primary fw-medium">
+                                                            {endpoint.id}
+                                                        </span>
+                                                    </div>
+                                                }
+                                            />
+                                        </Col>
+                                    ))}
+                                </Row>
+                                <p className="small text-secondary mt-2">
+                                    Token will only be able to access the selected API endpoints
+                                </p>
+                            </div>
+                        </div>
 
-                                {!isEditing && (
-                                    <Box
-                                        p={4}
-                                        bg="orange.50"
-                                        borderRadius="md"
-                                        borderLeft="4px solid"
-                                        borderLeftColor="orange.400"
-                                    >
-                                        <Text fontSize="sm" color="orange.800" fontWeight="medium">
-                                            🔒 Security Notice
-                                        </Text>
-                                        <Text fontSize="sm" color="orange.700" mt={1}>
-                                            Your token will be shown only once after creation. Make sure to copy and store it securely.
-                                        </Text>
-                                    </Box>
-                                )}
-                            </VStack>
-                        </form>
-                    </Dialog.Body>
+                        {!isEditing && (
+                            <Alert variant="warning" className="border-start border-4 border-warning">
+                                <Alert.Heading className="h6">Security Notice</Alert.Heading>
+                                <p className="small mb-0">
+                                    Your token will be shown only once after creation. Make sure to copy and store it securely.
+                                </p>
+                            </Alert>
+                        )}
+                    </div>
+                </Form>
+            </Modal.Body>
 
-                    <Dialog.Footer>
-                        <HStack gap={3} justify="flex-end" w="full">
-                            <Button
-                                variant="ghost"
-                                onClick={handleClose}
-                                disabled={isSubmitting}
-                            >
-                                Cancel
-                            </Button>
-                            <Button
-                                colorPalette="orange"
-                                onClick={handleSubmit}
-                                loading={isSubmitting}
-                                loadingText={
-                                    isEditing ? "Updating..." : "Creating..."
-                                }
-                            >
-                                {isEditing ? "Update Token" : "Create Token"}
-                            </Button>
-                        </HStack>
-                    </Dialog.Footer>
-                </Dialog.Content>
-            </Dialog.Positioner>
-        </Dialog.Root>
+            <Modal.Footer>
+                <div className="d-flex gap-3 justify-content-end w-100">
+                    <Button
+                        variant="secondary"
+                        onClick={handleClose}
+                        disabled={isSubmitting}
+                    >
+                        Cancel
+                    </Button>
+                    <Button
+                        variant="primary"
+                        onClick={handleSubmit}
+                        disabled={isSubmitting}
+                    >
+                        {isSubmitting && (
+                            <Spinner
+                                as="span"
+                                animation="border"
+                                size="sm"
+                                role="status"
+                                aria-hidden="true"
+                                className="me-2"
+                            />
+                        )}
+                        {isSubmitting
+                            ? (isEditing ? "Updating..." : "Creating...")
+                            : (isEditing ? "Update Token" : "Create Token")}
+                    </Button>
+                </div>
+            </Modal.Footer>
+        </Modal>
     );
 }

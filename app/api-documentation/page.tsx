@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect } from 'react';
-import { Box } from '@chakra-ui/react';
 
 export default function APIDocumentationPage() {
   useEffect(() => {
@@ -44,16 +43,23 @@ export default function APIDocumentationPage() {
             showCommonExtensions: true,
             customCss: `
               .topbar { display: none }
-              .swagger-ui { filter: invert(0.88) hue-rotate(180deg); }
               .swagger-ui .info { margin: 20px 0 }
-              .swagger-ui .info .title { font-size: 2em }
-              .swagger-ui .opblock-tag { font-size: 1.2em }
-              
-              /* Fix images/logos inversion */
-              .swagger-ui img { filter: invert(1) hue-rotate(180deg); }
-              
-              /* Adjust specific colors after inversion if needed */
-              .swagger-ui .scheme-container { background: transparent; box-shadow: none; }
+              .swagger-ui .info .title { font-size: 2em; color: #1a202c; font-weight: 700; }
+              .swagger-ui .info .description { color: #2d3748; font-size: 1.1em; line-height: 1.6; }
+              .swagger-ui .opblock-tag { font-size: 1.2em; color: #1a202c; }
+              .swagger-ui .opblock .opblock-summary-description { color: #2d3748; }
+              .swagger-ui .opblock .opblock-summary-path { color: #1a202c; font-weight: 600; }
+              .swagger-ui .parameter__name { color: #1a202c; font-weight: 600; }
+              .swagger-ui .parameter__type { color: #2d3748; }
+              .swagger-ui .prop-type { color: #2d3748; }
+              .swagger-ui .prop-format { color: #4a5568; }
+              .swagger-ui .renderedMarkdown p { color: #2d3748; }
+              .swagger-ui .response-col_description { color: #2d3748; }
+              .swagger-ui table thead tr th { color: #1a202c; font-weight: 600; }
+              .swagger-ui table tbody tr td { color: #2d3748; }
+              .swagger-ui .scheme-container { background: #f7fafc; box-shadow: none; }
+              .swagger-ui .model-title { color: #1a202c; font-weight: 600; }
+              .swagger-ui .model-title code { color: #2d3748; }
             `
           });
         }
@@ -74,12 +80,9 @@ export default function APIDocumentationPage() {
   }, []);
 
   return (
-    <Box
+    <div
       id="swagger-ui"
-      bg={{ base: "white", _dark: "gray.900" }}
-      borderRadius="xl"
-      minH="100%"
-      p={4}
+      className="bg-white rounded-4 min-vh-100 p-3 p-md-4"
     />
   );
 }

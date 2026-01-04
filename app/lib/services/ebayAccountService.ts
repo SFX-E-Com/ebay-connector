@@ -34,19 +34,32 @@ export interface EbayAccountResponse {
     id: string;
     ebayUserId: string;
     ebayUsername: string | null;
-    expiresAt: Date;
+    expiresAt: string; // ISO string for JSON serialization
     tokenType: string;
     scopes: string[];
     userSelectedScopes: string[];
     status: string;
     friendlyName: string | null;
     tags: string[];
-    lastUsedAt: Date | null;
-    createdAt: Date;
-    updatedAt: Date;
+    lastUsedAt: string | null; // ISO string for JSON serialization
+    createdAt: string; // ISO string for JSON serialization
+    updatedAt: string; // ISO string for JSON serialization
 }
 
-export interface EbayAccountWithTokens extends EbayAccountResponse {
+export interface EbayAccountWithTokens {
+    id: string;
+    ebayUserId: string;
+    ebayUsername: string | null;
+    expiresAt: Date; // Keep as Date for internal use
+    tokenType: string;
+    scopes: string[];
+    userSelectedScopes: string[];
+    status: string;
+    friendlyName: string | null;
+    tags: string[];
+    lastUsedAt: Date | null; // Keep as Date for internal use
+    createdAt: Date; // Keep as Date for internal use
+    updatedAt: Date; // Keep as Date for internal use
     accessToken: string;
     refreshToken: string | null;
     userId: string;
@@ -75,7 +88,19 @@ export class EbayAccountService {
         if (!account) return null;
 
         return {
-            ...this.mapToResponse(account),
+            id: account.id,
+            ebayUserId: account.ebayUserId,
+            ebayUsername: account.ebayUsername || null,
+            expiresAt: account.expiresAt, // Keep as Date
+            tokenType: account.tokenType,
+            scopes: account.scopes,
+            userSelectedScopes: account.userSelectedScopes,
+            status: account.status,
+            friendlyName: account.friendlyName || null,
+            tags: account.tags,
+            lastUsedAt: account.lastUsedAt || null,
+            createdAt: account.createdAt,
+            updatedAt: account.updatedAt,
             accessToken: account.accessToken,
             refreshToken: account.refreshToken || null,
             userId: account.userId,
@@ -98,7 +123,19 @@ export class EbayAccountService {
 
         const account = accounts[0];
         return {
-            ...this.mapToResponse(account),
+            id: account.id,
+            ebayUserId: account.ebayUserId,
+            ebayUsername: account.ebayUsername || null,
+            expiresAt: account.expiresAt, // Keep as Date
+            tokenType: account.tokenType,
+            scopes: account.scopes,
+            userSelectedScopes: account.userSelectedScopes,
+            status: account.status,
+            friendlyName: account.friendlyName || null,
+            tags: account.tags,
+            lastUsedAt: account.lastUsedAt || null,
+            createdAt: account.createdAt,
+            updatedAt: account.updatedAt,
             accessToken: account.accessToken,
             refreshToken: account.refreshToken || null,
             userId: account.userId,
@@ -109,23 +146,34 @@ export class EbayAccountService {
      * Create a new eBay account connection
      */
     static async createAccount(data: CreateEbayAccountData): Promise<EbayAccountResponse> {
-        const account = await createDoc<EbayAccount>(Collections.EBAY_ACCOUNTS, {
+        // Filter out undefined values for Firestore compatibility
+        const accountData: any = {
             id: generateId(),
             userId: data.userId,
             ebayUserId: data.ebayUserId,
-            ebayUsername: data.ebayUsername,
             accessToken: data.accessToken,
-            refreshToken: data.refreshToken,
             expiresAt: data.expiresAt,
             tokenType: data.tokenType || 'Bearer',
             scopes: data.scopes || [],
             userSelectedScopes: data.userSelectedScopes || [],
             status: data.status || 'active',
-            friendlyName: data.friendlyName,
             tags: data.tags || [],
             createdAt: new Date(),
             updatedAt: new Date(),
-        });
+        };
+
+        // Only include optional fields if they have values
+        if (data.ebayUsername !== undefined) {
+            accountData.ebayUsername = data.ebayUsername;
+        }
+        if (data.refreshToken !== undefined) {
+            accountData.refreshToken = data.refreshToken;
+        }
+        if (data.friendlyName !== undefined) {
+            accountData.friendlyName = data.friendlyName;
+        }
+
+        const account = await createDoc<EbayAccount>(Collections.EBAY_ACCOUNTS, accountData);
 
         return this.mapToResponse(account);
     }
@@ -137,19 +185,29 @@ export class EbayAccountService {
         const existing = await this.getAccountByEbayUserId(data.userId, data.ebayUserId);
 
         if (existing) {
-            // Update existing account
-            await updateDoc<EbayAccount>(Collections.EBAY_ACCOUNTS, existing.id, {
-                ebayUsername: data.ebayUsername,
+            // Filter out undefined values for Firestore compatibility
+            const updateData: any = {
                 accessToken: data.accessToken,
-                refreshToken: data.refreshToken,
                 expiresAt: data.expiresAt,
                 tokenType: data.tokenType || 'Bearer',
                 scopes: data.scopes || [],
                 userSelectedScopes: data.userSelectedScopes || [],
                 status: data.status || 'active',
-                friendlyName: data.friendlyName,
                 tags: data.tags || [],
-            });
+            };
+
+            // Only include optional fields if they have values
+            if (data.ebayUsername !== undefined) {
+                updateData.ebayUsername = data.ebayUsername;
+            }
+            if (data.refreshToken !== undefined) {
+                updateData.refreshToken = data.refreshToken;
+            }
+            if (data.friendlyName !== undefined) {
+                updateData.friendlyName = data.friendlyName;
+            }
+
+            await updateDoc<EbayAccount>(Collections.EBAY_ACCOUNTS, existing.id, updateData);
 
             const updated = await getDoc<EbayAccount>(Collections.EBAY_ACCOUNTS, existing.id);
             return this.mapToResponse(updated!);
@@ -238,16 +296,16 @@ export class EbayAccountService {
             id: account.id,
             ebayUserId: account.ebayUserId,
             ebayUsername: account.ebayUsername || null,
-            expiresAt: account.expiresAt,
+            expiresAt: account.expiresAt.toISOString(),
             tokenType: account.tokenType,
             scopes: account.scopes,
             userSelectedScopes: account.userSelectedScopes,
             status: account.status,
             friendlyName: account.friendlyName || null,
             tags: account.tags,
-            lastUsedAt: account.lastUsedAt || null,
-            createdAt: account.createdAt,
-            updatedAt: account.updatedAt,
+            lastUsedAt: account.lastUsedAt ? account.lastUsedAt.toISOString() : null,
+            createdAt: account.createdAt.toISOString(),
+            updatedAt: account.updatedAt.toISOString(),
         };
     }
 }

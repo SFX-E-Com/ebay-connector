@@ -179,6 +179,22 @@ export const EBAY_OPERATION_SCOPES = {
     VIEW_ORDERS: ["sell_fulfillment_readonly"],
     MANAGE_ORDERS: ["sell_fulfillment"],
 
+    // Returns operations (Post-Order API)
+    VIEW_RETURNS: ["sell_fulfillment_readonly"],
+    MANAGE_RETURNS: ["sell_fulfillment"],
+
+    // Cancellations operations (Post-Order API)
+    VIEW_CANCELLATIONS: ["sell_fulfillment_readonly"],
+    MANAGE_CANCELLATIONS: ["sell_fulfillment"],
+
+    // Inquiries operations (Post-Order API - INR/SNAD)
+    VIEW_INQUIRIES: ["sell_fulfillment_readonly"],
+    MANAGE_INQUIRIES: ["sell_fulfillment"],
+
+    // Messaging operations (Trading API)
+    VIEW_MESSAGES: ["sell_fulfillment_readonly"],
+    SEND_MESSAGES: ["sell_fulfillment"],
+
     // Account operations
     VIEW_ACCOUNT: ["sell_account_readonly"],
     MANAGE_ACCOUNT: ["sell_account"],

@@ -2,20 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from 'next/navigation';
-import {
-    Box,
-    VStack,
-    HStack,
-    Text,
-    Button,
-    Badge,
-    Input,
-    Alert,
-    Spinner,
-    Container,
-    Flex,
-    Separator,
-} from "@chakra-ui/react";
+import { Button, Badge, Form, Alert, Spinner, Container } from "react-bootstrap";
 
 interface DebugLog {
     id: string;
@@ -269,25 +256,24 @@ export default function DebugLogsPage() {
     const uniqueCategories = [...new Set(logs.map(log => log.category))];
 
     return (
-        <Container maxW="full" p={4}>
-            <VStack gap={4} align="stretch" h="100vh">
+        <Container fluid className="p-4">
+            <div className="d-flex flex-column gap-3" style={{ height: '100vh' }}>
                 {/* Header */}
-                <Flex justify="space-between" align="center">
-                    <Text fontSize="2xl" fontWeight="bold">
-                        🔍 Debug Console
-                    </Text>
-                    <Badge colorPalette="blue" size="lg">
+                <div className="d-flex justify-content-between align-items-center">
+                    <h2 className="fw-bold mb-0">
+                        Debug Console
+                    </h2>
+                    <Badge bg="primary" className="fs-6">
                         {filteredLogs.length} logs
                     </Badge>
-                </Flex>
+                </div>
 
                 {/* Controls */}
-                <HStack gap={4} wrap="wrap">
+                <div className="d-flex gap-3 flex-wrap">
                     <Button
                         size="sm"
                         onClick={clearLogs}
-                        colorPalette="red"
-                        variant="outline"
+                        variant="outline-danger"
                         disabled={logs.length === 0}
                     >
                         Clear Logs
@@ -296,8 +282,7 @@ export default function DebugLogsPage() {
                     <Button
                         size="sm"
                         onClick={() => setAutoRefresh(!autoRefresh)}
-                        colorPalette={autoRefresh ? "green" : "orange"}
-                        variant="outline"
+                        variant={autoRefresh ? "outline-success" : "outline-warning"}
                     >
                         {autoRefresh ? "Real-time ON" : "Real-time OFF"}
                     </Button>
@@ -305,8 +290,7 @@ export default function DebugLogsPage() {
                     <Button
                         size="sm"
                         onClick={downloadLogs}
-                        colorPalette="blue"
-                        variant="outline"
+                        variant="outline-primary"
                         disabled={filteredLogs.length === 0}
                     >
                         Export
@@ -315,8 +299,7 @@ export default function DebugLogsPage() {
                     <Button
                         size="sm"
                         onClick={() => setAutoScroll(!autoScroll)}
-                        colorPalette={autoScroll ? "blue" : "gray"}
-                        variant="outline"
+                        variant={autoScroll ? "outline-primary" : "outline-secondary"}
                     >
                         Auto-scroll: {autoScroll ? "On" : "Off"}
                     </Button>
@@ -325,17 +308,18 @@ export default function DebugLogsPage() {
                         size="sm"
                         onClick={fetchLogs}
                         disabled={loading}
-                        variant="outline"
+                        variant="outline-secondary"
                     >
-                        {loading ? <Spinner size="sm" /> : "Refresh"}
+                        {loading ? <Spinner animation="border" size="sm" /> : "Refresh"}
                     </Button>
-                </HStack>
+                </div>
 
                 {/* Filters */}
-                <HStack gap={4}>
-                    <Box>
-                        <Text fontSize="sm" mb={2}>Search Messages</Text>
-                        <Input
+                <div className="d-flex gap-4">
+                    <div>
+                        <p className="small mb-2">Search Messages</p>
+                        <Form.Control
+                            type="text"
                             placeholder="Filter logs by message or category..."
                             value={filter.search}
                             onChange={(e) =>
@@ -345,13 +329,14 @@ export default function DebugLogsPage() {
                                 }))
                             }
                             size="sm"
-                            width="300px"
+                            style={{ width: "300px" }}
                         />
-                    </Box>
+                    </div>
 
-                    <Box>
-                        <Text fontSize="sm" mb={2}>Category</Text>
-                        <Input
+                    <div>
+                        <p className="small mb-2">Category</p>
+                        <Form.Control
+                            type="text"
                             placeholder="Filter by category (API, AUTH, etc.)"
                             value={filter.category}
                             onChange={(e) =>
@@ -361,13 +346,13 @@ export default function DebugLogsPage() {
                                 }))
                             }
                             size="sm"
-                            width="200px"
+                            style={{ width: "200px" }}
                         />
-                    </Box>
+                    </div>
 
-                    <Box>
-                        <Text fontSize="sm" mb={2}>Level</Text>
-                        <select
+                    <div>
+                        <p className="small mb-2">Level</p>
+                        <Form.Select
                             value={filter.level}
                             onChange={(e) =>
                                 setFilter((prev) => ({
@@ -375,89 +360,72 @@ export default function DebugLogsPage() {
                                     level: e.target.value,
                                 }))
                             }
-                            style={{
-                                width: "120px",
-                                padding: "8px 12px",
-                                borderRadius: "6px",
-                                border: "1px solid #d1d5db",
-                                fontSize: "14px",
-                                backgroundColor: "white",
-                            }}
+                            size="sm"
+                            style={{ width: "120px" }}
                         >
                             <option value="">All levels</option>
                             <option value="ERROR">ERROR</option>
                             <option value="WARN">WARN</option>
                             <option value="INFO">INFO</option>
                             <option value="DEBUG">DEBUG</option>
-                        </select>
-                    </Box>
-                </HStack>
+                        </Form.Select>
+                    </div>
+                </div>
 
                 {/* Category badges */}
-                <HStack gap={2} wrap="wrap">
-                    <Text fontSize="sm" color="gray.600">Categories:</Text>
+                <div className="d-flex gap-2 flex-wrap align-items-center">
+                    <span className="small text-muted">Categories:</span>
                     {uniqueCategories.map(cat => (
                         <Badge
                             key={cat}
-                            size="sm"
-                            colorPalette={filter.category === cat ? "blue" : "gray"}
-                            cursor="pointer"
+                            bg={filter.category === cat ? "primary" : "secondary"}
+                            style={{ cursor: "pointer" }}
                             onClick={() => setFilter(prev => ({ ...prev, category: filter.category === cat ? "" : cat }))}
                         >
                             {cat}
                         </Badge>
                     ))}
-                </HStack>
+                </div>
 
-                <Separator />
+                <hr className="my-2" />
 
                 {/* Error Message */}
                 {error && (
-                    <Alert.Root status="error">
-                        <Alert.Indicator />
-                        <Alert.Content>
-                            <Alert.Description>{error}</Alert.Description>
-                        </Alert.Content>
-                    </Alert.Root>
+                    <Alert variant="danger">
+                        {error}
+                    </Alert>
                 )}
 
                 {/* Instructions */}
-                <Alert.Root status="info">
-                    <Alert.Indicator />
-                    <Alert.Content>
-                        <Alert.Description>
-                            To capture API calls in debug logs, add{" "}
-                            <code>?debug=1</code> to any API endpoint URL.
-                            Example: <code>/api/ebay/check-scopes?debug=1</code>
-                            {autoRefresh &&
-                                " • Real-time mode: New logs appear instantly when added to database."}
-                        </Alert.Description>
-                    </Alert.Content>
-                </Alert.Root>
+                <Alert variant="info">
+                    To capture API calls in debug logs, add{" "}
+                    <code>?debug=1</code> to any API endpoint URL.
+                    Example: <code>/api/ebay/check-scopes?debug=1</code>
+                    {autoRefresh &&
+                        " • Real-time mode: New logs appear instantly when added to database."}
+                </Alert>
 
                 {/* Console Logs */}
-                <Box
-                    flex={1}
-                    overflowY="auto"
-                    bg="black"
-                    color="white"
-                    p={4}
-                    borderRadius="md"
-                    fontFamily="mono"
-                    fontSize="sm"
-                    maxH="60vh"
+                <div
+                    className="flex-grow-1 overflow-auto rounded font-monospace small"
+                    style={{
+                        backgroundColor: "black",
+                        color: "white",
+                        padding: "1rem",
+                        maxHeight: "60vh",
+                    }}
                 >
-                    <VStack gap={1} align="stretch">
+                    <div className="d-flex flex-column gap-1">
                         {loading && logs.length === 0 ? (
-                            <Text color="gray.400" textAlign="center" py={8}>
+                            <p className="text-secondary text-center py-4">
                                 <Spinner size="sm" /> Loading logs...
-                            </Text>
+                            </p>
                         ) : filteredLogs.length === 0 ? (
-                            <Text color="gray.400" textAlign="center" py={8}>
+                            <p className="text-secondary text-center py-4">
                                 {logs.length === 0
                                     ? "No logs yet. Make some API calls with ?debug=1 to see logs here!"
                                     : "No logs match your filters."}
-                            </Text>
+                            </p>
                         ) : (
                             filteredLogs.map((log, index) => {
                                 const isSelected = selectedLogIndex === index;
@@ -465,108 +433,109 @@ export default function DebugLogsPage() {
                                 const hasMetadata = log.metadata && Object.keys(log.metadata).length > 0;
 
                                 return (
-                                    <Box
+                                    <div
                                         key={log.id}
-                                        py={0.5}
-                                        px={2}
-                                        bg={getLevelBackground(log.level, isSelected)}
-                                        borderRadius="sm"
-                                        _hover={{
-                                            bg: isSelected ? "#4b4a4a" : "#2d2d2d"
+                                        className="px-2 rounded"
+                                        style={{
+                                            paddingTop: "2px",
+                                            paddingBottom: "2px",
+                                            backgroundColor: getLevelBackground(log.level, isSelected),
                                         }}
                                     >
-                                        <HStack
-                                            gap={2}
-                                            align="start"
-                                            cursor="pointer"
+                                        <div
+                                            className="d-flex gap-2 align-items-start"
+                                            style={{ cursor: "pointer" }}
                                             onClick={() => setSelectedLogIndex(isSelected ? null : index)}
                                         >
                                             {/* Expand/Collapse Icon */}
                                             {hasMetadata && (
-                                                <Text
-                                                    fontSize="xs"
-                                                    color="gray.400"
-                                                    cursor="pointer"
+                                                <span
+                                                    className="text-secondary small"
+                                                    style={{
+                                                        cursor: "pointer",
+                                                        userSelect: "none",
+                                                        width: "12px",
+                                                        textAlign: "center",
+                                                    }}
                                                     onClick={(e) => {
                                                         e.stopPropagation();
                                                         toggleLogExpansion(log.id);
                                                     }}
-                                                    _hover={{ color: "white" }}
-                                                    userSelect="none"
-                                                    width="12px"
-                                                    textAlign="center"
                                                 >
                                                     {isExpanded ? "−" : "+"}
-                                                </Text>
+                                                </span>
                                             )}
                                             {!hasMetadata && (
-                                                <Box width="12px" />
+                                                <span style={{ width: "12px" }} />
                                             )}
 
                                             {/* Log Line */}
-                                            <Text
-                                                fontFamily="mono"
-                                                fontSize="xs"
-                                                color={getLevelTextColor(log.level)}
-                                                whiteSpace="pre-wrap"
-                                                lineHeight="1.2"
-                                                userSelect="text"
-                                                flex={1}
+                                            <span
+                                                className="font-monospace flex-grow-1"
+                                                style={{
+                                                    fontSize: "0.75rem",
+                                                    color: getLevelTextColor(log.level),
+                                                    whiteSpace: "pre-wrap",
+                                                    lineHeight: "1.2",
+                                                    userSelect: "text",
+                                                }}
                                             >
                                                 {formatLogLine(log)}
-                                            </Text>
-                                        </HStack>
+                                            </span>
+                                        </div>
 
                                         {/* Expanded Metadata */}
                                         {hasMetadata && isExpanded && (
-                                            <Box
-                                                pl={6}
-                                                pt={1}
-                                                borderLeft="1px solid"
-                                                borderLeftColor="gray.600"
-                                                ml={2}
+                                            <div
+                                                style={{
+                                                    paddingLeft: "1.5rem",
+                                                    paddingTop: "0.25rem",
+                                                    borderLeft: "1px solid #6c757d",
+                                                    marginLeft: "0.5rem",
+                                                }}
                                             >
-                                                <Text
-                                                    fontFamily="mono"
-                                                    fontSize="xs"
-                                                    color="gray.400"
-                                                    whiteSpace="pre-wrap"
-                                                    userSelect="text"
-                                                    lineHeight="1.3"
+                                                <pre
+                                                    className="font-monospace text-secondary mb-0"
+                                                    style={{
+                                                        fontSize: "0.75rem",
+                                                        whiteSpace: "pre-wrap",
+                                                        userSelect: "text",
+                                                        lineHeight: "1.3",
+                                                    }}
                                                 >
                                                     {typeof log.metadata === "object"
                                                         ? JSON.stringify(log.metadata, null, 2)
                                                         : log.metadata
                                                     }
-                                                </Text>
-                                            </Box>
+                                                </pre>
+                                            </div>
                                         )}
-                                    </Box>
+                                    </div>
                                 );
                             })
                         )}
                         <div ref={logsEndRef} />
-                    </VStack>
-                </Box>
+                    </div>
+                </div>
 
                 {/* Status */}
-                <HStack justify="space-between">
-                    <HStack gap={4}>
-                        <Badge colorPalette="green">
-                            🟢 Connected
+                <div className="d-flex justify-content-between">
+                    <div className="d-flex gap-3">
+                        <Badge bg="success">
+                            Connected
                         </Badge>
                         {!autoRefresh && (
-                            <Badge colorPalette="orange">
-                                ⏸️ Real-time Paused
+                            <Badge bg="warning">
+                                Real-time Paused
                             </Badge>
                         )}
-                    </HStack>
+                    </div>
 
-                    <Text fontSize="xs" color="gray.500">
+                    <p className="small text-muted mb-0">
                         Last updated: {logs.length > 0 ? new Date(logs[logs.length - 1]?.timestamp).toLocaleTimeString() : "Never"}
-                    </Text>
-                </HStack>
-            </VStack>
+                    </p>
+                </div>
+            </div>
         </Container>
     );
 }

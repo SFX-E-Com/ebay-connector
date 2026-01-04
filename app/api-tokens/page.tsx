@@ -2,18 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  Box,
-  VStack,
-  HStack,
-  Text,
-  Button,
-  Badge,
-  IconButton,
-  Alert,
-  Code,
-  Tooltip,
-} from '@chakra-ui/react';
+import { Button, Badge, Alert, OverlayTrigger, Tooltip } from 'react-bootstrap';
 import {
   MdAdd,
   MdEdit,
@@ -73,14 +62,14 @@ export default function ApiTokensPage() {
 
   const getStatusBadge = (token: ApiToken) => {
     if (!token.isActive) {
-      return <Badge colorPalette="gray">Inactive</Badge>;
+      return <Badge bg="secondary">Inactive</Badge>;
     }
 
     if (token.expiresAt && new Date(token.expiresAt) < new Date()) {
-      return <Badge colorPalette="red">Expired</Badge>;
+      return <Badge bg="danger">Expired</Badge>;
     }
 
-    return <Badge colorPalette="green">Active</Badge>;
+    return <Badge bg="success">Active</Badge>;
   };
 
   const formatDate = (dateString: string | null) => {
@@ -126,23 +115,23 @@ export default function ApiTokensPage() {
       header: 'Name',
       sortable: true,
       render: (token) => (
-        <Box>
-          <Text fontWeight="medium">{token.name}</Text>
-          <Text fontSize="sm" color="gray.500">
+        <div>
+          <div className="fw-medium">{token.name}</div>
+          <div className="small text-muted">
             Created {formatDate(token.createdAt)}
-          </Text>
-        </Box>
+          </div>
+        </div>
       ),
     },
     {
       key: 'token',
       header: 'Token',
       render: (token) => (
-        <HStack gap={2}>
-          <Code fontSize="xs" maxW="200px" truncate>
+        <div className="d-flex gap-2 align-items-center">
+          <code className="small" style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {showFullTokens[token.id] ? token.token : `${token.token.substring(0, 20)}...`}
-          </Code>
-        </HStack>
+          </code>
+        </div>
       ),
     },
     {
@@ -155,12 +144,12 @@ export default function ApiTokensPage() {
       key: 'permissions',
       header: 'Permissions',
       render: (token) => (
-        <Box>
-          <Text fontSize="sm">{token.permissions.endpoints?.length || 0} endpoints</Text>
-          <Text fontSize="xs" color="gray.500">
+        <div>
+          <p className="small mb-0">{token.permissions.endpoints?.length || 0} endpoints</p>
+          <small className="text-muted">
             Rate limit: {token.permissions.rateLimit || 1000}/hour
-          </Text>
-        </Box>
+          </small>
+        </div>
       ),
     },
     {
@@ -168,7 +157,7 @@ export default function ApiTokensPage() {
       header: 'Last Used',
       sortable: true,
       render: (token) => (
-        <Text fontSize="sm">{formatDate(token.lastUsedAt)}</Text>
+        <span className="small">{formatDate(token.lastUsedAt)}</span>
       ),
     },
   ];
@@ -228,70 +217,46 @@ export default function ApiTokensPage() {
 
   // Header actions
   const headerActions = (
-    <Tooltip.Root>
-      <Tooltip.Trigger asChild>
-        <Button colorPalette="orange" onClick={() => setShowCreateModal(true)}>
-          <MdAdd style={{ marginRight: '8px' }} />
-          Create Token
-        </Button>
-      </Tooltip.Trigger>
-      <Tooltip.Positioner>
-        <Tooltip.Content>
-          Create a new API token for accessing the eBay Connector API
-        </Tooltip.Content>
-      </Tooltip.Positioner>
-    </Tooltip.Root>
+    <OverlayTrigger
+      placement="top"
+      overlay={<Tooltip id="tooltip-create">Create a new API token for accessing the eBay Connector API</Tooltip>}
+    >
+      <Button variant="primary" onClick={() => setShowCreateModal(true)}>
+        <MdAdd style={{ marginRight: '8px' }} />
+        Create Token
+      </Button>
+    </OverlayTrigger>
   );
 
   return (
-    <Box p={8}>
-      <VStack gap={6} align="stretch">
+    <div className="p-4 p-md-5">
+      <div className="d-flex flex-column gap-4">
         {/* New Token Alert */}
         {newlyCreatedToken && (
-          <Alert.Root status="success">
-            <Alert.Indicator />
-            <Alert.Content>
-              <Alert.Title>Token Created Successfully!</Alert.Title>
-              <Alert.Description>
-                <VStack align="start" gap={2} mt={2}>
-                  <Text fontSize="sm">
-                    Your new API token has been created. Copy it now as it won't be shown again:
-                  </Text>
-                  <HStack gap={2}>
-                    <Code
-                      p={2}
-                      bg="gray.50"
-                      borderRadius="md"
-                      fontSize="sm"
-                      fontFamily="mono"
-                      wordBreak="break-all"
-                    >
-                      {newlyCreatedToken}
-                    </Code>
-                    <IconButton
-                      aria-label="Copy token"
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => copyToClipboard(newlyCreatedToken)}
-                    >
-                      <MdContentCopy />
-                    </IconButton>
-                  </HStack>
-                </VStack>
-              </Alert.Description>
-            </Alert.Content>
-            <IconButton
-              aria-label="Close"
-              size="sm"
-              variant="ghost"
-              position="absolute"
-              top={2}
-              right={2}
-              onClick={() => setNewlyCreatedToken(null)}
-            >
-              ×
-            </IconButton>
-          </Alert.Root>
+          <Alert variant="success" dismissible onClose={() => setNewlyCreatedToken(null)}>
+            <Alert.Heading>Token Created Successfully!</Alert.Heading>
+            <div className="d-flex flex-column gap-2 mt-2">
+              <p className="small mb-0">
+                Your new API token has been created. Copy it now as it won't be shown again:
+              </p>
+              <div className="d-flex gap-2 align-items-center">
+                <code
+                  className="p-2 bg-light rounded small"
+                  style={{ fontFamily: 'monospace', wordBreak: 'break-all' }}
+                >
+                  {newlyCreatedToken}
+                </code>
+                <Button
+                  aria-label="Copy token"
+                  size="sm"
+                  variant="outline-secondary"
+                  onClick={() => copyToClipboard(newlyCreatedToken)}
+                >
+                  <MdContentCopy />
+                </Button>
+              </div>
+            </div>
+          </Alert>
         )}
 
         {/* Unified Table Component with Built-in Actions */}
@@ -317,7 +282,7 @@ export default function ApiTokensPage() {
             isSubmitting={isCreating}
           />
         )}
-      </VStack>
-    </Box>
+      </div>
+    </div>
   );
 }

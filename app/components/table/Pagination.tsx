@@ -1,17 +1,6 @@
 'use client';
 
-import {
-  Box,
-  HStack,
-  VStack,
-  Text,
-  Button,
-  Select,
-  IconButton,
-  Card,
-  Flex,
-  createListCollection
-} from '@chakra-ui/react';
+import { Card, Button, Form } from 'react-bootstrap';
 import {
   MdChevronLeft,
   MdChevronRight,
@@ -83,85 +72,77 @@ export function Pagination({
     return null;
   }
 
+  const buttonSize = size === 'sm' ? 'sm' : size === 'lg' ? 'lg' : undefined;
+
   return (
-    <Card.Root className={className}>
-      <Card.Body p={4}>
-        <VStack gap={4}>
+    <Card className={className}>
+      <Card.Body className="p-4">
+        <div className="d-flex flex-column gap-4">
           {/* Page Info */}
           {showPageInfo && (
-            <Flex justify="space-between" align="center" w="full">
-              <Text fontSize="sm" color="gray.600">
+            <div className="d-flex justify-content-between align-items-center w-100">
+              <span className="small text-dark">
                 Showing {startIndex + 1} to {endIndex} of {totalItems} results
-              </Text>
+              </span>
 
               {showPageSizeSelector && (
-                <HStack gap={2} align="center">
-                  <Text fontSize="sm" color="gray.600">
+                <div className="d-flex gap-2 align-items-center">
+                  <span className="small text-dark">
                     Show
-                  </Text>
-                  <Select.Root
-                    collection={createListCollection({
-                      items: pageSizeOptions.map(option => ({ label: String(option), value: String(option) }))
-                    })}
-                    value={[String(pageSize)]}
-                    onValueChange={(details) => onPageSizeChange(Number(details.value[0]))}
-                    size={size}
+                  </span>
+                  <Form.Select
+                    size={buttonSize}
+                    value={pageSize}
+                    onChange={(e) => onPageSizeChange(Number(e.target.value))}
+                    style={{ width: '80px' }}
                   >
-                    <Select.Trigger w="80px">
-                      <Select.ValueText />
-                    </Select.Trigger>
-                    <Select.Positioner>
-                      <Select.Content>
-                        {pageSizeOptions.map((option) => (
-                          <Select.Item key={option} item={{ label: String(option), value: String(option) }}>
-                            {option}
-                          </Select.Item>
-                        ))}
-                      </Select.Content>
-                    </Select.Positioner>
-                  </Select.Root>
-                  <Text fontSize="sm" color="gray.600">
+                    {pageSizeOptions.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </Form.Select>
+                  <span className="small text-dark">
                     per page
-                  </Text>
-                </HStack>
+                  </span>
+                </div>
               )}
-            </Flex>
+            </div>
           )}
 
           {/* Navigation */}
           {showNavButtons && totalPages > 1 && (
-            <HStack gap={1} justify="center">
+            <div className="d-flex gap-1 justify-content-center">
               {/* First Page */}
-              <IconButton
+              <Button
                 aria-label="First page"
-                size={size}
-                variant="ghost"
+                size={buttonSize}
+                variant="outline-secondary"
                 onClick={() => onPageChange(1)}
                 disabled={!canGoPrevious}
               >
                 <MdFirstPage />
-              </IconButton>
+              </Button>
 
               {/* Previous Page */}
-              <IconButton
+              <Button
                 aria-label="Previous page"
-                size={size}
-                variant="ghost"
+                size={buttonSize}
+                variant="outline-secondary"
                 onClick={() => onPageChange(currentPage - 1)}
                 disabled={!canGoPrevious}
               >
                 <MdChevronLeft />
-              </IconButton>
+              </Button>
 
               {/* Page Numbers */}
               {visiblePages.map((page) => (
                 <Button
                   key={page}
-                  size={size}
-                  variant={page === currentPage ? 'solid' : 'ghost'}
-                  colorPalette={page === currentPage ? 'blue' : 'gray'}
+                  size={buttonSize}
+                  variant={page === currentPage ? 'primary' : 'outline-secondary'}
                   onClick={() => onPageChange(page)}
-                  minW="40px"
+                  style={{ minWidth: '40px' }}
                 >
                   {page}
                 </Button>
@@ -169,56 +150,55 @@ export function Pagination({
 
               {/* Show ellipsis if there are more pages */}
               {visiblePages[visiblePages.length - 1] < totalPages - 1 && (
-                <Text px={2} fontSize="sm" color="gray.500">
+                <span className="px-2 small text-secondary align-self-center">
                   ...
-                </Text>
+                </span>
               )}
 
               {/* Last page number if not visible */}
               {visiblePages[visiblePages.length - 1] < totalPages && (
                 <Button
-                  size={size}
-                  variant="ghost"
-                  colorPalette="gray"
+                  size={buttonSize}
+                  variant="outline-secondary"
                   onClick={() => onPageChange(totalPages)}
-                  minW="40px"
+                  style={{ minWidth: '40px' }}
                 >
                   {totalPages}
                 </Button>
               )}
 
               {/* Next Page */}
-              <IconButton
+              <Button
                 aria-label="Next page"
-                size={size}
-                variant="ghost"
+                size={buttonSize}
+                variant="outline-secondary"
                 onClick={() => onPageChange(currentPage + 1)}
                 disabled={!canGoNext}
               >
                 <MdChevronRight />
-              </IconButton>
+              </Button>
 
               {/* Last Page */}
-              <IconButton
+              <Button
                 aria-label="Last page"
-                size={size}
-                variant="ghost"
+                size={buttonSize}
+                variant="outline-secondary"
                 onClick={() => onPageChange(totalPages)}
                 disabled={!canGoNext}
               >
                 <MdLastPage />
-              </IconButton>
-            </HStack>
+              </Button>
+            </div>
           )}
 
           {/* Simple page info for single page */}
           {totalPages === 1 && showPageInfo && (
-            <Text fontSize="sm" color="gray.600" textAlign="center">
+            <p className="small text-dark text-center mb-0">
               Page 1 of 1
-            </Text>
+            </p>
           )}
-        </VStack>
+        </div>
       </Card.Body>
-    </Card.Root>
+    </Card>
   );
 }

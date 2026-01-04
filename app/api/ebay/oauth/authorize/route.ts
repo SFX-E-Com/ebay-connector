@@ -85,9 +85,13 @@ export async function GET(request: NextRequest) {
     console.log('Environment:', config.isProduction ? 'PRODUCTION' : 'SANDBOX');
     console.log('Using RuName (as per eBay docs):', redirectValue);
 
-    // Manually construct URL to avoid over-encoding the scope URLs
-    const encodedScopes = scopes.replace(/ /g, '%20'); // Only encode spaces as %20
-    const authUrl = `${baseUrl}?client_id=${process.env.EBAY_CLIENT_ID}&response_type=code&redirect_uri=${redirectValue}&scope=${encodedScopes}&state=${state}`;
+    // Properly encode all parameters for OAuth URL
+    const authUrl = new URL(baseUrl);
+    authUrl.searchParams.set('client_id', process.env.EBAY_CLIENT_ID!);
+    authUrl.searchParams.set('response_type', 'code');
+    authUrl.searchParams.set('redirect_uri', redirectValue);
+    authUrl.searchParams.set('scope', scopes);
+    authUrl.searchParams.set('state', state);
 
     // DEBUG: Log the complete OAuth request details
     console.log('=== PRODUCTION OAUTH DEBUG ===');
@@ -100,11 +104,11 @@ export async function GET(request: NextRequest) {
     console.log('Scopes being requested:', scopes);
     console.log('Scopes length:', scopes.length);
     console.log('State:', state);
-    console.log('Complete auth URL:', authUrl);
-    console.log('Auth URL Length:', authUrl.length);
+    console.log('Complete auth URL:', authUrl.toString());
+    console.log('Auth URL Length:', authUrl.toString().length);
 
     // Store state in session/cookie for verification
-    const response = NextResponse.redirect(authUrl);
+    const response = NextResponse.redirect(authUrl.toString());
     response.cookies.set('ebay_oauth_state', state, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',

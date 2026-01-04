@@ -1,19 +1,6 @@
 'use client';
 
-import {
-  Box,
-  HStack,
-  VStack,
-  Input,
-  Select,
-  Button,
-  Text,
-  IconButton,
-  Card,
-  Badge,
-  Flex,
-  createListCollection
-} from '@chakra-ui/react';
+import { Form, Button, Card, Badge } from 'react-bootstrap';
 import {
   MdSearch,
   MdClear,
@@ -53,32 +40,30 @@ export function FilterBar({
     switch (config.type) {
       case 'search':
         return (
-          <Box position="relative" minW="250px">
-            <Input
+          <div className="position-relative" style={{ minWidth: '250px' }}>
+            <Form.Control
               placeholder={config.placeholder || `Search ${config.label?.toLowerCase() || 'items'}...`}
               value={value as string}
               onChange={(e) => onFilterChange(config.key, e.target.value)}
-              pl={10}
               size="sm"
+              style={{ paddingLeft: '2.5rem' }}
             />
-            <Box position="absolute" left={3} top="50%" transform="translateY(-50%)">
-              <MdSearch color="gray.400" size={16} />
-            </Box>
+            <div className="position-absolute top-50 translate-middle-y" style={{ left: '0.75rem' }}>
+              <MdSearch color="#4a5568" size={16} />
+            </div>
             {value && (
-              <IconButton
+              <Button
                 aria-label="Clear search"
-                size="xs"
-                variant="ghost"
-                position="absolute"
-                right={2}
-                top="50%"
-                transform="translateY(-50%)"
+                size="sm"
+                variant="link"
+                className="position-absolute top-50 translate-middle-y text-secondary p-0 border-0"
+                style={{ right: '0.5rem' }}
                 onClick={() => onClearFilter(config.key)}
               >
                 <MdClear size={14} />
-              </IconButton>
+              </Button>
             )}
-          </Box>
+          </div>
         );
 
       case 'select': {
@@ -86,34 +71,25 @@ export function FilterBar({
           { label: `All ${config.label}`, value: 'ALL' },
           ...(config.options || [])
         ];
-        const selectCollection = createListCollection({ items: selectOptions });
         const currentValue = (value as string) || 'ALL';
 
         return (
-          <Box minW="150px">
-            <Select.Root
-              collection={selectCollection}
-              value={[currentValue]}
-              onValueChange={(details) => {
-                const newValue = details.value[0];
+          <div style={{ minWidth: '150px' }}>
+            <Form.Select
+              size="sm"
+              value={currentValue}
+              onChange={(e) => {
+                const newValue = e.target.value;
                 onFilterChange(config.key, newValue === 'ALL' ? '' : newValue);
               }}
-              size="sm"
             >
-              <Select.Trigger>
-                <Select.ValueText placeholder={config.placeholder || `All ${config.label}`} />
-              </Select.Trigger>
-              <Select.Positioner>
-                <Select.Content>
-                  {selectCollection.items.map((option) => (
-                    <Select.Item key={option.value} item={option}>
-                      {option.label}
-                    </Select.Item>
-                  ))}
-                </Select.Content>
-              </Select.Positioner>
-            </Select.Root>
-          </Box>
+              {selectOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </Form.Select>
+          </div>
         );
       }
 
@@ -123,38 +99,29 @@ export function FilterBar({
           { label: 'Yes', value: 'true' },
           { label: 'No', value: 'false' }
         ];
-        const booleanCollection = createListCollection({ items: booleanOptions });
         const currentValue = value === null || value === undefined ? 'ALL' : String(value);
 
         return (
-          <Box minW="120px">
-            <Select.Root
-              collection={booleanCollection}
-              value={[currentValue]}
-              onValueChange={(details) => {
-                const newValue = details.value[0];
+          <div style={{ minWidth: '120px' }}>
+            <Form.Select
+              size="sm"
+              value={currentValue}
+              onChange={(e) => {
+                const newValue = e.target.value;
                 if (newValue === 'ALL') {
                   onFilterChange(config.key, null);
                 } else {
                   onFilterChange(config.key, newValue === 'true');
                 }
               }}
-              size="sm"
             >
-              <Select.Trigger>
-                <Select.ValueText placeholder={config.placeholder || `All ${config.label}`} />
-              </Select.Trigger>
-              <Select.Positioner>
-                <Select.Content>
-                  {booleanCollection.items.map((option) => (
-                    <Select.Item key={option.value} item={option}>
-                      {option.label}
-                    </Select.Item>
-                  ))}
-                </Select.Content>
-              </Select.Positioner>
-            </Select.Root>
-          </Box>
+              {booleanOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </Form.Select>
+          </div>
         );
       }
 
@@ -163,8 +130,8 @@ export function FilterBar({
         // Could be enhanced with a proper date range picker
         const dateValue = value as { from?: string; to?: string } || {};
         return (
-          <HStack gap={2}>
-            <Input
+          <div className="d-flex gap-2 align-items-center">
+            <Form.Control
               type="date"
               size="sm"
               placeholder="From"
@@ -173,10 +140,10 @@ export function FilterBar({
                 ...dateValue,
                 from: e.target.value
               })}
-              w="130px"
+              style={{ width: '130px' }}
             />
-            <Text fontSize="sm" color="gray.500">to</Text>
-            <Input
+            <span className="small text-dark">to</span>
+            <Form.Control
               type="date"
               size="sm"
               placeholder="To"
@@ -185,9 +152,9 @@ export function FilterBar({
                 ...dateValue,
                 to: e.target.value
               })}
-              w="130px"
+              style={{ width: '130px' }}
             />
-          </HStack>
+          </div>
         );
 
       default:
@@ -196,47 +163,46 @@ export function FilterBar({
   };
 
   return (
-    <Card.Root className={className}>
-      <Card.Body p={4}>
-        <VStack gap={4} align="stretch">
+    <Card className={className}>
+      <Card.Body className="p-4">
+        <div className="d-flex flex-column gap-3">
           {/* Filter Header */}
-          <HStack justify="space-between" align="center">
-            <HStack gap={2}>
-              <MdFilterList size={20} color="gray.600" />
-              <Text fontWeight="medium" color="gray.700">
+          <div className="d-flex justify-content-between align-items-center">
+            <div className="d-flex gap-2 align-items-center">
+              <MdFilterList size={20} color="#4a5568" />
+              <span className="fw-medium text-dark">
                 Filters
-              </Text>
+              </span>
               {showFilterCount && activeFilterCount > 0 && (
-                <Badge colorPalette="blue" size="sm">
+                <Badge bg="info" className="small">
                   {activeFilterCount} active
                 </Badge>
               )}
-            </HStack>
+            </div>
             {hasActiveFilters && (
               <Button
                 size="sm"
-                variant="ghost"
-                colorPalette="gray"
+                variant="outline-secondary"
                 onClick={onClearAllFilters}
               >
                 Clear All
               </Button>
             )}
-          </HStack>
+          </div>
 
           {/* Filter Controls */}
-          <Flex wrap="wrap" gap={4} align="center">
+          <div className="d-flex flex-wrap gap-3 align-items-end">
             {filterConfigs.map((config) => (
-              <VStack key={config.key} align="start" gap={1}>
-                <Text fontSize="sm" fontWeight="medium" color="gray.600">
+              <div key={config.key} className="d-flex flex-column gap-1">
+                <label className="small fw-medium text-dark mb-0">
                   {config.label}
-                </Text>
+                </label>
                 {renderFilter(config)}
-              </VStack>
+              </div>
             ))}
-          </Flex>
-        </VStack>
+          </div>
+        </div>
       </Card.Body>
-    </Card.Root>
+    </Card>
   );
 }

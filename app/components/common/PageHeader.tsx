@@ -1,13 +1,6 @@
 "use client";
 
-import {
-    HStack,
-    VStack,
-    Heading,
-    Text,
-    Button,
-    IconButton,
-} from "@chakra-ui/react";
+import { Button, Spinner } from "react-bootstrap";
 import { MdAdd, MdRefresh } from "react-icons/md";
 import { ReactNode } from "react";
 
@@ -42,6 +35,39 @@ interface PageHeaderProps {
     children?: ReactNode;
 }
 
+// Helper to map Chakra color palette to Bootstrap variant
+const getBootstrapVariant = (colorPalette?: string, variant?: string) => {
+    const isOutline = variant === "outline";
+    const prefix = isOutline ? "outline-" : "";
+
+    switch (colorPalette) {
+        case "orange":
+            return `${prefix}primary`;
+        case "green":
+            return `${prefix}success`;
+        case "red":
+            return `${prefix}danger`;
+        case "blue":
+            return `${prefix}info`;
+        case "gray":
+        default:
+            return `${prefix}secondary`;
+    }
+};
+
+// Helper to map Chakra size to Bootstrap size
+const getBootstrapSize = (size?: string) => {
+    switch (size) {
+        case "xs":
+        case "sm":
+            return "sm";
+        case "lg":
+            return "lg";
+        default:
+            return undefined;
+    }
+};
+
 export default function PageHeader({
     title,
     subtitle,
@@ -53,63 +79,79 @@ export default function PageHeader({
     children,
 }: PageHeaderProps) {
     return (
-        <HStack justify="space-between" align="center">
-            <VStack align="start" gap={1}>
-                <Heading size="xl" color="gray.800">
-                    {title}
-                </Heading>
+        <div className="d-flex justify-content-between align-items-center">
+            <div className="d-flex flex-column align-items-start gap-1">
+                <h1 className="h2 text-dark mb-0">{title}</h1>
                 {subtitle && (
-                    <Text color="gray.600">{subtitle}</Text>
+                    <p className="text-muted mb-0">{subtitle}</p>
                 )}
-            </VStack>
+            </div>
 
             {(showRefresh || primaryAction || actions.length > 0 || children) && (
-                <HStack gap={3}>
+                <div className="d-flex gap-3">
                     {showRefresh && (
-                        <IconButton
-                            aria-label="Refresh"
-                            variant="ghost"
+                        <Button
+                            variant="outline-secondary"
                             onClick={onRefresh}
-                            loading={isRefreshing}
+                            disabled={isRefreshing}
+                            aria-label="Refresh"
                         >
-                            <MdRefresh />
-                        </IconButton>
+                            {isRefreshing ? (
+                                <Spinner animation="border" size="sm" />
+                            ) : (
+                                <MdRefresh />
+                            )}
+                        </Button>
                     )}
 
                     {actions.map((action, index) => (
                         <Button
                             key={index}
-                            colorPalette={action.colorPalette || "gray"}
-                            variant={action.variant || "outline"}
-                            size={action.size || "md"}
+                            variant={getBootstrapVariant(action.colorPalette || "gray", action.variant || "outline")}
+                            size={getBootstrapSize(action.size)}
                             onClick={action.onClick}
-                            loading={action.loading}
-                            loadingText={action.loadingText}
-                            disabled={action.disabled}
+                            disabled={action.disabled || action.loading}
                         >
-                            {action.icon && <span style={{ marginRight: "8px" }}>{action.icon}</span>}
-                            {action.label}
+                            {action.loading && (
+                                <Spinner
+                                    as="span"
+                                    animation="border"
+                                    size="sm"
+                                    role="status"
+                                    aria-hidden="true"
+                                    className="me-2"
+                                />
+                            )}
+                            {action.icon && <span className="me-2">{action.icon}</span>}
+                            {action.loading && action.loadingText ? action.loadingText : action.label}
                         </Button>
                     ))}
 
                     {primaryAction && (
                         <Button
-                            colorPalette={primaryAction.colorPalette || "orange"}
-                            variant={primaryAction.variant || "solid"}
-                            size={primaryAction.size || "md"}
+                            variant={getBootstrapVariant(primaryAction.colorPalette || "orange", primaryAction.variant || "solid")}
+                            size={getBootstrapSize(primaryAction.size)}
                             onClick={primaryAction.onClick}
-                            loading={primaryAction.loading}
-                            loadingText={primaryAction.loadingText}
-                            disabled={primaryAction.disabled}
+                            disabled={primaryAction.disabled || primaryAction.loading}
                         >
-                            {primaryAction.icon && <span style={{ marginRight: "8px" }}>{primaryAction.icon}</span>}
-                            {primaryAction.label}
+                            {primaryAction.loading && (
+                                <Spinner
+                                    as="span"
+                                    animation="border"
+                                    size="sm"
+                                    role="status"
+                                    aria-hidden="true"
+                                    className="me-2"
+                                />
+                            )}
+                            {primaryAction.icon && <span className="me-2">{primaryAction.icon}</span>}
+                            {primaryAction.loading && primaryAction.loadingText ? primaryAction.loadingText : primaryAction.label}
                         </Button>
                     )}
 
                     {children}
-                </HStack>
+                </div>
             )}
-        </HStack>
+        </div>
     );
 }

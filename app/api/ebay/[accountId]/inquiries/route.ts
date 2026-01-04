@@ -77,4 +77,4 @@ async function getHandler(
     }
 }
 
-export const GET = withEbayAuth('ebay:inquiries:read', getHandler);
+export const GET = withEbayAuth('ebay:inquiries:read', getHandler, 'VIEW_INQUIRIES');

@@ -1,13 +1,6 @@
 'use client';
 
-import {
-  VStack,
-  HStack,
-  Text,
-  Badge,
-  Box,
-  Checkbox,
-} from '@chakra-ui/react';
+import { Badge, Form } from 'react-bootstrap';
 import { SCOPE_CATEGORIES, type EbayScope } from '@/app/lib/constants/ebayScopes';
 
 interface EbayScopeCardProps {
@@ -26,52 +19,41 @@ export default function EbayScopeCard({
   const isRequired = scope.isRequired;
 
   return (
-    <Box
-      p={4}
-      bg={isSelected ? `${SCOPE_CATEGORIES[scope.category].color}.50` : 'gray.50'}
-      borderRadius="md"
-      border="1px solid"
-      borderColor={isSelected ? `${SCOPE_CATEGORIES[scope.category].color}.200` : 'gray.200'}
-      cursor={disabled || isRequired ? 'not-allowed' : 'pointer'}
-      onClick={() => onToggle(scope.id, isRequired)}
-      transition="all 0.2s"
-      _hover={disabled || isRequired ? {} : {
-        borderColor: `${SCOPE_CATEGORIES[scope.category].color}.300`,
-        transform: 'translateY(-1px)',
+    <div
+      className={`p-3 border rounded ${isSelected ? 'bg-light' : 'bg-white'}`}
+      style={{
+        cursor: disabled || isRequired ? 'not-allowed' : 'pointer',
+        opacity: disabled && !isSelected ? 0.6 : 1,
+        transition: 'all 0.2s'
       }}
-      opacity={disabled && !isSelected ? 0.6 : 1}
+      onClick={() => onToggle(scope.id, isRequired)}
     >
-      <HStack align="start" gap={3}>
-        <Checkbox.Root
+      <div className="d-flex align-items-start gap-3">
+        <Form.Check
+          type="checkbox"
           checked={isSelected}
           disabled={disabled || isRequired}
-          onCheckedChange={() => onToggle(scope.id, isRequired)}
-          colorPalette={SCOPE_CATEGORIES[scope.category].color}
-          size="lg"
+          onChange={() => onToggle(scope.id, isRequired)}
           onClick={(e) => e.stopPropagation()}
-        >
-          <Checkbox.HiddenInput />
-          <Checkbox.Control />
-          <Checkbox.Indicator />
-        </Checkbox.Root>
+        />
 
-        <VStack align="start" gap={2} flex={1}>
-          <HStack gap={2} flexWrap="wrap">
-            <Text fontWeight="semibold" color="gray.800" fontSize="sm">
+        <div className="d-flex flex-column align-items-start gap-2 flex-fill">
+          <div className="d-flex gap-2 flex-wrap">
+            <p className="fw-semibold small mb-0">
               {scope.name}
-            </Text>
+            </p>
             {isRequired && (
-              <Badge colorPalette="red" variant="solid" fontSize="xs">
+              <Badge bg="danger" className="small">
                 Required
               </Badge>
             )}
-          </HStack>
+          </div>
 
-          <Text fontSize="xs" color="gray.600" lineHeight="1.4">
+          <p className="small text-muted mb-0">
             {scope.description}
-          </Text>
-        </VStack>
-      </HStack>
-    </Box>
+          </p>
+        </div>
+      </div>
+    </div>
   );
 }

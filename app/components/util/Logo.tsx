@@ -1,32 +1,24 @@
 'use client';
 
 import React from "react";
-import { Box, Flex, Icon, IconButton, Text } from "@chakra-ui/react";
+import { Button } from "react-bootstrap";
 import { AiFillThunderbolt, AiOutlineSearch } from "react-icons/ai";
 
-
 export const Logo = () => (
-  <Flex
-    w="full"
-    alignItems="center"
-    justifyContent="space-between"
-    flexDirection="row"
-    gap={4}
-  >
-    <Box display="flex" alignItems="center" gap={2}>
-      <Icon as={AiFillThunderbolt} fontSize={30} />
-        <Text fontWeight="bold" fontSize={16}>
-          eBay Connector
-        </Text>
-    </Box>
-    <IconButton
-      variant="ghost"
+  <div className="d-flex w-100 align-items-center justify-content-between gap-4">
+    <div className="d-flex align-items-center gap-2">
+      <AiFillThunderbolt size={30} className="text-primary" />
+      <span className="fw-bold" style={{ fontSize: '16px' }}>
+        eBay Connector
+      </span>
+    </div>
+    <Button
+      variant="link"
       aria-label="search"
-      fontSize={26}
-      color="gray.400"
-      borderRadius="50%"
+      className="text-dark p-2"
+      style={{ fontSize: '24px' }}
     >
       <AiOutlineSearch />
-    </IconButton>
-  </Flex>
+    </Button>
+  </div>
 );

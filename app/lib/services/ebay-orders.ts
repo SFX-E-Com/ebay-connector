@@ -183,6 +183,7 @@ export interface OrderFilterOptions {
     lastModifiedDateStart?: Date;
     lastModifiedDateEnd?: Date;
     fulfillmentStatus?: OrderFulfillmentStatus;
+    paymentStatus?: OrderPaymentStatus; // Client-side filter (not supported by eBay API)
     orderIds?: string[];
     limit?: number;
     offset?: number;
@@ -335,11 +336,25 @@ export class EbayOrdersService {
             const filters: string[] = [];
 
             if (options.creationDateStart) {
-                filters.push(`creationdate:[${options.creationDateStart.toISOString()}..${options.creationDateEnd?.toISOString() || ''}]`);
+                // Validate dates before calling toISOString()
+                if (isNaN(options.creationDateStart.getTime())) {
+                    throw new Error('Invalid creationDateStart date');
+                }
+                const endDate = options.creationDateEnd
+                    ? (isNaN(options.creationDateEnd.getTime()) ? '' : options.creationDateEnd.toISOString())
+                    : '';
+                filters.push(`creationdate:[${options.creationDateStart.toISOString()}..${endDate}]`);
             }
 
             if (options.lastModifiedDateStart) {
-                filters.push(`lastmodifieddate:[${options.lastModifiedDateStart.toISOString()}..${options.lastModifiedDateEnd?.toISOString() || ''}]`);
+                // Validate dates before calling toISOString()
+                if (isNaN(options.lastModifiedDateStart.getTime())) {
+                    throw new Error('Invalid lastModifiedDateStart date');
+                }
+                const endDate = options.lastModifiedDateEnd
+                    ? (isNaN(options.lastModifiedDateEnd.getTime()) ? '' : options.lastModifiedDateEnd.toISOString())
+                    : '';
+                filters.push(`lastmodifieddate:[${options.lastModifiedDateStart.toISOString()}..${endDate}]`);
             }
 
             if (options.fulfillmentStatus) {
@@ -356,18 +371,43 @@ export class EbayOrdersService {
             }
         }
 
-        // Pagination
-        if (options.limit) {
-            queryParams.set('limit', Math.min(options.limit, 200).toString());
+        // Pagination - request more if we need to filter by payment status
+        const requestLimit = options.paymentStatus
+            ? Math.min((options.limit || 50) * 2, 200) // Request extra to compensate for filtering
+            : options.limit;
+
+        if (requestLimit) {
+            queryParams.set('limit', Math.min(requestLimit, 200).toString());
         }
-        if (options.offset) {
+        if (options.offset && !options.paymentStatus) {
+            // Only use offset if not filtering by payment status (pagination gets complex with client-side filtering)
             queryParams.set('offset', options.offset.toString());
         }
 
         const queryString = queryParams.toString();
         const endpoint = `/order${queryString ? `?${queryString}` : ''}`;
 
-        return this.makeFulfillmentRequest(endpoint) as Promise<EbayOrdersResponse>;
+        const response = await this.makeFulfillmentRequest(endpoint) as EbayOrdersResponse;
+
+        // Apply client-side payment status filter (eBay API doesn't support this filter)
+        if (options.paymentStatus) {
+            const filteredOrders = response.orders.filter(
+                order => order.orderPaymentStatus === options.paymentStatus
+            );
+
+            // Apply limit after filtering
+            const limitedOrders = options.limit
+                ? filteredOrders.slice(0, options.limit)
+                : filteredOrders;
+
+            return {
+                ...response,
+                orders: limitedOrders,
+                total: filteredOrders.length,
+            };
+        }
+
+        return response;
     }
 
     /**

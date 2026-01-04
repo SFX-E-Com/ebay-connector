@@ -2,20 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from 'next/navigation';
-import {
-    Box,
-    VStack,
-    HStack,
-    Text,
-    Badge,
-    Card,
-    Spinner,
-    Alert,
-    Button,
-    Table,
-    Input,
-    NativeSelect as Select
-} from "@chakra-ui/react";
+import { Badge, Card, Spinner, Alert, Button, Table, Form } from "react-bootstrap";
 import { MdRefresh, MdSearch, MdLocalShipping } from "react-icons/md";
 import PageHeader from "@/app/components/common/PageHeader";
 
@@ -126,12 +113,12 @@ export default function OrdersDebugPage() {
 
     const getStatusColor = (status: string) => {
         switch (status) {
-            case 'FULFILLED': return 'green';
-            case 'IN_PROGRESS': return 'yellow';
-            case 'NOT_STARTED': return 'red';
-            case 'PAID': return 'green';
-            case 'PENDING': return 'yellow';
-            default: return 'gray';
+            case 'FULFILLED': return 'success';
+            case 'IN_PROGRESS': return 'warning';
+            case 'NOT_STARTED': return 'danger';
+            case 'PAID': return 'success';
+            case 'PENDING': return 'warning';
+            default: return 'secondary';
         }
     };
 
@@ -140,8 +127,8 @@ export default function OrdersDebugPage() {
     };
 
     return (
-        <Box p={8}>
-            <VStack gap={6} align="stretch">
+        <div className="p-4 p-md-5">
+            <div className="d-flex flex-column gap-4">
                 {/* Page Header */}
                 <PageHeader
                     title="Orders Debug"
@@ -152,159 +139,147 @@ export default function OrdersDebugPage() {
                 />
 
                 {/* Account Selection */}
-                <Card.Root>
+                <Card>
                     <Card.Body>
-                        <HStack gap={4} flexWrap="wrap">
-                            <Box flex="1" minW="200px">
-                                <Text fontWeight="medium" mb={2}>eBay Account</Text>
-                                <Select.Root
-                                    value={[selectedAccountId]}
-                                    onValueChange={(e) => setSelectedAccountId(e.value[0])}
+                        <div className="d-flex flex-wrap gap-3">
+                            <div style={{ flex: '1', minWidth: '200px' }}>
+                                <p className="fw-medium mb-2">eBay Account</p>
+                                <Form.Select
+                                    value={selectedAccountId}
+                                    onChange={(e) => setSelectedAccountId(e.target.value)}
                                     disabled={accountsLoading}
                                 >
-                                    <Select.Field>
-                                        {accounts.map(acc => (
-                                            <option key={acc.id} value={acc.id}>
-                                                {acc.friendlyName || acc.ebayUsername || acc.id}
-                                            </option>
-                                        ))}
-                                    </Select.Field>
-                                </Select.Root>
-                            </Box>
+                                    {accounts.map(acc => (
+                                        <option key={acc.id} value={acc.id}>
+                                            {acc.friendlyName || acc.ebayUsername || acc.id}
+                                        </option>
+                                    ))}
+                                </Form.Select>
+                            </div>
 
-                            <Box flex="1" minW="200px">
-                                <Text fontWeight="medium" mb={2}>Status Filter</Text>
-                                <Select.Root
-                                    value={[statusFilter]}
-                                    onValueChange={(e) => setStatusFilter(e.value[0])}
+                            <div style={{ flex: '1', minWidth: '200px' }}>
+                                <p className="fw-medium mb-2">Status Filter</p>
+                                <Form.Select
+                                    value={statusFilter}
+                                    onChange={(e) => setStatusFilter(e.target.value)}
                                 >
-                                    <Select.Field>
-                                        <option value="all">All Orders</option>
-                                        <option value="NOT_STARTED">Not Started</option>
-                                        <option value="IN_PROGRESS">In Progress</option>
-                                        <option value="FULFILLED">Fulfilled</option>
-                                    </Select.Field>
-                                </Select.Root>
-                            </Box>
+                                    <option value="all">All Orders</option>
+                                    <option value="NOT_STARTED">Not Started</option>
+                                    <option value="IN_PROGRESS">In Progress</option>
+                                    <option value="FULFILLED">Fulfilled</option>
+                                </Form.Select>
+                            </div>
 
-                            <Box>
-                                <Text fontWeight="medium" mb={2}>&nbsp;</Text>
+                            <div>
+                                <p className="fw-medium mb-2">&nbsp;</p>
                                 <Button
-                                    colorPalette="orange"
+                                    variant="primary"
                                     onClick={loadOrders}
                                     disabled={!selectedAccountId || loading}
                                 >
                                     <MdSearch /> Load Orders
                                 </Button>
-                            </Box>
-                        </HStack>
+                            </div>
+                        </div>
                     </Card.Body>
-                </Card.Root>
+                </Card>
 
                 {/* Error Alert */}
                 {error && (
-                    <Alert.Root status="error" borderRadius="md">
-                        <Alert.Indicator />
-                        <Alert.Content>
-                            <Alert.Description>{error}</Alert.Description>
-                        </Alert.Content>
-                    </Alert.Root>
+                    <Alert variant="danger" dismissible onClose={() => {}}>
+                        {error}
+                    </Alert>
                 )}
 
                 {/* Loading */}
                 {loading && (
-                    <Box textAlign="center" py={10}>
-                        <Spinner size="xl" color="orange.500" />
-                        <Text mt={4}>Loading orders...</Text>
-                    </Box>
+                    <div className="text-center py-5">
+                        <Spinner animation="border" variant="primary" style={{ width: '3rem', height: '3rem' }} />
+                        <p className="mt-3">Loading orders...</p>
+                    </div>
                 )}
 
                 {/* Orders List */}
                 {!loading && orders.length > 0 && (
-                    <Card.Root>
+                    <Card>
                         <Card.Header>
-                            <Text fontWeight="bold">Orders ({orders.length})</Text>
+                            <p className="fw-bold mb-0">Orders ({orders.length})</p>
                         </Card.Header>
-                        <Card.Body p={0}>
-                            <Table.Root>
-                                <Table.Header>
-                                    <Table.Row>
-                                        <Table.ColumnHeader>Order ID</Table.ColumnHeader>
-                                        <Table.ColumnHeader>Date</Table.ColumnHeader>
-                                        <Table.ColumnHeader>Buyer</Table.ColumnHeader>
-                                        <Table.ColumnHeader>Total</Table.ColumnHeader>
-                                        <Table.ColumnHeader>Items</Table.ColumnHeader>
-                                        <Table.ColumnHeader>Payment</Table.ColumnHeader>
-                                        <Table.ColumnHeader>Fulfillment</Table.ColumnHeader>
-                                    </Table.Row>
-                                </Table.Header>
-                                <Table.Body>
+                        <Card.Body className="p-0">
+                            <Table striped bordered hover>
+                                <thead>
+                                    <tr>
+                                        <th>Order ID</th>
+                                        <th>Date</th>
+                                        <th>Buyer</th>
+                                        <th>Total</th>
+                                        <th>Items</th>
+                                        <th>Payment</th>
+                                        <th>Fulfillment</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
                                     {orders.map(order => (
-                                        <Table.Row key={order.orderId}>
-                                            <Table.Cell>
-                                                <Text fontSize="sm" fontFamily="mono">
+                                        <tr key={order.orderId}>
+                                            <td>
+                                                <span className="small font-monospace">
                                                     {order.orderId.substring(0, 12)}...
-                                                </Text>
-                                            </Table.Cell>
-                                            <Table.Cell>
-                                                <Text fontSize="sm">{formatDate(order.creationDate)}</Text>
-                                            </Table.Cell>
-                                            <Table.Cell>
-                                                <Text fontSize="sm">{order.buyer.username}</Text>
-                                            </Table.Cell>
-                                            <Table.Cell>
-                                                <Text fontWeight="bold">
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span className="small">{formatDate(order.creationDate)}</span>
+                                            </td>
+                                            <td>
+                                                <span className="small">{order.buyer.username}</span>
+                                            </td>
+                                            <td>
+                                                <span className="fw-bold">
                                                     {order.pricingSummary.total.value} {order.pricingSummary.total.currency}
-                                                </Text>
-                                            </Table.Cell>
-                                            <Table.Cell>
-                                                <VStack align="start" gap={1}>
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <div className="d-flex flex-column gap-1">
                                                     {order.lineItems.map(item => (
-                                                        <Text key={item.lineItemId} fontSize="xs">
+                                                        <span key={item.lineItemId} className="small">
                                                             {item.quantity}x {item.title.substring(0, 30)}...
-                                                        </Text>
+                                                        </span>
                                                     ))}
-                                                </VStack>
-                                            </Table.Cell>
-                                            <Table.Cell>
-                                                <Badge colorPalette={getStatusColor(order.orderPaymentStatus)}>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <Badge bg={getStatusColor(order.orderPaymentStatus)}>
                                                     {order.orderPaymentStatus}
                                                 </Badge>
-                                            </Table.Cell>
-                                            <Table.Cell>
-                                                <Badge colorPalette={getStatusColor(order.orderFulfillmentStatus)}>
+                                            </td>
+                                            <td>
+                                                <Badge bg={getStatusColor(order.orderFulfillmentStatus)}>
                                                     {order.orderFulfillmentStatus}
                                                 </Badge>
-                                            </Table.Cell>
-                                        </Table.Row>
+                                            </td>
+                                        </tr>
                                     ))}
-                                </Table.Body>
-                            </Table.Root>
+                                </tbody>
+                            </Table>
                         </Card.Body>
-                    </Card.Root>
+                    </Card>
                 )}
 
                 {/* No Orders */}
                 {!loading && !error && orders.length === 0 && selectedAccountId && (
-                    <Card.Root>
-                        <Card.Body textAlign="center" py={10}>
-                            <Text color="gray.500">No orders found. Click "Load Orders" to fetch from eBay.</Text>
+                    <Card>
+                        <Card.Body className="text-center py-5">
+                            <p className="text-muted">No orders found. Click "Load Orders" to fetch from eBay.</p>
                         </Card.Body>
-                    </Card.Root>
+                    </Card>
                 )}
 
                 {/* No Account Selected */}
                 {!accountsLoading && accounts.length === 0 && (
-                    <Alert.Root status="warning" borderRadius="md">
-                        <Alert.Indicator />
-                        <Alert.Content>
-                            <Alert.Description>
-                                No eBay accounts connected. Please connect an eBay account first.
-                            </Alert.Description>
-                        </Alert.Content>
-                    </Alert.Root>
+                    <Alert variant="warning" dismissible onClose={() => {}}>
+                        No eBay accounts connected. Please connect an eBay account first.
+                    </Alert>
                 )}
-            </VStack>
-        </Box>
+            </div>
+        </div>
     );
 }

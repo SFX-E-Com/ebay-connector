@@ -3,6 +3,8 @@ import { Inter } from 'next/font/google'
 import { Providers } from './providers'
 import ConditionalLayout from './components/layout/ConditionalLayout'
 import './ui/global.css'
+import './styles/bootstrap-custom.scss'
+import './styles/dark-mode.css'
 
 const inter = Inter({ subsets: ['latin'] })
 

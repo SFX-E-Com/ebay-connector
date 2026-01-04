@@ -2,24 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  Box,
-  VStack,
-  HStack,
-  Text,
-  Button,
-  Table,
-  Badge,
-  IconButton,
-  Alert,
-  Spinner,
-  Flex,
-  Input,
-  Card,
-  Select,
-  Center,
-  createListCollection,
-} from '@chakra-ui/react';
+import { Button, Table, Badge, Alert, Spinner, Form, Card } from 'react-bootstrap';
 import {
   MdVisibility,
   MdSync,
@@ -184,22 +167,22 @@ export default function ProductsPage() {
 
   const getStatusBadge = (status: string) => {
     const colorMap: Record<string, string> = {
-      'Active': 'green',
-      'Completed': 'blue',
-      'Ended': 'gray',
-      'Sold': 'purple',
+      'Active': 'success',
+      'Completed': 'info',
+      'Ended': 'secondary',
+      'Sold': 'primary',
     };
 
     return (
-      <Badge size="sm" colorPalette={colorMap[status] || 'gray'}>
+      <Badge bg={colorMap[status] || 'secondary'}>
         {status}
       </Badge>
     );
   };
 
   return (
-    <Box p={8}>
-      <VStack gap={6} align="stretch">
+    <div className="p-4 p-md-5">
+      <div className="d-flex flex-column gap-4">
         {/* Page Header */}
         <PageHeader
           title="Products"
@@ -210,200 +193,168 @@ export default function ProductsPage() {
         />
 
         {/* Account Selector and Filters */}
-        <Card.Root>
+        <Card>
           <Card.Body>
-            <HStack gap={4} flexWrap="wrap">
+            <div className="d-flex flex-wrap gap-3">
               {/* Account Selector */}
-              <Box flex="1" minW="200px">
-                <Text fontSize="sm" mb={2} color="gray.600">eBay Account</Text>
-                <Select.Root
-                  collection={createListCollection({
-                    items: accounts.map(acc => ({ value: acc.id, label: acc.friendlyName || acc.ebayUsername }))
-                  })}
-                  value={[selectedAccount]}
-                  onValueChange={(e) => setSelectedAccount(e.value[0])}
+              <div style={{ flex: '1', minWidth: '200px' }}>
+                <p className="small mb-2 text-muted">eBay Account</p>
+                <Form.Select
+                  value={selectedAccount}
+                  onChange={(e) => setSelectedAccount(e.target.value)}
                   disabled={accounts.length === 0}
                 >
-                  <Select.Trigger>
-                    <Select.ValueText placeholder="Select account" />
-                  </Select.Trigger>
-                  <Select.Positioner>
-                    <Select.Content>
-                      {accounts.map(account => (
-                        <Select.Item key={account.id} item={account.id}>
-                          <Select.ItemText>
-                            {account.friendlyName || account.ebayUsername}
-                          </Select.ItemText>
-                        </Select.Item>
-                      ))}
-                    </Select.Content>
-                  </Select.Positioner>
-                </Select.Root>
-              </Box>
+                  <option value="">Select account</option>
+                  {accounts.map(account => (
+                    <option key={account.id} value={account.id}>
+                      {account.friendlyName || account.ebayUsername}
+                    </option>
+                  ))}
+                </Form.Select>
+              </div>
 
               {/* Search */}
-              <Box flex="1" minW="250px">
-                <Text fontSize="sm" mb={2} color="gray.600">Search</Text>
-                <Input
+              <div style={{ flex: '1', minWidth: '250px' }}>
+                <p className="small mb-2 text-muted">Search</p>
+                <Form.Control
                   placeholder="Search by title, SKU, or item ID..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
-              </Box>
+              </div>
 
               {/* Status Filter */}
-              <Box minW="150px">
-                <Text fontSize="sm" mb={2} color="gray.600">Status</Text>
-                <Select.Root
-                  collection={createListCollection({
-                    items: [
-                      { value: 'all', label: 'All Status' },
-                      { value: 'active', label: 'Active' },
-                      { value: 'completed', label: 'Completed' },
-                      { value: 'ended', label: 'Ended' }
-                    ]
-                  })}
-                  value={[statusFilter]}
-                  onValueChange={(e) => setStatusFilter(e.value[0])}
+              <div style={{ minWidth: '150px' }}>
+                <p className="small mb-2 text-muted">Status</p>
+                <Form.Select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
                 >
-                  <Select.Trigger>
-                    <Select.ValueText />
-                  </Select.Trigger>
-                  <Select.Positioner>
-                    <Select.Content>
-                      <Select.Item item="all">
-                        <Select.ItemText>All Status</Select.ItemText>
-                      </Select.Item>
-                      <Select.Item item="active">
-                        <Select.ItemText>Active</Select.ItemText>
-                      </Select.Item>
-                      <Select.Item item="completed">
-                        <Select.ItemText>Completed</Select.ItemText>
-                      </Select.Item>
-                      <Select.Item item="ended">
-                        <Select.ItemText>Ended</Select.ItemText>
-                      </Select.Item>
-                    </Select.Content>
-                  </Select.Positioner>
-                </Select.Root>
-              </Box>
-            </HStack>
+                  <option value="all">All Status</option>
+                  <option value="active">Active</option>
+                  <option value="completed">Completed</option>
+                  <option value="ended">Ended</option>
+                </Form.Select>
+              </div>
+            </div>
           </Card.Body>
-        </Card.Root>
+        </Card>
 
         {/* Results Summary */}
         {!loading && pagination && (
-          <HStack justify="space-between">
-            <Text fontSize="sm" color="gray.600">
+          <div className="d-flex justify-content-between">
+            <p className="small text-muted mb-0">
               Showing {filteredProducts.length} of {pagination.totalEntries} products
               {searchTerm && ` (filtered)`}
-            </Text>
+            </p>
             {pagination.totalPages > 1 && (
-              <HStack>
+              <div className="d-flex gap-2">
                 <Button
                   size="sm"
-                  variant="outline"
+                  variant="outline-secondary"
                   onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                   disabled={currentPage === 1}
                 >
                   Previous
                 </Button>
-                <Text fontSize="sm">
+                <p className="small mb-0 align-self-center">
                   Page {pagination.pageNumber} of {pagination.totalPages}
-                </Text>
+                </p>
                 <Button
                   size="sm"
-                  variant="outline"
+                  variant="outline-secondary"
                   onClick={() => setCurrentPage(prev => Math.min(pagination.totalPages, prev + 1))}
                   disabled={currentPage === pagination.totalPages}
                 >
                   Next
                 </Button>
-              </HStack>
+              </div>
             )}
-          </HStack>
+          </div>
         )}
 
         {/* Error Alert */}
         {error && (
-          <Alert.Root status="error" borderRadius="md">
-            <Alert.Indicator />
-            <Alert.Content>
-              <VStack align="start" gap={2}>
-                <Alert.Description>{error}</Alert.Description>
-                {error.includes('expired') && (
-                  <Button
-                    size="sm"
-                    colorPalette="blue"
-                    onClick={() => router.push('/ebay-connections')}
-                  >
-                    Go to eBay Accounts
-                  </Button>
-                )}
-              </VStack>
-            </Alert.Content>
-          </Alert.Root>
+          <Alert variant="danger" dismissible onClose={() => {}}>
+            <div className="d-flex flex-column gap-2">
+              {error}
+              {error.includes('expired') && (
+                <Button
+                  size="sm"
+                  variant="info"
+                  onClick={() => router.push('/ebay-connections')}
+                >
+                  Go to eBay Accounts
+                </Button>
+              )}
+            </div>
+          </Alert>
         )}
 
         {/* Loading State */}
         {loading && (
-          <Center py={20}>
-            <VStack gap={4}>
-              <Spinner size="lg" colorPalette="blue" />
-              <Text color="gray.500">Loading products...</Text>
-            </VStack>
-          </Center>
+          <div className="text-center py-5">
+            <div className="d-flex flex-column gap-3 align-items-center">
+              <Spinner animation="border" variant="primary" />
+              <p className="text-muted">Loading products...</p>
+            </div>
+          </div>
         )}
 
         {/* Empty State */}
         {!loading && !error && filteredProducts.length === 0 && (
-          <Center py={20}>
-            <VStack gap={4}>
-              <Text fontSize="lg" fontWeight="medium" color="gray.600">
+          <div className="text-center py-5">
+            <div className="d-flex flex-column gap-3 align-items-center">
+              <p className="fs-5 fw-medium text-muted">
                 {searchTerm ? 'No products match your search' : 'No products found'}
-              </Text>
-              <Text color="gray.500" textAlign="center">
+              </p>
+              <p className="text-muted">
                 {selectedAccount
                   ? 'Your eBay products will appear here once they are listed'
                   : 'Please select an eBay account to view products'
                 }
-              </Text>
-            </VStack>
-          </Center>
+              </p>
+            </div>
+          </div>
         )}
 
         {/* Products Table */}
         {!loading && !error && filteredProducts.length > 0 && (
-          <Card.Root>
-            <Card.Body p={0}>
-              <Table.ScrollArea maxH="600px">
-                <Table.Root>
-                  <Table.Header>
-                    <Table.Row>
-                      <Table.ColumnHeader>Item ID</Table.ColumnHeader>
-                      <Table.ColumnHeader>Title</Table.ColumnHeader>
-                      <Table.ColumnHeader>SKU</Table.ColumnHeader>
-                      <Table.ColumnHeader>Price</Table.ColumnHeader>
-                      <Table.ColumnHeader>Quantity</Table.ColumnHeader>
-                      <Table.ColumnHeader>Status</Table.ColumnHeader>
-                      <Table.ColumnHeader>Type</Table.ColumnHeader>
-                      <Table.ColumnHeader>Started</Table.ColumnHeader>
-                      <Table.ColumnHeader textAlign="center">Actions</Table.ColumnHeader>
-                    </Table.Row>
-                  </Table.Header>
-                  <Table.Body>
+          <Card>
+            <Card.Body className="p-0">
+              <div style={{ maxHeight: '600px', overflow: 'auto' }}>
+                <Table striped bordered hover>
+                  <thead>
+                    <tr>
+                      <th>Item ID</th>
+                      <th>Title</th>
+                      <th>SKU</th>
+                      <th>Price</th>
+                      <th>Quantity</th>
+                      <th>Status</th>
+                      <th>Type</th>
+                      <th>Started</th>
+                      <th className="text-center">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
                     {filteredProducts.map((product) => (
-                      <Table.Row key={product.itemId}>
-                        <Table.Cell>
-                          <Text fontSize="sm" fontFamily="mono">
+                      <tr key={product.itemId}>
+                        <td>
+                          <span className="small font-monospace">
                             {product.itemId}
-                          </Text>
-                        </Table.Cell>
-                        <Table.Cell>
-                          <VStack align="start" gap={1}>
-                            <Text fontSize="sm" fontWeight="medium" lineClamp="2">
+                          </span>
+                        </td>
+                        <td>
+                          <div className="d-flex flex-column gap-1">
+                            <span className="small fw-medium" style={{
+                              display: '-webkit-box',
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: 'vertical',
+                              overflow: 'hidden'
+                            }}>
                               {product.title}
-                            </Text>
+                            </span>
                             {product.pictureUrls && product.pictureUrls[0] && (
                               <img
                                 src={product.pictureUrls[0]}
@@ -416,73 +367,73 @@ export default function ProductsPage() {
                                 }}
                               />
                             )}
-                          </VStack>
-                        </Table.Cell>
-                        <Table.Cell>
-                          <Text fontSize="sm">
+                          </div>
+                        </td>
+                        <td>
+                          <span className="small">
                             {product.sku || '-'}
-                          </Text>
-                        </Table.Cell>
-                        <Table.Cell>
-                          <Text fontSize="sm" fontWeight="medium">
+                          </span>
+                        </td>
+                        <td>
+                          <span className="small fw-medium">
                             {product.currency} {product.currentPrice}
-                          </Text>
-                        </Table.Cell>
-                        <Table.Cell>
-                          <VStack align="start" gap={0}>
-                            <Text fontSize="sm">
+                          </span>
+                        </td>
+                        <td>
+                          <div className="d-flex flex-column">
+                            <span className="small">
                               Available: {product.quantityAvailable}
-                            </Text>
+                            </span>
                             {product.quantitySold && (
-                              <Text fontSize="xs" color="gray.600">
+                              <span className="small text-muted">
                                 Sold: {product.quantitySold}
-                              </Text>
+                              </span>
                             )}
-                          </VStack>
-                        </Table.Cell>
-                        <Table.Cell>
+                          </div>
+                        </td>
+                        <td>
                           {getStatusBadge(product.sellingStatus)}
-                        </Table.Cell>
-                        <Table.Cell>
-                          <Badge size="sm" variant="outline">
+                        </td>
+                        <td>
+                          <Badge bg="secondary" className="text-white">
                             {product.listingType}
                           </Badge>
-                        </Table.Cell>
-                        <Table.Cell>
-                          <Text fontSize="sm">
+                        </td>
+                        <td>
+                          <span className="small">
                             {formatDateShort(product.startTime)}
-                          </Text>
-                        </Table.Cell>
-                        <Table.Cell>
-                          <HStack justify="center">
-                            <IconButton
+                          </span>
+                        </td>
+                        <td>
+                          <div className="d-flex justify-content-center gap-1">
+                            <Button
                               aria-label="View on eBay"
                               size="sm"
-                              variant="ghost"
+                              variant="outline-secondary"
                               onClick={() => handleViewProduct(product)}
                             >
                               <MdVisibility />
-                            </IconButton>
-                            <IconButton
+                            </Button>
+                            <Button
                               aria-label="Migrate to Inventory API"
                               size="sm"
-                              variant="ghost"
+                              variant="outline-secondary"
                               onClick={() => handleMigrateProduct(product)}
                               title="Migrate to Inventory API"
                             >
                               <MdSync />
-                            </IconButton>
-                          </HStack>
-                        </Table.Cell>
-                      </Table.Row>
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
                     ))}
-                  </Table.Body>
-                </Table.Root>
-              </Table.ScrollArea>
+                  </tbody>
+                </Table>
+              </div>
             </Card.Body>
-          </Card.Root>
+          </Card>
         )}
-      </VStack>
-    </Box>
+      </div>
+    </div>
   );
 }

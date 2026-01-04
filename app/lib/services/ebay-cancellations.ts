@@ -104,8 +104,9 @@ export class EbayCancellationsService {
     private refreshToken: string | null;
     private accountId: string;
     private tokenExpiresAt: Date;
+    private marketplace: string;
 
-    constructor(account: EbayAccount) {
+    constructor(account: EbayAccount, marketplace?: string) {
         const isSandbox = process.env.EBAY_SANDBOX === 'true';
         this.basePostOrderUrl = isSandbox
             ? EBAY_POST_ORDER_API_URLS.sandbox
@@ -114,6 +115,7 @@ export class EbayCancellationsService {
         this.refreshToken = account.refreshToken || null;
         this.accountId = account.id;
         this.tokenExpiresAt = new Date(account.expiresAt);
+        this.marketplace = marketplace || process.env.EBAY_DEFAULT_MARKETPLACE || 'EBAY_DE';
     }
 
     private async refreshAccessToken(): Promise<void> {
@@ -183,7 +185,7 @@ export class EbayCancellationsService {
             'Authorization': `Bearer ${this.accessToken}`,
             'Content-Type': 'application/json',
             'Accept': 'application/json',
-            'X-EBAY-C-MARKETPLACE-ID': 'EBAY_DE'
+            'X-EBAY-C-MARKETPLACE-ID': this.marketplace
         };
 
         const options: RequestInit = {
@@ -288,7 +290,18 @@ export class EbayCancellationsService {
      * Create a new cancellation request
      */
     async createCancellation(request: CreateCancellationRequest): Promise<EbayCancellation> {
-        return this.makePostOrderRequest('/cancellation', 'POST', request) as Promise<EbayCancellation>;
+        // Filter out undefined values to avoid API errors
+        const body: any = {
+            legacyOrderId: request.legacyOrderId,
+            cancelReason: request.cancelReason
+        };
+        if (request.buyerPaidForItem !== undefined) {
+            body.buyerPaidForItem = request.buyerPaidForItem;
+        }
+        if (request.comments !== undefined && request.comments !== '') {
+            body.comments = request.comments;
+        }
+        return this.makePostOrderRequest('/cancellation', 'POST', body) as Promise<EbayCancellation>;
     }
 
     /**
@@ -300,19 +313,26 @@ export class EbayCancellationsService {
 
     /**
      * Reject a cancellation request
+     * Note: shipDate and trackingNumber are required by eBay API
      */
     async rejectCancellation(cancellationId: string, comments?: string): Promise<unknown> {
-        const body = {
+        const body: any = {
             shipDate: new Date().toISOString(),
-            trackingNumber: 'N/A',
-            comments
+            trackingNumber: 'N/A'  // Required field, use placeholder if not available
         };
+        // Only include comments if provided to avoid sending undefined values
+        if (comments !== undefined && comments !== '') {
+            body.comments = comments;
+        }
         return this.makePostOrderRequest(`/cancellation/${cancellationId}/reject`, 'POST', body);
     }
 }
 
 // Factory function to create service from account ID
-export async function createEbayCancellationsService(accountId: string): Promise<EbayCancellationsService> {
+export async function createEbayCancellationsService(
+    accountId: string,
+    marketplace?: string
+): Promise<EbayCancellationsService> {
     const account = await EbayAccountService.getAccountById(accountId);
 
     if (!account) {
@@ -324,5 +344,5 @@ export async function createEbayCancellationsService(accountId: string): Promise
         accessToken: account.accessToken,
         refreshToken: account.refreshToken || undefined,
         expiresAt: account.expiresAt
-    });
+    }, marketplace);
 }

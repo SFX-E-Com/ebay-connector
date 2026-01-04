@@ -84,7 +84,8 @@ async function postHandler(
     authData: EbayAuthData
 ) {
     try {
-        const body = await request.json();
+        // Use pre-parsed body from middleware to avoid consuming request stream
+        const body = authData.requestBody || {};
 
         // Validate required fields
         const { legacyOrderId, cancelReason } = body;
@@ -126,5 +127,5 @@ async function postHandler(
     }
 }
 
-export const GET = withEbayAuth('ebay:cancellations:read', getHandler);
-export const POST = withEbayAuth('ebay:cancellations:write', postHandler);
+export const GET = withEbayAuth('ebay:cancellations:read', getHandler, 'VIEW_CANCELLATIONS');
+export const POST = withEbayAuth('ebay:cancellations:write', postHandler, 'MANAGE_CANCELLATIONS');

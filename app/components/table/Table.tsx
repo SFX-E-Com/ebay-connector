@@ -1,18 +1,6 @@
 "use client";
 
-import {
-    Box,
-    VStack,
-    HStack,
-    Heading,
-    Text,
-    Button,
-    IconButton,
-    Alert,
-    Spinner,
-    Tooltip,
-    Switch,
-} from "@chakra-ui/react";
+import { Button, Alert, Spinner, OverlayTrigger, Tooltip, Form } from "react-bootstrap";
 import { MdRefresh } from "react-icons/md";
 import { HiCheck, HiX } from "react-icons/hi";
 import { useDataTable } from "@/app/hooks/useDataTable";
@@ -259,6 +247,17 @@ export const Table = forwardRef<TableRef, TableProps<any>>(function Table<
         }
     };
 
+    // Helper to render action button with tooltip
+    const renderActionButton = (button: React.ReactNode, tooltip: string, key: string) => (
+        <OverlayTrigger
+            key={key}
+            placement="top"
+            overlay={<Tooltip id={`tooltip-${key}`}>{tooltip}</Tooltip>}
+        >
+            <span className="d-inline-block">{button}</span>
+        </OverlayTrigger>
+    );
+
     // Enhanced columns with actions
     const enhancedColumns: TableColumn<T>[] = [
         ...columns,
@@ -268,7 +267,7 @@ export const Table = forwardRef<TableRef, TableProps<any>>(function Table<
                       key: "actions",
                       header: "Actions",
                       render: (item: T) => (
-                          <HStack gap={1}>
+                          <div className="d-flex gap-1">
                               {actions.map((action) => {
                                   // Check visibility and disabled conditions
                                   if (action.visible && !action.visible(item))
@@ -277,191 +276,107 @@ export const Table = forwardRef<TableRef, TableProps<any>>(function Table<
                                       ? action.disabled(item)
                                       : false;
 
-                                  let buttonProps: any = {
-                                      "aria-label": action.label,
-                                      size: "sm",
-                                      variant: action.variant || "ghost",
-                                      disabled: isDisabled,
+                                  // Map Chakra variants to Bootstrap
+                                  const getVariant = () => {
+                                      if (action.variant === "ghost") return "outline-secondary";
+                                      if (action.variant === "solid") return action.colorPalette || "primary";
+                                      return action.variant || "outline-secondary";
                                   };
-
-                                  if (action.colorPalette) {
-                                      buttonProps.colorPalette =
-                                          action.colorPalette;
-                                  }
 
                                   // Handle different action types
                                   switch (action.type) {
                                       case "edit":
-                                          return (
-                                              <Tooltip.Root key={action.key}>
-                                                  <Tooltip.Trigger asChild>
-                                                      <IconButton
-                                                          {...buttonProps}
-                                                          onClick={() =>
-                                                              handleEdit(item)
-                                                          }
-                                                      >
-                                                          {action.icon ? (
-                                                              <action.icon />
-                                                          ) : (
-                                                              "Edit"
-                                                          )}
-                                                      </IconButton>
-                                                  </Tooltip.Trigger>
-                                                  <Tooltip.Positioner>
-                                                      <Tooltip.Content>
-                                                          {action.label}
-                                                      </Tooltip.Content>
-                                                  </Tooltip.Positioner>
-                                              </Tooltip.Root>
+                                          return renderActionButton(
+                                              <Button
+                                                  size="sm"
+                                                  variant={getVariant()}
+                                                  disabled={isDisabled}
+                                                  onClick={() => handleEdit(item)}
+                                                  aria-label={action.label}
+                                              >
+                                                  {action.icon ? <action.icon /> : "Edit"}
+                                              </Button>,
+                                              action.label,
+                                              `${action.key}-${(item as any).id || Math.random()}`
                                           );
 
                                       case "delete":
-                                          return (
-                                              <Tooltip.Root key={action.key}>
-                                                  <Tooltip.Trigger asChild>
-                                                      <IconButton
-                                                          {...buttonProps}
-                                                          onClick={() =>
-                                                              handleDelete(item)
-                                                          }
-                                                      >
-                                                          {action.icon ? (
-                                                              <action.icon />
-                                                          ) : (
-                                                              "Delete"
-                                                          )}
-                                                      </IconButton>
-                                                  </Tooltip.Trigger>
-                                                  <Tooltip.Positioner>
-                                                      <Tooltip.Content>
-                                                          {action.label}
-                                                      </Tooltip.Content>
-                                                  </Tooltip.Positioner>
-                                              </Tooltip.Root>
+                                          return renderActionButton(
+                                              <Button
+                                                  size="sm"
+                                                  variant="outline-danger"
+                                                  disabled={isDisabled}
+                                                  onClick={() => handleDelete(item)}
+                                                  aria-label={action.label}
+                                              >
+                                                  {action.icon ? <action.icon /> : "Delete"}
+                                              </Button>,
+                                              action.label,
+                                              `${action.key}-${(item as any).id || Math.random()}`
                                           );
 
                                       case "status":
                                           const currentStatus =
                                               action.statusField
-                                                  ? (item as any)[
-                                                        action.statusField
-                                                    ]
+                                                  ? (item as any)[action.statusField]
                                                   : false;
                                           const statusLabel = currentStatus
-                                              ? action.inactiveLabel ||
-                                                "Deactivate"
-                                              : action.activeLabel ||
-                                                "Activate";
-                                          return (
-                                              <Tooltip.Root key={action.key}>
-                                                  <Tooltip.Trigger asChild>
-                                                      <IconButton
-                                                          {...buttonProps}
-                                                          aria-label={statusLabel}
-                                                          onClick={() =>
-                                                              handleStatusToggle(
-                                                                  item,
-                                                                  action
-                                                              )
-                                                          }
-                                                      >
-                                                          {action.icon ? (
-                                                              <action.icon />
-                                                          ) : currentStatus ? (
-                                                              "Pause"
-                                                          ) : (
-                                                              "Play"
-                                                          )}
-                                                      </IconButton>
-                                                  </Tooltip.Trigger>
-                                                  <Tooltip.Positioner>
-                                                      <Tooltip.Content>
-                                                          {statusLabel}
-                                                      </Tooltip.Content>
-                                                  </Tooltip.Positioner>
-                                              </Tooltip.Root>
+                                              ? action.inactiveLabel || "Deactivate"
+                                              : action.activeLabel || "Activate";
+                                          return renderActionButton(
+                                              <Button
+                                                  size="sm"
+                                                  variant={currentStatus ? "outline-warning" : "outline-success"}
+                                                  disabled={isDisabled}
+                                                  onClick={() => handleStatusToggle(item, action)}
+                                                  aria-label={statusLabel}
+                                              >
+                                                  {action.icon ? <action.icon /> : currentStatus ? "Pause" : "Play"}
+                                              </Button>,
+                                              statusLabel,
+                                              `${action.key}-${(item as any).id || Math.random()}`
                                           );
 
                                       case "switch":
                                           const switchStatus =
                                               action.statusField
-                                                  ? (item as any)[
-                                                        action.statusField
-                                                    ]
+                                                  ? (item as any)[action.statusField]
                                                   : false;
                                           const switchId = `switch-${action.key}-${(item as any).id}`;
-                                          return (
-                                              <Tooltip.Root key={action.key} positioning={{ placement: "top" }}>
-                                                  <Tooltip.Trigger asChild>
-                                                      <Box>
-                                                          <Switch.Root
-                                                              checked={switchStatus}
-                                                              onCheckedChange={() =>
-                                                                  handleStatusToggle(
-                                                                      item,
-                                                                      action
-                                                                  )
-                                                              }
-                                                              disabled={isDisabled}
-                                                              size="sm"
-                                                              ids={{ root: switchId }}
-                                                              colorPalette="green"
-                                                          >
-                                                              <Switch.HiddenInput />
-                                                              <Switch.Control>
-                                                                  <Switch.Thumb>
-                                                                      <Switch.ThumbIndicator fallback={<HiX color="black" />}>
-                                                                          <HiCheck color="white" />
-                                                                      </Switch.ThumbIndicator>
-                                                                  </Switch.Thumb>
-                                                              </Switch.Control>
-                                                          </Switch.Root>
-                                                      </Box>
-                                                  </Tooltip.Trigger>
-                                                  <Tooltip.Positioner>
-                                                      <Tooltip.Content>
-                                                          {switchStatus
-                                                              ? action.activeLabel || "Activate"
-                                                              : action.inactiveLabel || "Deactivate"}
-                                                      </Tooltip.Content>
-                                                  </Tooltip.Positioner>
-                                              </Tooltip.Root>
+                                          return renderActionButton(
+                                              <Form.Check
+                                                  type="switch"
+                                                  id={switchId}
+                                                  checked={switchStatus}
+                                                  onChange={() => handleStatusToggle(item, action)}
+                                                  disabled={isDisabled}
+                                              />,
+                                              switchStatus
+                                                  ? action.activeLabel || "Activate"
+                                                  : action.inactiveLabel || "Deactivate",
+                                              `${action.key}-${(item as any).id || Math.random()}`
                                           );
 
                                       case "custom":
-                                          return (
-                                              <Tooltip.Root key={action.key}>
-                                                  <Tooltip.Trigger asChild>
-                                                      <IconButton
-                                                          {...buttonProps}
-                                                          onClick={() =>
-                                                              action.onClick?.(
-                                                                  item,
-                                                                  dataTable.refetch
-                                                              )
-                                                          }
-                                                      >
-                                                          {action.icon ? (
-                                                              <action.icon />
-                                                          ) : (
-                                                              action.label
-                                                          )}
-                                                      </IconButton>
-                                                  </Tooltip.Trigger>
-                                                  <Tooltip.Positioner>
-                                                      <Tooltip.Content>
-                                                          {action.label}
-                                                      </Tooltip.Content>
-                                                  </Tooltip.Positioner>
-                                              </Tooltip.Root>
+                                          return renderActionButton(
+                                              <Button
+                                                  size="sm"
+                                                  variant={getVariant()}
+                                                  disabled={isDisabled}
+                                                  onClick={() => action.onClick?.(item, dataTable.refetch)}
+                                                  aria-label={action.label}
+                                              >
+                                                  {action.icon ? <action.icon /> : action.label}
+                                              </Button>,
+                                              action.label,
+                                              `${action.key}-${(item as any).id || Math.random()}`
                                           );
 
                                       default:
                                           return null;
                                   }
                               })}
-                          </HStack>
+                          </div>
                       ),
                   },
               ]
@@ -469,69 +384,60 @@ export const Table = forwardRef<TableRef, TableProps<any>>(function Table<
     ];
 
     return (
-        <Box className={className}>
-            <VStack gap={6} align="stretch">
+        <div className={className}>
+            <div className="d-flex flex-column gap-4">
                 {/* Header */}
-                {(title ||
-                    description ||
-                    headerActions ||
-                    showRefreshButton) && (
-                    <HStack justify="space-between" align="flex-start">
+                {(title || description || headerActions || showRefreshButton) && (
+                    <div className="d-flex justify-content-between align-items-start">
                         {(title || description) && (
-                            <Box>
+                            <div>
                                 {title && (
-                                    <Heading size="xl" mb={2}>
+                                    <h2 className="display-6 fw-bold mb-2">
                                         {title}
-                                    </Heading>
+                                    </h2>
                                 )}
                                 {description && (
-                                    <Text color="gray.600">{description}</Text>
+                                    <p className="text-dark">{description}</p>
                                 )}
-                            </Box>
+                            </div>
                         )}
 
-                        <HStack gap={3}>
+                        <div className="d-flex gap-2">
                             {showRefreshButton && (
-                                <Tooltip.Root>
-                                    <Tooltip.Trigger asChild>
-                                        <IconButton
-                                            aria-label="Refresh"
-                                            variant="ghost"
-                                            onClick={() => dataTable.refetch()}
-                                        >
-                                            <MdRefresh />
-                                        </IconButton>
-                                    </Tooltip.Trigger>
-                                    <Tooltip.Positioner>
-                                        <Tooltip.Content>
-                                            Refresh data
-                                        </Tooltip.Content>
-                                    </Tooltip.Positioner>
-                                </Tooltip.Root>
+                                <OverlayTrigger
+                                    placement="top"
+                                    overlay={<Tooltip id="tooltip-refresh">Refresh data</Tooltip>}
+                                >
+                                    <Button
+                                        aria-label="Refresh"
+                                        variant="outline-secondary"
+                                        size="sm"
+                                        onClick={() => dataTable.refetch()}
+                                    >
+                                        <MdRefresh />
+                                    </Button>
+                                </OverlayTrigger>
                             )}
                             {headerActions}
-                        </HStack>
-                    </HStack>
+                        </div>
+                    </div>
                 )}
 
                 {/* Error Alert */}
                 {dataTable.error && (
-                    <Alert.Root status="error">
-                        <Alert.Indicator />
-                        <Alert.Content>
-                            <Alert.Title>Error!</Alert.Title>
-                            <Alert.Description>
-                                {dataTable.error}
-                            </Alert.Description>
-                        </Alert.Content>
+                    <Alert variant="danger" className="d-flex align-items-center justify-content-between">
+                        <div>
+                            <Alert.Heading className="h6">Error!</Alert.Heading>
+                            <p className="mb-0">{dataTable.error}</p>
+                        </div>
                         <Button
                             size="sm"
-                            variant="outline"
+                            variant="outline-danger"
                             onClick={() => dataTable.refetch()}
                         >
                             Retry
                         </Button>
-                    </Alert.Root>
+                    </Alert>
                 )}
 
                 {/* Filters */}
@@ -572,13 +478,13 @@ export const Table = forwardRef<TableRef, TableProps<any>>(function Table<
 
                 {/* Table Stats */}
                 {dataTable.stats.totalItems > 0 && (
-                    <Box>
-                        <Text fontSize="sm" color="gray.600" textAlign="center">
+                    <div>
+                        <p className="small text-dark text-center mb-0">
                             Showing {dataTable.stats.displayedItems} of{" "}
                             {dataTable.stats.filteredItems} filtered results (
                             {dataTable.stats.totalItems} total items)
-                        </Text>
-                    </Box>
+                        </p>
+                    </div>
                 )}
 
                 {/* Built-in Delete Confirmation Dialog */}
@@ -674,8 +580,8 @@ export const Table = forwardRef<TableRef, TableProps<any>>(function Table<
                         }
                         return null;
                     })()}
-            </VStack>
-        </Box>
+            </div>
+        </div>
     );
 });
 

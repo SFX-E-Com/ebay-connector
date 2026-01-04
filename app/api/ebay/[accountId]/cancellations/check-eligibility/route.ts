@@ -41,4 +41,4 @@ async function postHandler(
     }
 }
 
-export const POST = withEbayAuth('ebay:cancellations:read', postHandler);
+export const POST = withEbayAuth('ebay:cancellations:read', postHandler, 'VIEW_CANCELLATIONS');

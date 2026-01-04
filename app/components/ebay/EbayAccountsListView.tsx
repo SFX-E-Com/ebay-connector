@@ -1,15 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import {
-  Box,
-  VStack,
-  Grid,
-  Text,
-  Center,
-  Spinner,
-  GridItem,
-} from '@chakra-ui/react';
+import { Spinner, Row, Col } from 'react-bootstrap';
 import { useFilters, FilterConfig } from '@/app/hooks/useFilters';
 import { usePagination } from '@/app/hooks/usePagination';
 import { FilterBar } from '@/app/components/table/FilterBar';
@@ -44,7 +36,6 @@ export default function EbayAccountsListView({
   const [selectedAccount, setSelectedAccount] = useState<EbayAccount | null>(null);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
 
-  // Filter configuration for eBay accounts
   const filterConfigs: FilterConfig[] = [
     {
       key: 'search',
@@ -78,16 +69,14 @@ export default function EbayAccountsListView({
     },
   ];
 
-  // Enhance accounts data with computed fields for filtering
   const enhancedAccounts = accounts.map(account => ({
     ...account,
     environment: typeof window !== 'undefined'
       ? (process.env.NEXT_PUBLIC_EBAY_SANDBOX === 'true' ? 'sandbox' : 'production')
-      : 'production', // default to production for SSR
+      : 'production',
     hasExpired: new Date(account.expiresAt) < new Date()
   }));
 
-  // Apply filters
   const {
     filteredData,
     filters,
@@ -97,14 +86,13 @@ export default function EbayAccountsListView({
     hasActiveFilters
   } = useFilters(enhancedAccounts, filterConfigs);
 
-  // Apply pagination
   const {
     paginatedData,
     pagination,
     goToPage,
     setPageSize
   } = usePagination(filteredData, {
-    initialPageSize: 12, // 3x4 grid
+    initialPageSize: 12,
     pageSizeOptions: [6, 12, 24, 48]
   });
 
@@ -120,7 +108,7 @@ export default function EbayAccountsListView({
   };
 
   return (
-    <VStack gap={6} align="stretch">
+    <div className="d-flex flex-column gap-4">
       {/* Filter Bar */}
       <FilterBar
         filters={filters}
@@ -133,53 +121,45 @@ export default function EbayAccountsListView({
       />
 
       {/* Results Summary */}
-      <Box>
-        <Text fontSize="sm" color="gray.600">
+      <div>
+        <p className="small text-muted mb-0">
           Showing {pagination.totalItems} account{pagination.totalItems !== 1 ? 's' : ''}
           {hasActiveFilters && ` (filtered from ${accounts.length} total)`}
-        </Text>
-      </Box>
+        </p>
+      </div>
 
       {/* Loading State */}
       {loading && (
-        <Center py={20}>
-          <VStack gap={4}>
-            <Spinner size="lg" colorPalette="blue" />
-            <Text color="gray.500">Loading accounts...</Text>
-          </VStack>
-        </Center>
+        <div className="text-center py-5">
+          <div className="d-flex flex-column gap-3 align-items-center">
+            <Spinner animation="border" variant="primary" />
+            <p className="text-muted">Loading accounts...</p>
+          </div>
+        </div>
       )}
 
       {/* Empty State */}
       {!loading && paginatedData.length === 0 && (
-        <Center py={20}>
-          <VStack gap={4}>
-            <Text fontSize="lg" fontWeight="medium" color="gray.600">
+        <div className="text-center py-5">
+          <div className="d-flex flex-column gap-3 align-items-center">
+            <p className="fs-5 fw-medium text-muted">
               {hasActiveFilters ? 'No accounts match your filters' : 'No eBay accounts found'}
-            </Text>
-            <Text color="gray.500" textAlign="center">
+            </p>
+            <p className="text-muted">
               {hasActiveFilters
                 ? 'Try adjusting your search criteria or clearing filters'
                 : 'Connect your first eBay account to get started'
               }
-            </Text>
-          </VStack>
-        </Center>
+            </p>
+          </div>
+        </div>
       )}
 
       {/* Account Cards Grid */}
       {!loading && paginatedData.length > 0 && (
-        <Grid
-          templateColumns={{
-            base: "1fr",
-            md: "repeat(2, 1fr)",
-            lg: "repeat(3, 1fr)",
-            xl: "repeat(4, 1fr)"
-          }}
-          gap={4}
-        >
+        <Row className="g-4">
           {paginatedData.map((account) => (
-            <GridItem key={account.id}>
+            <Col key={account.id} xs={12} md={6} lg={4} xl={3}>
               <EbayAccountCard
                 account={account}
                 onView={handleView}
@@ -190,9 +170,9 @@ export default function EbayAccountsListView({
                 isConnecting={isConnecting[account.id]}
                 isDeleting={isDeleting[account.id]}
               />
-            </GridItem>
+            </Col>
           ))}
-        </Grid>
+        </Row>
       )}
 
       {/* Pagination */}
@@ -213,6 +193,6 @@ export default function EbayAccountsListView({
         onClose={handleCloseViewModal}
         account={selectedAccount}
       />
-    </VStack>
+    </div>
   );
 }

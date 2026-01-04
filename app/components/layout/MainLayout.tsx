@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { Flex, HStack } from '@chakra-ui/react';
 import Footer from './Footer';
 import Sidebar from './Sidebar';
 
@@ -10,37 +9,23 @@ interface MainLayoutProps {
 }
 
 export default function MainLayout({ children }: MainLayoutProps) {
-
   return (
-    <HStack w="full" h="100vh" bg={{ base: "gray.100", _dark: "gray.900" }} padding={10}>
-      <Flex
-        as="aside"
-        w="full"
-        h="full"
-        maxW={350}
-        bg={{ base: "white", _dark: "gray.800" }}
-        alignItems="start"
-        padding={6}
-        flexDirection="column"
-        justifyContent="space-between"
-        transition="ease-in-out .2s"
-        borderRadius="3xl"
+    <div className="d-flex w-100 vh-100 bg-light p-4 gap-4">
+      <aside
+        className="d-flex flex-column justify-content-between align-items-start bg-white p-3 h-100"
+        style={{
+          width: '100%',
+          maxWidth: '350px',
+          borderRadius: '1rem',
+          transition: 'all 0.2s ease-in-out'
+        }}
       >
         <Sidebar />
-      </Flex>
-      <Flex
-        as="main"
-        w="full"
-        direction="column"
-        h="full"
-        bg={{ base: "white", _dark: "gray.800" }}
-        overflowY="auto"
-        borderRadius="3xl"
-      >
+      </aside>
+      <main className="d-flex flex-column w-100 h-100 bg-white overflow-auto" style={{ borderRadius: '1rem' }}>
         {children}
-
         <Footer />
-      </Flex>
-    </HStack>
+      </main>
+    </div>
   );
 }

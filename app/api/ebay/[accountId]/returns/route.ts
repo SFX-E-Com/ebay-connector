@@ -71,4 +71,4 @@ async function getHandler(
     }
 }
 
-export const GET = withEbayAuth('ebay:returns:read', getHandler);
+export const GET = withEbayAuth('ebay:returns:read', getHandler, 'VIEW_RETURNS');

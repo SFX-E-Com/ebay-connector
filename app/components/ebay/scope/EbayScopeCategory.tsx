@@ -1,16 +1,6 @@
 'use client';
 
-import {
-  VStack,
-  HStack,
-  Text,
-  Badge,
-  Box,
-  Heading,
-  Grid,
-  GridItem,
-  Icon,
-} from '@chakra-ui/react';
+import { Badge, Row, Col } from 'react-bootstrap';
 import { FiUser, FiShoppingCart, FiTrendingUp, FiBarChart, FiSettings } from 'react-icons/fi';
 import {
   SCOPE_CATEGORIES,
@@ -54,66 +44,48 @@ export default function EbayScopeCategory({
   const totalCount = scopes.length;
 
   return (
-    <Box>
-      <Box
-        p={4}
-        bg="white"
-        borderRadius="lg"
-        border="1px solid"
-        borderColor="gray.200"
-        cursor="pointer"
+    <div>
+      <div
+        className="p-3 bg-white border rounded"
+        style={{ cursor: 'pointer', transition: 'all 0.2s' }}
         onClick={onToggle}
-        _hover={{ borderColor: `${category.color}.300` }}
-        transition="all 0.2s"
       >
-        <HStack justify="space-between" align="center">
-          <HStack gap={3}>
-            <Icon
-              as={CategoryIcon}
-              color={`${category.color}.600`}
-              boxSize={5}
-            />
-            <VStack align="start" gap={1}>
-              <Heading size="sm" color="gray.800">
-                {category.name}
-              </Heading>
-              <Text fontSize="xs" color="gray.600">
-                {category.description}
-              </Text>
-            </VStack>
-          </HStack>
+        <div className="d-flex justify-content-between align-items-center">
+          <div className="d-flex gap-3 align-items-center">
+            <CategoryIcon size={20} />
+            <div className="d-flex flex-column align-items-start gap-1">
+              <h6 className="mb-0">{category.name}</h6>
+              <p className="small text-muted mb-0">{category.description}</p>
+            </div>
+          </div>
 
-          <HStack gap={2}>
-            <Badge
-              colorPalette={selectedCount > 0 ? category.color : 'gray'}
-              variant="subtle"
-              fontSize="xs"
-            >
+          <div className="d-flex gap-2 align-items-center">
+            <Badge bg={selectedCount > 0 ? 'primary' : 'secondary'} className="small">
               {selectedCount}/{totalCount} selected
             </Badge>
-            <Text fontSize="xl" color="gray.400">
+            <span className="fs-4 text-muted">
               {isExpanded ? '−' : '+'}
-            </Text>
-          </HStack>
-        </HStack>
-      </Box>
+            </span>
+          </div>
+        </div>
+      </div>
 
       {isExpanded && (
-        <Box mt={3} ml={4}>
-          <Grid templateColumns="repeat(auto-fit, minmax(300px, 1fr))" gap={3}>
+        <div className="mt-3 ms-4">
+          <Row className="g-3">
             {scopes.map((scope) => (
-              <GridItem key={scope.id}>
+              <Col key={scope.id} xs={12} md={6} lg={4}>
                 <EbayScopeCard
                   scope={scope}
                   isSelected={selectedScopes.includes(scope.id)}
                   onToggle={onScopeToggle}
                   disabled={disabled}
                 />
-              </GridItem>
+              </Col>
             ))}
-          </Grid>
-        </Box>
+          </Row>
+        </div>
       )}
-    </Box>
+    </div>
   );
 }

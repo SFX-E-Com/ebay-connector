@@ -123,8 +123,9 @@ export class EbayReturnsService {
     private refreshToken: string | null;
     private accountId: string;
     private tokenExpiresAt: Date;
+    private marketplace: string;
 
-    constructor(account: EbayAccount) {
+    constructor(account: EbayAccount, marketplace?: string) {
         const isSandbox = process.env.EBAY_SANDBOX === 'true';
         this.basePostOrderUrl = isSandbox
             ? EBAY_POST_ORDER_API_URLS.sandbox
@@ -133,6 +134,7 @@ export class EbayReturnsService {
         this.refreshToken = account.refreshToken || null;
         this.accountId = account.id;
         this.tokenExpiresAt = new Date(account.expiresAt);
+        this.marketplace = marketplace || process.env.EBAY_DEFAULT_MARKETPLACE || 'EBAY_DE';
     }
 
     private async refreshAccessToken(): Promise<void> {
@@ -202,7 +204,7 @@ export class EbayReturnsService {
             'Authorization': `Bearer ${this.accessToken}`,
             'Content-Type': 'application/json',
             'Accept': 'application/json',
-            'X-EBAY-C-MARKETPLACE-ID': 'EBAY_DE' // Default marketplace
+            'X-EBAY-C-MARKETPLACE-ID': this.marketplace
         };
 
         const options: RequestInit = {
@@ -297,10 +299,13 @@ export class EbayReturnsService {
      * Accept a return request
      */
     async acceptReturn(returnId: string, comments?: string): Promise<unknown> {
-        const body = {
-            acceptType: 'FULL_REFUND',
-            comments
+        const body: any = {
+            acceptType: 'FULL_REFUND'
         };
+        // Only include comments if provided to avoid sending undefined values
+        if (comments !== undefined && comments !== '') {
+            body.comments = comments;
+        }
         return this.makePostOrderRequest(`/return/${returnId}/accept`, 'POST', body);
     }
 
@@ -308,7 +313,15 @@ export class EbayReturnsService {
      * Issue a refund for a return
      */
     async issueRefund(returnId: string, request: IssueRefundRequest = {}): Promise<unknown> {
-        return this.makePostOrderRequest(`/return/${returnId}/issue_refund`, 'POST', request);
+        // Filter out undefined values to avoid API errors
+        const body: any = {};
+        if (request.refundAmount !== undefined) {
+            body.refundAmount = request.refundAmount;
+        }
+        if (request.comments !== undefined && request.comments !== '') {
+            body.comments = request.comments;
+        }
+        return this.makePostOrderRequest(`/return/${returnId}/issue_refund`, 'POST', body);
     }
 
     /**
@@ -328,7 +341,10 @@ export class EbayReturnsService {
 }
 
 // Factory function to create service from account ID
-export async function createEbayReturnsService(accountId: string): Promise<EbayReturnsService> {
+export async function createEbayReturnsService(
+    accountId: string,
+    marketplace?: string
+): Promise<EbayReturnsService> {
     const account = await EbayAccountService.getAccountById(accountId);
 
     if (!account) {
@@ -340,5 +356,5 @@ export async function createEbayReturnsService(accountId: string): Promise<EbayR
         accessToken: account.accessToken,
         refreshToken: account.refreshToken || undefined,
         expiresAt: account.expiresAt
-    });
+    }, marketplace);
 }

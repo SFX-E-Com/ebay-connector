@@ -1,16 +1,6 @@
 "use client";
 
-import {
-    Dialog,
-    Field,
-    Input,
-    Button,
-    VStack,
-    HStack,
-    Grid,
-    GridItem,
-    Heading,
-} from "@chakra-ui/react";
+import { Modal, Button, Form, Row, Col, Spinner } from "react-bootstrap";
 import { useState } from "react";
 import RoleSelect from '@/app/components/common/RoleSelect';
 
@@ -122,197 +112,178 @@ export default function UserModal({
 
 
     return (
-        <Dialog.Root open={isOpen} onOpenChange={() => handleClose()}>
-            <Dialog.Backdrop />
-            <Dialog.Positioner>
-                <Dialog.Content maxW="2xl" p={6}>
-                    <Dialog.Header>
-                        <Dialog.Title fontSize="xl" fontWeight="bold">
-                            {isEditing ? "Edit User" : "Create New User"}
-                        </Dialog.Title>
-                    </Dialog.Header>
+        <Modal show={isOpen} onHide={handleClose} size="lg">
+            <Modal.Header closeButton>
+                <Modal.Title className="fs-5 fw-bold">
+                    {isEditing ? "Edit User" : "Create New User"}
+                </Modal.Title>
+            </Modal.Header>
 
-                    <Dialog.Body>
-                        <form onSubmit={handleSubmit}>
-                            <VStack gap={6} align="stretch">
-                                {/* Basic Information Section */}
-                                <VStack align="stretch" gap={4}>
-                                    <Heading size="md" color="gray.700">
-                                        Basic Information
-                                    </Heading>
+            <Modal.Body>
+                <Form onSubmit={handleSubmit}>
+                    <div className="d-flex flex-column gap-4">
+                        {/* Basic Information Section */}
+                        <div className="d-flex flex-column gap-3">
+                            <h5 className="text-dark mb-0">
+                                Basic Information
+                            </h5>
 
-                                    <Grid
-                                        templateColumns="repeat(2, 1fr)"
-                                        gap={4}
-                                    >
-                                        <GridItem>
-                                            <Field.Root
-                                                invalid={!!errors.email}
-                                            >
-                                                <Field.Label>Email</Field.Label>
-                                                <Input
-                                                    type="email"
-                                                    value={formData.email}
-                                                    onChange={(e) =>
-                                                        setFormData({
-                                                            ...formData,
-                                                            email: e.target
-                                                                .value,
-                                                        })
-                                                    }
-                                                    placeholder="Enter email address"
-                                                />
-                                                {errors.email && (
-                                                    <Field.ErrorText>
-                                                        {errors.email}
-                                                    </Field.ErrorText>
-                                                )}
-                                            </Field.Root>
-                                        </GridItem>
+                            <Row>
+                                <Col md={6}>
+                                    <Form.Group className="mb-3">
+                                        <Form.Label>Email</Form.Label>
+                                        <Form.Control
+                                            type="email"
+                                            value={formData.email}
+                                            onChange={(e) =>
+                                                setFormData({
+                                                    ...formData,
+                                                    email: e.target.value,
+                                                })
+                                            }
+                                            placeholder="Enter email address"
+                                            isInvalid={!!errors.email}
+                                        />
+                                        <Form.Control.Feedback type="invalid">
+                                            {errors.email}
+                                        </Form.Control.Feedback>
+                                    </Form.Group>
+                                </Col>
 
-                                        <GridItem>
-                                            <Field.Root invalid={!!errors.name}>
-                                                <Field.Label>
-                                                    Full Name
-                                                </Field.Label>
-                                                <Input
-                                                    value={formData.name}
-                                                    onChange={(e) =>
-                                                        setFormData({
-                                                            ...formData,
-                                                            name: e.target
-                                                                .value,
-                                                        })
-                                                    }
-                                                    placeholder="Enter full name"
-                                                />
-                                                {errors.name && (
-                                                    <Field.ErrorText>
-                                                        {errors.name}
-                                                    </Field.ErrorText>
-                                                )}
-                                            </Field.Root>
-                                        </GridItem>
-                                    </Grid>
-                                </VStack>
+                                <Col md={6}>
+                                    <Form.Group className="mb-3">
+                                        <Form.Label>
+                                            Full Name
+                                        </Form.Label>
+                                        <Form.Control
+                                            type="text"
+                                            value={formData.name}
+                                            onChange={(e) =>
+                                                setFormData({
+                                                    ...formData,
+                                                    name: e.target.value,
+                                                })
+                                            }
+                                            placeholder="Enter full name"
+                                            isInvalid={!!errors.name}
+                                        />
+                                        <Form.Control.Feedback type="invalid">
+                                            {errors.name}
+                                        </Form.Control.Feedback>
+                                    </Form.Group>
+                                </Col>
+                            </Row>
+                        </div>
 
-                                {/* Permissions Section */}
-                                <VStack align="stretch" gap={4}>
-                                    <Heading size="md" color="gray.700">
-                                        Permissions
-                                    </Heading>
+                        {/* Permissions Section */}
+                        <div className="d-flex flex-column gap-3">
+                            <h5 className="text-dark mb-0">
+                                Permissions
+                            </h5>
 
-                                    <RoleSelect
-                                        value={formData.role}
-                                        onChange={(value) => setFormData({ ...formData, role: value })}
-                                        label="Role"
-                                        currentUserRole={currentUserRole}
-                                        placeholder="Select role..."
-                                    />
-                                </VStack>
+                            <RoleSelect
+                                value={formData.role}
+                                onChange={(value) => setFormData({ ...formData, role: value })}
+                                label="Role"
+                                currentUserRole={currentUserRole}
+                                placeholder="Select role..."
+                            />
+                        </div>
 
-                                {/* Security Section */}
-                                <VStack align="stretch" gap={4}>
-                                    <Heading size="md" color="gray.700">
-                                        Security
-                                    </Heading>
+                        {/* Security Section */}
+                        <div className="d-flex flex-column gap-3">
+                            <h5 className="text-dark mb-0">
+                                Security
+                            </h5>
 
-                                    <Grid
-                                        templateColumns="repeat(2, 1fr)"
-                                        gap={4}
-                                    >
-                                        <GridItem>
-                                            <Field.Root
-                                                invalid={!!errors.password}
-                                            >
-                                                <Field.Label>
-                                                    {isEditing
-                                                        ? "New Password (Optional)"
-                                                        : "Password"}
-                                                </Field.Label>
-                                                <Input
-                                                    type="password"
-                                                    value={formData.password}
-                                                    onChange={(e) =>
-                                                        setFormData({
-                                                            ...formData,
-                                                            password:
-                                                                e.target.value,
-                                                        })
-                                                    }
-                                                    placeholder={
-                                                        isEditing
-                                                            ? "Leave blank to keep current"
-                                                            : "Enter password"
-                                                    }
-                                                />
-                                                {errors.password && (
-                                                    <Field.ErrorText>
-                                                        {errors.password}
-                                                    </Field.ErrorText>
-                                                )}
-                                            </Field.Root>
-                                        </GridItem>
+                            <Row>
+                                <Col md={6}>
+                                    <Form.Group className="mb-3">
+                                        <Form.Label>
+                                            {isEditing
+                                                ? "New Password (Optional)"
+                                                : "Password"}
+                                        </Form.Label>
+                                        <Form.Control
+                                            type="password"
+                                            value={formData.password}
+                                            onChange={(e) =>
+                                                setFormData({
+                                                    ...formData,
+                                                    password: e.target.value,
+                                                })
+                                            }
+                                            placeholder={
+                                                isEditing
+                                                    ? "Leave blank to keep current"
+                                                    : "Enter password"
+                                            }
+                                            isInvalid={!!errors.password}
+                                        />
+                                        <Form.Control.Feedback type="invalid">
+                                            {errors.password}
+                                        </Form.Control.Feedback>
+                                    </Form.Group>
+                                </Col>
 
-                                        <GridItem>
-                                            <Field.Root
-                                                invalid={
-                                                    !!errors.confirmPassword
-                                                }
-                                            >
-                                                <Field.Label>
-                                                    Confirm Password
-                                                </Field.Label>
-                                                <Input
-                                                    type="password"
-                                                    value={
-                                                        formData.confirmPassword
-                                                    }
-                                                    onChange={(e) =>
-                                                        setFormData({
-                                                            ...formData,
-                                                            confirmPassword:
-                                                                e.target.value,
-                                                        })
-                                                    }
-                                                    placeholder="Confirm password"
-                                                />
-                                                {errors.confirmPassword && (
-                                                    <Field.ErrorText>
-                                                        {errors.confirmPassword}
-                                                    </Field.ErrorText>
-                                                )}
-                                            </Field.Root>
-                                        </GridItem>
-                                    </Grid>
-                                </VStack>
-                            </VStack>
-                        </form>
-                    </Dialog.Body>
+                                <Col md={6}>
+                                    <Form.Group className="mb-3">
+                                        <Form.Label>
+                                            Confirm Password
+                                        </Form.Label>
+                                        <Form.Control
+                                            type="password"
+                                            value={formData.confirmPassword}
+                                            onChange={(e) =>
+                                                setFormData({
+                                                    ...formData,
+                                                    confirmPassword: e.target.value,
+                                                })
+                                            }
+                                            placeholder="Confirm password"
+                                            isInvalid={!!errors.confirmPassword}
+                                        />
+                                        <Form.Control.Feedback type="invalid">
+                                            {errors.confirmPassword}
+                                        </Form.Control.Feedback>
+                                    </Form.Group>
+                                </Col>
+                            </Row>
+                        </div>
+                    </div>
+                </Form>
+            </Modal.Body>
 
-                    <Dialog.Footer>
-                        <HStack gap={3} justify="flex-end" w="full">
-                            <Button
-                                variant="ghost"
-                                onClick={handleClose}
-                                disabled={isSubmitting}
-                            >
-                                Cancel
-                            </Button>
-                            <Button
-                                colorPalette="orange"
-                                onClick={handleSubmit}
-                                loading={isSubmitting}
-                                loadingText={
-                                    isEditing ? "Updating..." : "Creating..."
-                                }
-                            >
-                                {isEditing ? "Update User" : "Create User"}
-                            </Button>
-                        </HStack>
-                    </Dialog.Footer>
-                </Dialog.Content>
-            </Dialog.Positioner>
-        </Dialog.Root>
+            <Modal.Footer>
+                <div className="d-flex gap-3 justify-content-end w-100">
+                    <Button
+                        variant="secondary"
+                        onClick={handleClose}
+                        disabled={isSubmitting}
+                    >
+                        Cancel
+                    </Button>
+                    <Button
+                        variant="primary"
+                        onClick={handleSubmit}
+                        disabled={isSubmitting}
+                    >
+                        {isSubmitting && (
+                            <Spinner
+                                as="span"
+                                animation="border"
+                                size="sm"
+                                role="status"
+                                aria-hidden="true"
+                                className="me-2"
+                            />
+                        )}
+                        {isSubmitting
+                            ? (isEditing ? "Updating..." : "Creating...")
+                            : (isEditing ? "Update User" : "Create User")}
+                    </Button>
+                </div>
+            </Modal.Footer>
+        </Modal>
     );
 }

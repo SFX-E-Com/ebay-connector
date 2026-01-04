@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from 'next/navigation';
-import { Box, VStack, Alert } from "@chakra-ui/react";
+import { Alert } from "react-bootstrap";
 import { MdAdd } from "react-icons/md";
 import PageHeader from "@/app/components/common/PageHeader";
 import EbayAccountsListView from "../components/ebay/EbayAccountsListView";
@@ -132,8 +132,8 @@ export default function EbayConnectionsPage() {
     };
 
     return (
-        <Box p={8}>
-            <VStack gap={6} align="stretch">
+        <div className="p-4 p-md-5">
+            <div className="d-flex flex-column gap-4">
                 {/* Page Header */}
                 <PageHeader
                     title="eBay Accounts"
@@ -151,22 +151,20 @@ export default function EbayConnectionsPage() {
 
                 {/* Error Alert */}
                 {error && (
-                    <Alert.Root status="error" borderRadius="md">
-                        <Alert.Indicator />
-                        <Alert.Content>
-                            <Alert.Description>{error}</Alert.Description>
-                        </Alert.Content>
-                    </Alert.Root>
+                    <Alert variant="danger" dismissible onClose={() => {}}>
+                        {error}
+                    </Alert>
                 )}
 
                 {/* URL Message Alert */}
                 {urlMessage && (
-                    <Alert.Root status={urlMessage.type === 'success' ? 'success' : 'error'} borderRadius="md">
-                        <Alert.Indicator />
-                        <Alert.Content>
-                            <Alert.Description>{urlMessage.message}</Alert.Description>
-                        </Alert.Content>
-                    </Alert.Root>
+                    <Alert
+                        variant={urlMessage.type === 'success' ? 'success' : 'danger'}
+                        dismissible
+                        onClose={() => setUrlMessage(null)}
+                    >
+                        {urlMessage.message}
+                    </Alert>
                 )}
 
                 {/* eBay Accounts List with Filtering and Pagination */}
@@ -200,7 +198,7 @@ export default function EbayConnectionsPage() {
                     isSubmitting={isSubmitting}
                     account={selectedAccount}
                 />
-            </VStack>
-        </Box>
+            </div>
+        </div>
     );
 }

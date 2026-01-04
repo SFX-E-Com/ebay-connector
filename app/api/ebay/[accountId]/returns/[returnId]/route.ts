@@ -61,7 +61,8 @@ async function postHandler(
             );
         }
 
-        const body = await request.json();
+        // Use pre-parsed body from middleware to avoid consuming request stream
+        const body = authData.requestBody || {};
         const { action, comments, refundAmount } = body;
 
         const returnsService = await createEbayReturnsService(authData.ebayAccount.id);
@@ -97,5 +98,5 @@ async function postHandler(
     }
 }
 
-export const GET = withEbayAuth('ebay:returns:read', getHandler);
-export const POST = withEbayAuth('ebay:returns:write', postHandler);
+export const GET = withEbayAuth('ebay:returns:read', getHandler, 'VIEW_RETURNS');
+export const POST = withEbayAuth('ebay:returns:write', postHandler, 'MANAGE_RETURNS');

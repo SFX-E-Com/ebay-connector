@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Box, Heading, Text, Spinner, VStack } from '@chakra-ui/react';
+import { Spinner } from 'react-bootstrap';
 
 export default function Home() {
   const router = useRouter();
@@ -18,30 +18,21 @@ export default function Home() {
   }, [router]);
 
   return (
-    <Box
-      minH="100vh"
-      display="flex"
-      alignItems="center"
-      justifyContent="center"
-      p={24}
-    >
-      <VStack gap={6} textAlign="center">
-        <Heading size="4xl" color="blue.600">
+    <div className="min-vh-100 d-flex align-items-center justify-content-center p-5">
+      <div className="d-flex flex-column gap-4 text-center">
+        <h1 className="display-1 text-primary fw-bold">
           eBay Connector
-        </Heading>
-        <Text fontSize="xl" color="gray.600">
+        </h1>
+        <p className="fs-4 text-secondary">
           Connect and manage your eBay listings
-        </Text>
-        <VStack gap={4}>
-          <Spinner
-            size="lg"
-            color="blue.500"
-          />
-          <Text fontSize="sm" color="gray.500">
+        </p>
+        <div className="d-flex flex-column gap-3 align-items-center">
+          <Spinner animation="border" variant="primary" />
+          <p className="small text-muted">
             Redirecting...
-          </Text>
-        </VStack>
-      </VStack>
-    </Box>
+          </p>
+        </div>
+      </div>
+    </div>
   );
 }

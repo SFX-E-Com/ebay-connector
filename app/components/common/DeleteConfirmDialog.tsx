@@ -1,13 +1,6 @@
 'use client';
 
-import {
-  Dialog,
-  Button,
-  VStack,
-  HStack,
-  Text,
-  Alert,
-} from '@chakra-ui/react';
+import { Modal, Button, Alert, Spinner } from 'react-bootstrap';
 
 interface DeleteConfirmDialogProps {
   isOpen: boolean;
@@ -47,58 +40,61 @@ export default function DeleteConfirmDialog({
   };
 
   return (
-    <Dialog.Root open={isOpen} onOpenChange={(details) => !details.open && handleClose()}>
-      <Dialog.Backdrop />
-      <Dialog.Positioner>
-        <Dialog.Content maxW="md">
-          <Dialog.Header>
-            <Dialog.Title color="red.600">
-              {title || defaultTitle}
-            </Dialog.Title>
-          </Dialog.Header>
+    <Modal show={isOpen} onHide={handleClose} centered>
+      <Modal.Header closeButton={!isDeleting}>
+        <Modal.Title className="text-danger">
+          {title || defaultTitle}
+        </Modal.Title>
+      </Modal.Header>
 
-          <Dialog.Body>
-            <VStack gap={4} align="stretch">
-              <Text>
-                {description || defaultDescription}{' '}
-                <Text as="span" fontWeight="bold" color="red.600">
-                  {itemName}
-                </Text>
-                ?
-              </Text>
+      <Modal.Body>
+        <div className="d-flex flex-column gap-4">
+          <p className="mb-0">
+            {description || defaultDescription}{' '}
+            <span className="fw-bold text-danger">
+              {itemName}
+            </span>
+            ?
+          </p>
 
-              <Alert.Root status="warning">
-                <Alert.Indicator />
-                <Alert.Content>
-                  <Alert.Description>
-                    {customWarning || defaultWarning}
-                  </Alert.Description>
-                </Alert.Content>
-              </Alert.Root>
-            </VStack>
-          </Dialog.Body>
+          <Alert variant="warning" className="mb-0">
+            <p className="small mb-0">
+              {customWarning || defaultWarning}
+            </p>
+          </Alert>
+        </div>
+      </Modal.Body>
 
-          <Dialog.Footer>
-            <HStack gap={3} justify="end" w="full">
-              <Button
-                variant="outline"
-                onClick={handleClose}
-                disabled={isDeleting}
-              >
-                Cancel
-              </Button>
-              <Button
-                colorPalette="red"
-                onClick={handleConfirm}
-                loading={isDeleting}
-                loadingText="Deleting..."
-              >
-                Delete {itemType.charAt(0).toUpperCase() + itemType.slice(1)}
-              </Button>
-            </HStack>
-          </Dialog.Footer>
-        </Dialog.Content>
-      </Dialog.Positioner>
-    </Dialog.Root>
+      <Modal.Footer>
+        <div className="d-flex gap-3 justify-content-end w-100">
+          <Button
+            variant="outline-secondary"
+            onClick={handleClose}
+            disabled={isDeleting}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="danger"
+            onClick={handleConfirm}
+            disabled={isDeleting}
+          >
+            {isDeleting && (
+              <Spinner
+                as="span"
+                animation="border"
+                size="sm"
+                role="status"
+                aria-hidden="true"
+                className="me-2"
+              />
+            )}
+            {isDeleting
+              ? "Deleting..."
+              : `Delete ${itemType.charAt(0).toUpperCase() + itemType.slice(1)}`}
+          </Button>
+        </div>
+      </Modal.Footer>
+    </Modal>
   );
 }

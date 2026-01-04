@@ -2,21 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import {
-    Box,
-    VStack,
-    HStack,
-    Heading,
-    Text,
-    Field,
-    Input,
-    Button,
-    Alert,
-    Card,
-    Flex,
-    Icon,
-    Avatar,
-} from "@chakra-ui/react";
+import { Form, Button, Alert, Card, Spinner } from "react-bootstrap";
 import { FiLock, FiShield } from "react-icons/fi";
 import axios from "axios";
 
@@ -105,69 +91,66 @@ export default function ChangePasswordPage() {
         return null; // Will redirect to login
     }
 
+    // Helper to get initials
+    const getInitials = (name: string) => {
+        return name
+            .split(' ')
+            .map(part => part[0])
+            .join('')
+            .toUpperCase()
+            .slice(0, 2);
+    };
+
     return (
-        <Flex minH="100vh" align="center" justify="center" bg="gray.50" px={4}>
-            <Box maxW="lg" w="full">
-                <Card.Root shadow="xl" borderRadius="xl">
-                    <Card.Body p={8}>
-                        <VStack gap={6} align="stretch">
+        <div className="min-vh-100 d-flex align-items-center justify-content-center bg-light px-3">
+            <div style={{ maxWidth: '32rem', width: '100%' }}>
+                <Card className="shadow-lg rounded-4">
+                    <Card.Body className="p-4 p-md-5">
+                        <div className="d-flex flex-column gap-4">
                             {/* Header */}
-                            <VStack gap={4} textAlign="center">
-                                <Box
-                                    p={3}
-                                    rounded="full"
-                                    bg="red.100"
-                                    color="red.500"
-                                    display="inline-flex"
+                            <div className="d-flex flex-column gap-3 text-center">
+                                <div
+                                    className="rounded-circle bg-danger bg-opacity-10 text-danger d-inline-flex align-items-center justify-content-center mx-auto"
+                                    style={{ width: '3.5rem', height: '3.5rem' }}
                                 >
-                                    <Icon as={FiLock} boxSize={6} />
-                                </Box>
-                                <Heading color="navy.800" size="lg">
+                                    <FiLock size={24} />
+                                </div>
+                                <h2 className="fw-bold text-dark mb-0">
                                     Password Change Required
-                                </Heading>
+                                </h2>
 
                                 {/* User Info */}
-                                <VStack gap={2}>
-                                    <HStack gap={3}>
-                                        <Avatar.Root size="sm" bg="orange.500">
-                                            <Avatar.Fallback
-                                                name={user?.name || user?.email}
-                                            />
-                                        </Avatar.Root>
-                                        <Text
-                                            color="gray.700"
-                                            fontWeight="medium"
+                                <div className="d-flex flex-column gap-2">
+                                    <div className="d-flex gap-3 align-items-center justify-content-center">
+                                        <div
+                                            className="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold"
+                                            style={{ width: '2rem', height: '2rem', fontSize: '0.875rem' }}
                                         >
+                                            {getInitials(user?.name || user?.email)}
+                                        </div>
+                                        <p className="text-dark fw-medium mb-0">
                                             Hello, {user?.name || user?.email}
-                                        </Text>
-                                    </HStack>
-                                    <Text color="gray.600" textAlign="center">
-                                        For security reasons, you must change
-                                        your password before continuing.
-                                    </Text>
-                                </VStack>
-                            </VStack>
+                                        </p>
+                                    </div>
+                                    <p className="text-muted small mb-0">
+                                        For security reasons, you must change your password before continuing.
+                                    </p>
+                                </div>
+                            </div>
 
                             {/* Error Alert */}
                             {error && (
-                                <Alert.Root status="error" borderRadius="md">
-                                    <Alert.Indicator />
-                                    <Alert.Content>
-                                        <Alert.Description>
-                                            {error}
-                                        </Alert.Description>
-                                    </Alert.Content>
-                                </Alert.Root>
+                                <Alert variant="danger" className="mb-0">
+                                    {error}
+                                </Alert>
                             )}
 
                             {/* Password Change Form */}
-                            <Box as="form" onSubmit={handleSubmit}>
-                                <VStack gap={5}>
-                                    <Field.Root required>
-                                        <Field.Label color="gray.700">
-                                            Current Password
-                                        </Field.Label>
-                                        <Input
+                            <Form onSubmit={handleSubmit}>
+                                <div className="d-flex flex-column gap-3">
+                                    <Form.Group>
+                                        <Form.Label className="text-dark">Current Password</Form.Label>
+                                        <Form.Control
                                             type="password"
                                             name="currentPassword"
                                             value={formData.currentPassword}
@@ -175,14 +158,13 @@ export default function ChangePasswordPage() {
                                             autoComplete="current-password"
                                             disabled={isLoading}
                                             size="lg"
+                                            required
                                         />
-                                    </Field.Root>
+                                    </Form.Group>
 
-                                    <Field.Root required>
-                                        <Field.Label color="gray.700">
-                                            New Password
-                                        </Field.Label>
-                                        <Input
+                                    <Form.Group>
+                                        <Form.Label className="text-dark">New Password</Form.Label>
+                                        <Form.Control
                                             type="password"
                                             name="newPassword"
                                             value={formData.newPassword}
@@ -191,18 +173,16 @@ export default function ChangePasswordPage() {
                                             disabled={isLoading}
                                             size="lg"
                                             minLength={8}
+                                            required
                                         />
-                                        <Field.HelperText color="gray.600">
-                                            Password must be at least 8
-                                            characters long
-                                        </Field.HelperText>
-                                    </Field.Root>
+                                        <Form.Text className="text-muted">
+                                            Password must be at least 8 characters long
+                                        </Form.Text>
+                                    </Form.Group>
 
-                                    <Field.Root required>
-                                        <Field.Label color="gray.700">
-                                            Confirm New Password
-                                        </Field.Label>
-                                        <Input
+                                    <Form.Group>
+                                        <Form.Label className="text-dark">Confirm New Password</Form.Label>
+                                        <Form.Control
                                             type="password"
                                             name="confirmPassword"
                                             value={formData.confirmPassword}
@@ -211,42 +191,50 @@ export default function ChangePasswordPage() {
                                             disabled={isLoading}
                                             size="lg"
                                             minLength={8}
+                                            required
                                         />
-                                    </Field.Root>
+                                    </Form.Group>
 
                                     <Button
                                         type="submit"
-                                        colorPalette="orange"
+                                        variant="primary"
                                         size="lg"
-                                        w="full"
-                                        loading={isLoading}
-                                        loadingText="Changing Password..."
+                                        className="w-100"
+                                        disabled={isLoading}
                                     >
-                                        <FiLock
-                                            size={16}
-                                            style={{ marginRight: "8px" }}
-                                        />
-                                        Change Password
+                                        {isLoading ? (
+                                            <>
+                                                <Spinner
+                                                    as="span"
+                                                    animation="border"
+                                                    size="sm"
+                                                    role="status"
+                                                    aria-hidden="true"
+                                                    className="me-2"
+                                                />
+                                                Changing Password...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <FiLock size={16} style={{ marginRight: '8px' }} />
+                                                Change Password
+                                            </>
+                                        )}
                                     </Button>
-                                </VStack>
-                            </Box>
+                                </div>
+                            </Form>
 
                             {/* Footer */}
-                            <HStack gap={2} justify="center" pt={4}>
-                                <Icon as={FiShield} color="green.500" />
-                                <Text
-                                    fontSize="sm"
-                                    color="gray.600"
-                                    textAlign="center"
-                                >
-                                    Your new password will be securely encrypted
-                                    and stored.
-                                </Text>
-                            </HStack>
-                        </VStack>
+                            <div className="d-flex gap-2 justify-content-center pt-3">
+                                <FiShield className="text-success" />
+                                <p className="small text-muted mb-0 text-center">
+                                    Your new password will be securely encrypted and stored.
+                                </p>
+                            </div>
+                        </div>
                     </Card.Body>
-                </Card.Root>
-            </Box>
-        </Flex>
+                </Card>
+            </div>
+        </div>
     );
 }

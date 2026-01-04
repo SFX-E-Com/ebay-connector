@@ -2,18 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  Box,
-  VStack,
-  Heading,
-  Text,
-  Button,
-  Flex,
-  Avatar,
-  Badge,
-  Grid,
-  Spinner,
-} from '@chakra-ui/react';
+import { Button, Spinner, Row, Col } from 'react-bootstrap';
 import axios from 'axios';
 import InfoCard from '../components/InfoCard';
 import React from 'react';
@@ -61,17 +50,12 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <Flex
-        minH="100vh"
-        align="center"
-        justify="center"
-        bg={{ base: "gray.50", _dark: "gray.900" }}
-      >
-        <VStack gap={4}>
-          <Spinner size="xl" color="orange.500" />
-          <Text fontSize="lg" color={{ base: "gray.600", _dark: "gray.300" }}>Loading...</Text>
-        </VStack>
-      </Flex>
+      <div className="min-vh-100 d-flex align-items-center justify-content-center bg-light">
+        <div className="d-flex flex-column gap-3 align-items-center">
+          <Spinner animation="border" variant="primary" style={{ width: '3rem', height: '3rem' }} />
+          <p className="fs-5 text-muted">Loading...</p>
+        </div>
+      </div>
     );
   }
 
@@ -82,62 +66,60 @@ export default function DashboardPage() {
   return (
     <React.Fragment>
       {/* Main content */}
-      <Box py={6} px={{ base: 4, sm: 6, lg: 8 }}>
-        <VStack gap={6} align="stretch">
-          <Box>
-            <Heading size="xl" color={{ base: "gray.900", _dark: "white" }} mb={2}>
+      <div className="py-4 py-md-5 px-3 px-sm-4 px-lg-5">
+        <div className="d-flex flex-column gap-4">
+          <div>
+            <h1 className="display-6 fw-bold text-dark mb-2">
               Welcome to eBay Connector Dashboard
-            </Heading>
-            <Text color={{ base: "gray.600", _dark: "gray.400" }}>
+            </h1>
+            <p className="text-muted">
               Manage your authentication and account settings.
-            </Text>
-          </Box>
+            </p>
+          </div>
 
-          <Grid
-            templateColumns={{ base: "1fr", md: "repeat(2, 1fr)" }}
-            gap={6}
-          >
-            <InfoCard
-              title="Account Settings"
-              description="Manage your profile and security"
-              icon="⚙️"
-              iconBgColor={{ base: "orange.100", _dark: "rgba(237, 137, 54, 0.2)" }}
-              iconColor="orange.600"
-            >
-              <Button
-                onClick={handleChangePassword}
-                colorPalette="orange"
-                variant="outline"
-                w="full"
+          <Row className="g-4">
+            <Col xs={12} md={6}>
+              <InfoCard
+                title="Account Settings"
+                description="Manage your profile and security"
+                icon="⚙️"
+                variant="orange"
               >
-                Change Password
-              </Button>
-            </InfoCard>
+                <Button
+                  onClick={handleChangePassword}
+                  variant="outline-primary"
+                  className="w-100"
+                >
+                  Change Password
+                </Button>
+              </InfoCard>
+            </Col>
 
-            <InfoCard
-              title="User Information"
-              description="Your account details"
-              icon="👤"
-              iconBgColor={{ base: "blue.100", _dark: "rgba(66, 153, 225, 0.2)" }}
-              iconColor="blue.600"
-            >
-              <VStack gap={2} align="start">
-                <Text fontSize="sm" color={{ base: "gray.600", _dark: "gray.300" }}>
-                  Email: {user.email}
-                </Text>
-                <Text fontSize="sm" color={{ base: "gray.600", _dark: "gray.300" }}>
-                  Role: {user.role}
-                </Text>
-                {user.name && (
-                  <Text fontSize="sm" color={{ base: "gray.600", _dark: "gray.300" }}>
-                    Name: {user.name}
-                  </Text>
-                )}
-              </VStack>
-            </InfoCard>
-          </Grid>
-        </VStack>
-      </Box>
+            <Col xs={12} md={6}>
+              <InfoCard
+                title="User Information"
+                description="Your account details"
+                icon="👤"
+                variant="blue"
+              >
+                <div className="d-flex flex-column gap-2">
+                  <p className="small text-secondary mb-0">
+                    Email: {user.email}
+                  </p>
+                  <p className="small text-secondary mb-0">
+                    Role: {user.role}
+                  </p>
+                  {user.name && (
+                    <p className="small text-secondary mb-0">
+                      Name: {user.name}
+                    </p>
+                  )}
+                </div>
+              </InfoCard>
+            </Col>
+          </Row>
+        </div>
+      </div>
     </React.Fragment>
   );
 }

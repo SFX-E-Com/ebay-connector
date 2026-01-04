@@ -61,7 +61,8 @@ async function postHandler(
             );
         }
 
-        const body = await request.json();
+        // Use pre-parsed body from middleware to avoid consuming request stream
+        const body = authData.requestBody || {};
         const { action, comments, trackingNumber, shippingCarrierCode, shippedDate } = body;
 
         const inquiriesService = await createEbayInquiriesService(authData.ebayAccount.id);
@@ -111,5 +112,5 @@ async function postHandler(
     }
 }
 
-export const GET = withEbayAuth('ebay:inquiries:read', getHandler);
-export const POST = withEbayAuth('ebay:inquiries:write', postHandler);
+export const GET = withEbayAuth('ebay:inquiries:read', getHandler, 'VIEW_INQUIRIES');
+export const POST = withEbayAuth('ebay:inquiries:write', postHandler, 'MANAGE_INQUIRIES');

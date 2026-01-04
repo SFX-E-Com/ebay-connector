@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useEffect, useState } from "react";
-import { Avatar, Box } from "@chakra-ui/react";
 import { Navigation } from "../Navigation";
+import { Badge } from "react-bootstrap";
 
 interface User {
     id: string;
@@ -10,6 +10,16 @@ interface User {
     name: string | null;
     role: string;
 }
+
+// Helper function to get initials from name
+const getInitials = (name: string) => {
+    return name
+        .split(' ')
+        .map(part => part[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2);
+};
 
 export default function Sidebar() {
     const [user, setUser] = useState<User | null>(null);
@@ -24,13 +34,16 @@ export default function Sidebar() {
 
     return (
         <React.Fragment>
-            <Box w="full">
+            <div className="w-100">
                 <Navigation />
-            </Box>
+            </div>
             {user && (
-                <Avatar.Root size="sm" colorPalette="orange">
-                    <Avatar.Fallback name={user.name || user.email} />
-                </Avatar.Root>
+                <div
+                    className="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold"
+                    style={{ width: '40px', height: '40px', fontSize: '0.875rem' }}
+                >
+                    {getInitials(user.name || user.email)}
+                </div>
             )}
         </React.Fragment>
     );

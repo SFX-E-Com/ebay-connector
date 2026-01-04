@@ -1,10 +1,9 @@
 'use client';
 
-import { VStack, HStack, Box, Text } from "@chakra-ui/react";
 import { MdOutlineSpaceDashboard, MdLogout, MdOutlinePeople, MdVpnKey, MdOutlineStore, MdBugReport, MdBook, MdInventory, MdApi, MdShoppingCart } from "react-icons/md";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-
+import { Nav } from "react-bootstrap";
 
 interface NavigationItemProps {
   icon: any;
@@ -15,31 +14,34 @@ interface NavigationItemProps {
 }
 
 function NavigationItem({ icon: Icon, text, isActive, collapse, onClick }: NavigationItemProps) {
+  const [isHovered, setIsHovered] = useState(false);
+
   return (
-    <HStack
-      gap={3}
-      p={3}
-      cursor="pointer"
-      _hover={{ bg: { base: "gray.100", _dark: "gray.700" } }}
-      bg={isActive ? { base: "orange.50", _dark: "gray.600" } : "transparent"}
-      borderRadius="md"
-      w="full"
+    <div
+      className={`d-flex gap-3 p-3 rounded w-100 ${isActive ? 'bg-primary-subtle' : ''}`}
+      style={{
+        cursor: 'pointer',
+        backgroundColor: !isActive && isHovered ? '#f8f9fa' : undefined,
+        justifyContent: collapse ? 'center' : 'flex-start'
+      }}
       onClick={onClick}
-      justify={collapse ? "center" : "flex-start"}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
     >
-      <Box display="flex" alignItems="center" fontSize="16px" color={isActive ? "orange.500" : { base: "gray.600", _dark: "gray.300" }}>
+      <div
+        className={`d-flex align-items-center ${isActive ? 'text-primary' : 'text-secondary'}`}
+        style={{ fontSize: '16px' }}
+      >
         <Icon size={16} />
-      </Box>
+      </div>
       {!collapse && text && (
-        <Text
-          fontSize="sm"
-          fontWeight={isActive ? "semibold" : "medium"}
-          color={isActive ? "orange.500" : { base: "gray.600", _dark: "gray.300" }}
+        <span
+          className={`small ${isActive ? 'fw-semibold text-primary' : 'fw-medium text-secondary'}`}
         >
           {text}
-        </Text>
+        </span>
       )}
-    </HStack>
+    </div>
   );
 }
 
@@ -148,7 +150,7 @@ export function Navigation({ collapse }: NavigationProps) {
   const navItems = getNavigationItems();
 
   return (
-    <VStack gap={1} align="stretch" mt={4}>
+    <div className="d-flex flex-column gap-1 mt-4">
       {navItems.map((item, index) => (
         <NavigationItem
           key={index}
@@ -159,6 +161,6 @@ export function Navigation({ collapse }: NavigationProps) {
           onClick={() => handleItemClick(item)}
         />
       ))}
-    </VStack>
+    </div>
   );
 }

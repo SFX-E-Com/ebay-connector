@@ -92,8 +92,9 @@ export class EbayInquiriesService {
     private refreshToken: string | null;
     private accountId: string;
     private tokenExpiresAt: Date;
+    private marketplace: string;
 
-    constructor(account: EbayAccount) {
+    constructor(account: EbayAccount, marketplace?: string) {
         const isSandbox = process.env.EBAY_SANDBOX === 'true';
         this.basePostOrderUrl = isSandbox
             ? EBAY_POST_ORDER_API_URLS.sandbox
@@ -102,6 +103,7 @@ export class EbayInquiriesService {
         this.refreshToken = account.refreshToken || null;
         this.accountId = account.id;
         this.tokenExpiresAt = new Date(account.expiresAt);
+        this.marketplace = marketplace || process.env.EBAY_DEFAULT_MARKETPLACE || 'EBAY_DE';
     }
 
     private async refreshAccessToken(): Promise<void> {
@@ -171,7 +173,7 @@ export class EbayInquiriesService {
             'Authorization': `Bearer ${this.accessToken}`,
             'Content-Type': 'application/json',
             'Accept': 'application/json',
-            'X-EBAY-C-MARKETPLACE-ID': 'EBAY_DE'
+            'X-EBAY-C-MARKETPLACE-ID': this.marketplace
         };
 
         const options: RequestInit = {
@@ -269,9 +271,11 @@ export class EbayInquiriesService {
      * Issue a refund to resolve the inquiry
      */
     async issueRefund(inquiryId: string, comments?: string): Promise<unknown> {
-        const body = {
-            comments
-        };
+        const body: any = {};
+        // Only include comments if provided to avoid sending undefined values
+        if (comments !== undefined && comments !== '') {
+            body.comments = comments;
+        }
         return this.makePostOrderRequest(`/inquiry/${inquiryId}/issue_refund`, 'POST', body);
     }
 
@@ -279,22 +283,38 @@ export class EbayInquiriesService {
      * Provide shipment tracking info to resolve INR inquiry
      */
     async provideShipmentInfo(inquiryId: string, request: ProvideShipmentInfoRequest): Promise<unknown> {
-        return this.makePostOrderRequest(`/inquiry/${inquiryId}/provide_shipment_info`, 'POST', request);
+        // Filter out undefined values to avoid API errors
+        const body: any = {
+            trackingNumber: request.trackingNumber,
+            shippingCarrierCode: request.shippingCarrierCode
+        };
+        if (request.shippedDate !== undefined && request.shippedDate !== '') {
+            body.shippedDate = request.shippedDate;
+        }
+        if (request.comments !== undefined && request.comments !== '') {
+            body.comments = request.comments;
+        }
+        return this.makePostOrderRequest(`/inquiry/${inquiryId}/provide_shipment_info`, 'POST', body);
     }
 
     /**
      * Escalate inquiry to eBay for resolution
      */
     async escalate(inquiryId: string, comments?: string): Promise<unknown> {
-        const body = {
-            comments
-        };
+        const body: any = {};
+        // Only include comments if provided to avoid sending undefined values
+        if (comments !== undefined && comments !== '') {
+            body.comments = comments;
+        }
         return this.makePostOrderRequest(`/inquiry/${inquiryId}/escalate`, 'POST', body);
     }
 }
 
 // Factory function to create service from account ID
-export async function createEbayInquiriesService(accountId: string): Promise<EbayInquiriesService> {
+export async function createEbayInquiriesService(
+    accountId: string,
+    marketplace?: string
+): Promise<EbayInquiriesService> {
     const account = await EbayAccountService.getAccountById(accountId);
 
     if (!account) {
@@ -306,5 +326,5 @@ export async function createEbayInquiriesService(accountId: string): Promise<Eba
         accessToken: account.accessToken,
         refreshToken: account.refreshToken || undefined,
         expiresAt: account.expiresAt
-    });
+    }, marketplace);
 }
