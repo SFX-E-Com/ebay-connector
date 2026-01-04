@@ -1,20 +1,9 @@
 'use client';
 
-import {
-  VStack,
-  HStack,
-  Text,
-  Badge,
-  Heading,
-  Icon,
-  Dialog,
-  Button,
-  Separator,
-  Box,
-} from '@chakra-ui/react';
+import { Modal, Badge, Button } from 'react-bootstrap';
 import { FiGlobe, FiUser, FiClock, FiTag, FiShield, FiCalendar } from 'react-icons/fi';
 import { EbayAccount } from '@/app/hooks/useEbayAccounts';
-import { EBAY_OAUTH_SCOPES, SCOPE_CATEGORIES, getScopesByCategory } from '@/app/lib/constants/ebayScopes';
+import { EBAY_OAUTH_SCOPES, SCOPE_CATEGORIES } from '@/app/lib/constants/ebayScopes';
 import EbayScopeCategory from './scope/EbayScopeCategory';
 import { useState } from 'react';
 
@@ -29,9 +18,9 @@ export default function EbayAccountViewModal({
   onClose,
   account,
 }: EbayAccountViewModalProps) {
-  if (!account) return null;
-
   const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
+
+  if (!account) return null;
 
   const handleCategoryToggle = (categoryKey: string) => {
     setExpandedCategories(prev =>
@@ -72,233 +61,214 @@ export default function EbayAccountViewModal({
   };
 
   return (
-    <Dialog.Root open={isOpen} onOpenChange={onClose} scrollBehavior="inside">
-      <Dialog.Backdrop />
-      <Dialog.Positioner>
-        <Dialog.Content maxW="11/12">
-          <Dialog.Header>
-            <Dialog.Title>
-              eBay Account Details
-            </Dialog.Title>
-          </Dialog.Header>
+    <Modal show={isOpen} onHide={onClose} size="xl" scrollable>
+      <Modal.Header closeButton>
+        <Modal.Title>eBay Account Details</Modal.Title>
+      </Modal.Header>
 
-          <Dialog.Body>
-            <VStack align="stretch" gap={6}>
-              {/* Account Header */}
-              <Box>
-                <Heading size="lg" color="navy.800" mb={2}>
-                  {account.friendlyName || account.ebayUsername || account.ebayUserId}
-                </Heading>
+      <Modal.Body>
+        <div className="d-flex flex-column gap-4">
+          {/* Account Header */}
+          <div>
+            <h4 className="mb-2">
+              {account.friendlyName || account.ebayUsername || account.ebayUserId}
+            </h4>
 
-                {/* Status Badges */}
-                <HStack gap={2} flexWrap="wrap">
-                  <Badge
-                    colorPalette={environment === 'production' ? 'red' : 'yellow'}
-                    variant="subtle"
-                  >
-                    {environment.toUpperCase()}
-                  </Badge>
+            {/* Status Badges */}
+            <div className="d-flex gap-2 flex-wrap">
+              <Badge
+                bg={environment === 'production' ? 'success' : 'warning'}
+              >
+                {environment.toUpperCase()}
+              </Badge>
 
-                  {account.ebayUsername && (
-                    <Badge colorPalette="green" variant="subtle" fontSize="xs">
-                      AUTO-AUTH
-                    </Badge>
-                  )}
-
-                  <Badge
-                    colorPalette={isActive ? 'green' : 'gray'}
-                    variant="subtle"
-                  >
-                    {isActive ? 'Active' : 'Disabled'}
-                  </Badge>
-
-                  {isExpired && (
-                    <Badge colorPalette="red" variant="outline">
-                      Expired
-                    </Badge>
-                  )}
-                </HStack>
-              </Box>
-
-              <Separator />
-
-              {/* Account Information */}
-              <VStack align="stretch" gap={4}>
-                <Heading size="md" color="gray.700">
-                  Account Information
-                </Heading>
-
-                <VStack align="stretch" gap={3} fontSize="sm">
-                  {account.friendlyName && (
-                    <HStack>
-                      <Icon as={FiTag} color="gray.600" />
-                      <Text fontWeight="medium" color="gray.600" minW="120px">
-                        Friendly Name:
-                      </Text>
-                      <Text color="gray.800" fontWeight="semibold">
-                        {account.friendlyName}
-                      </Text>
-                    </HStack>
-                  )}
-
-                  <HStack>
-                    <Icon as={FiGlobe} color="gray.600" />
-                    <Text fontWeight="medium" color="gray.600" minW="120px">
-                      eBay User ID:
-                    </Text>
-                    <Text color="gray.800" fontFamily="mono">
-                      {account.ebayUserId}
-                    </Text>
-                  </HStack>
-
-                  {account.ebayUsername && (
-                    <HStack>
-                      <Icon as={FiUser} color="gray.600" />
-                      <Text fontWeight="medium" color="gray.600" minW="120px">
-                        Username:
-                      </Text>
-                      <Text color="gray.800" fontFamily="mono">
-                        {account.ebayUsername}
-                      </Text>
-                    </HStack>
-                  )}
-
-                  <HStack>
-                    <Icon as={FiShield} color="gray.600" />
-                    <Text fontWeight="medium" color="gray.600" minW="120px">
-                      Token Type:
-                    </Text>
-                    <Text color="gray.800">
-                      {account.tokenType}
-                    </Text>
-                  </HStack>
-                </VStack>
-              </VStack>
-
-              <Separator />
-
-              {/* Timestamps */}
-              <VStack align="stretch" gap={4}>
-                <Heading size="md" color="gray.700">
-                  Timeline
-                </Heading>
-
-                <VStack align="stretch" gap={3} fontSize="sm">
-                  <HStack>
-                    <Icon as={FiCalendar} color="gray.600" />
-                    <Text fontWeight="medium" color="gray.600" minW="120px">
-                      Connected:
-                    </Text>
-                    <Text color="gray.800">
-                      {formatDate(account.createdAt)}
-                    </Text>
-                  </HStack>
-
-                  {account.lastUsedAt && (
-                    <HStack>
-                      <Icon as={FiClock} color="gray.600" />
-                      <Text fontWeight="medium" color="gray.600" minW="120px">
-                        Last Used:
-                      </Text>
-                      <Text color="gray.800">
-                        {formatDate(account.lastUsedAt)}
-                      </Text>
-                    </HStack>
-                  )}
-
-                  <HStack>
-                    <Icon as={FiCalendar} color={isExpired ? "red.600" : "gray.600"} />
-                    <Text fontWeight="medium" color="gray.600" minW="120px">
-                      Expires:
-                    </Text>
-                    <Text color={isExpired ? "red.600" : "gray.800"} fontWeight={isExpired ? "semibold" : "normal"}>
-                      {formatDate(account.expiresAt)}
-                    </Text>
-                  </HStack>
-
-                  <HStack>
-                    <Icon as={FiClock} color="gray.600" />
-                    <Text fontWeight="medium" color="gray.600" minW="120px">
-                      Updated:
-                    </Text>
-                    <Text color="gray.800">
-                      {formatDate(account.updatedAt)}
-                    </Text>
-                  </HStack>
-                </VStack>
-              </VStack>
-
-              <Separator />
-
-              {/* Scopes */}
-              <VStack align="stretch" gap={4}>
-                <HStack justify="space-between" align="center">
-                  <Heading size="md" color="gray.700">
-                    Permissions & Scopes
-                  </Heading>
-                  <Badge
-                    colorPalette={accountScopes.length > 0 ? 'blue' : 'gray'}
-                    variant="subtle"
-                    fontSize="sm"
-                  >
-                    {accountScopes.length} permissions granted
-                  </Badge>
-                </HStack>
-
-                {accountScopes.length > 0 ? (
-                  <VStack align="stretch" gap={4}>
-                    {Object.keys(SCOPE_CATEGORIES).map((categoryKey) => (
-                      <EbayScopeCategory
-                        key={categoryKey}
-                        categoryKey={categoryKey}
-                        isExpanded={expandedCategories.includes(categoryKey)}
-                        onToggle={() => handleCategoryToggle(categoryKey)}
-                        selectedScopes={scopeIds}
-                        onScopeToggle={() => {}} // Read-only mode
-                        disabled={true}
-                      />
-                    ))}
-                  </VStack>
-                ) : (
-                  <Box p={4} bg="gray.50" borderRadius="md" border="1px solid" borderColor="gray.200">
-                    <HStack>
-                      <Icon as={FiShield} color="gray.500" />
-                      <Text fontSize="sm" color="gray.600" fontStyle="italic">
-                        No specific scopes granted - Basic access only
-                      </Text>
-                    </HStack>
-                  </Box>
-                )}
-              </VStack>
-
-              {/* Tags */}
-              {tags && tags.length > 0 && (
-                <>
-                  <Separator />
-                  <VStack align="stretch" gap={4}>
-                    <Heading size="md" color="gray.700">
-                      Tags
-                    </Heading>
-                    <HStack gap={2} flexWrap="wrap">
-                      {tags.map((tag: string, index: number) => (
-                        <Badge key={index} colorPalette="orange" variant="outline">
-                          {tag}
-                        </Badge>
-                      ))}
-                    </HStack>
-                  </VStack>
-                </>
+              {account.ebayUsername && (
+                <Badge bg="success">
+                  AUTO-AUTH
+                </Badge>
               )}
-            </VStack>
-          </Dialog.Body>
 
-          <Dialog.Footer>
-            <Button variant="outline" onClick={onClose}>
-              Close
-            </Button>
-          </Dialog.Footer>
-        </Dialog.Content>
-      </Dialog.Positioner>
-    </Dialog.Root>
+              <Badge
+                bg={isActive ? 'success' : 'secondary'}
+              >
+                {isActive ? 'Active' : 'Disabled'}
+              </Badge>
+
+              {isExpired && (
+                <Badge bg="danger" className="border border-danger">
+                  Expired
+                </Badge>
+              )}
+            </div>
+          </div>
+
+          <hr className="my-0" />
+
+          {/* Account Information */}
+          <div className="d-flex flex-column gap-3">
+            <h5 className="text-secondary mb-0">Account Information</h5>
+
+            <div className="d-flex flex-column gap-2 small">
+              {account.friendlyName && (
+                <div className="d-flex align-items-center gap-2">
+                  <FiTag className="text-secondary" />
+                  <span className="fw-medium text-secondary" style={{ minWidth: '120px' }}>
+                    Friendly Name:
+                  </span>
+                  <span className="fw-semibold">
+                    {account.friendlyName}
+                  </span>
+                </div>
+              )}
+
+              <div className="d-flex align-items-center gap-2">
+                <FiGlobe className="text-secondary" />
+                <span className="fw-medium text-secondary" style={{ minWidth: '120px' }}>
+                  eBay User ID:
+                </span>
+                <span className="font-monospace">
+                  {account.ebayUserId}
+                </span>
+              </div>
+
+              {account.ebayUsername && (
+                <div className="d-flex align-items-center gap-2">
+                  <FiUser className="text-secondary" />
+                  <span className="fw-medium text-secondary" style={{ minWidth: '120px' }}>
+                    Username:
+                  </span>
+                  <span className="font-monospace">
+                    {account.ebayUsername}
+                  </span>
+                </div>
+              )}
+
+              <div className="d-flex align-items-center gap-2">
+                <FiShield className="text-secondary" />
+                <span className="fw-medium text-secondary" style={{ minWidth: '120px' }}>
+                  Token Type:
+                </span>
+                <span>
+                  {account.tokenType}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <hr className="my-0" />
+
+          {/* Timestamps */}
+          <div className="d-flex flex-column gap-3">
+            <h5 className="text-secondary mb-0">Timeline</h5>
+
+            <div className="d-flex flex-column gap-2 small">
+              <div className="d-flex align-items-center gap-2">
+                <FiCalendar className="text-secondary" />
+                <span className="fw-medium text-secondary" style={{ minWidth: '120px' }}>
+                  Connected:
+                </span>
+                <span>
+                  {formatDate(account.createdAt)}
+                </span>
+              </div>
+
+              {account.lastUsedAt && (
+                <div className="d-flex align-items-center gap-2">
+                  <FiClock className="text-secondary" />
+                  <span className="fw-medium text-secondary" style={{ minWidth: '120px' }}>
+                    Last Used:
+                  </span>
+                  <span>
+                    {formatDate(account.lastUsedAt)}
+                  </span>
+                </div>
+              )}
+
+              <div className="d-flex align-items-center gap-2">
+                <FiCalendar className={isExpired ? 'text-danger' : 'text-secondary'} />
+                <span className="fw-medium text-secondary" style={{ minWidth: '120px' }}>
+                  Expires:
+                </span>
+                <span className={isExpired ? 'text-danger fw-semibold' : ''}>
+                  {formatDate(account.expiresAt)}
+                </span>
+              </div>
+
+              <div className="d-flex align-items-center gap-2">
+                <FiClock className="text-secondary" />
+                <span className="fw-medium text-secondary" style={{ minWidth: '120px' }}>
+                  Updated:
+                </span>
+                <span>
+                  {formatDate(account.updatedAt)}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <hr className="my-0" />
+
+          {/* Scopes */}
+          <div className="d-flex flex-column gap-3">
+            <div className="d-flex justify-content-between align-items-center">
+              <h5 className="text-secondary mb-0">Permissions & Scopes</h5>
+              <Badge
+                bg={accountScopes.length > 0 ? 'primary' : 'secondary'}
+              >
+                {accountScopes.length} permissions granted
+              </Badge>
+            </div>
+
+            {accountScopes.length > 0 ? (
+              <div className="d-flex flex-column gap-3">
+                {Object.keys(SCOPE_CATEGORIES).map((categoryKey) => (
+                  <EbayScopeCategory
+                    key={categoryKey}
+                    categoryKey={categoryKey}
+                    isExpanded={expandedCategories.includes(categoryKey)}
+                    onToggle={() => handleCategoryToggle(categoryKey)}
+                    selectedScopes={scopeIds}
+                    onScopeToggle={() => {}} // Read-only mode
+                    disabled={true}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="p-3 bg-white rounded border">
+                <div className="d-flex align-items-center gap-2">
+                  <FiShield className="text-secondary" />
+                  <span className="small text-muted fst-italic">
+                    No specific scopes granted - Basic access only
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Tags */}
+          {tags && tags.length > 0 && (
+            <>
+              <hr className="my-0" />
+              <div className="d-flex flex-column gap-3">
+                <h5 className="text-secondary mb-0">Tags</h5>
+                <div className="d-flex gap-2 flex-wrap">
+                  {tags.map((tag: string, index: number) => (
+                    <Badge key={index} bg="warning" text="dark" className="border border-warning">
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </Modal.Body>
+
+      <Modal.Footer>
+        <Button variant="outline-secondary" onClick={onClose}>
+          Close
+        </Button>
+      </Modal.Footer>
+    </Modal>
   );
 }

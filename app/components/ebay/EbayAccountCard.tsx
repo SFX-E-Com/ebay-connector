@@ -1,18 +1,6 @@
 'use client';
 
-import {
-  VStack,
-  HStack,
-  Text,
-  Button,
-  Card,
-  Badge,
-  Heading,
-  Icon,
-  Switch,
-  Box,
-  IconButton,
-} from '@chakra-ui/react';
+import { Card, Badge, Button, Form } from 'react-bootstrap';
 import { MdDelete, MdEdit, MdContentCopy } from 'react-icons/md';
 import { FiUser, FiTag } from 'react-icons/fi';
 import { EbayAccount } from '@/app/hooks/useEbayAccounts';
@@ -50,14 +38,6 @@ export default function EbayAccountCard({
                            !account.ebayUserId.startsWith('placeholder_');
   const isFirstTimeConnection = !hasBeenConnected;
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-  };
-
   const displayName = account.friendlyName || account.ebayUsername || account.ebayUserId;
 
   const copyToClipboard = (text: string) => {
@@ -65,214 +45,197 @@ export default function EbayAccountCard({
   };
 
   return (
-    <Card.Root
-      position="relative"
-      w="380px"
-      h="420px"
-      bg="white"
-      borderRadius="16px"
-      shadow="lg"
-      border="1px solid"
-      borderColor="gray.100"
-      overflow="hidden"
-      cursor="pointer"
-      transition="all 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
-      transform="translateY(0)"
-      _hover={{
-        transform: isDisabled ? 'translateY(0)' : 'translateY(-8px)',
-        shadow: isDisabled ? 'lg' : '2xl',
-        borderColor: isDisabled ? 'gray.100' : '#FF7A00',
+    <Card
+      className={`h-100 shadow ebay-account-card ${isDisabled ? 'disabled' : ''}`}
+      style={{
+        width: '380px',
+        height: '420px',
+        borderRadius: '16px',
+        cursor: 'pointer',
+        opacity: isDisabled ? 0.7 : 1,
       }}
-      opacity={isDisabled ? 0.7 : 1}
       onClick={() => onView?.(account)}
     >
-      <Card.Body p={6} h="full" display="flex" flexDirection="column">
-        <VStack align="stretch" gap={4} flex="1">
+      <Card.Body className="p-4 d-flex flex-column h-100">
+        <div className="d-flex flex-column gap-3 flex-grow-1">
           {/* Top Content */}
-          <VStack align="stretch" gap={4} flex="1">
+          <div className="d-flex flex-column gap-3 flex-grow-1">
             {/* Header Section */}
-            <Box>
-              <HStack justify="space-between" align="start" mb={3}>
-                <VStack align="start" gap={1}>
-                  <Heading
-                    size="md"
-                    color={isDisabled ? 'gray.500' : 'gray.800'}
-                    fontWeight="600"
-                    letterSpacing="-0.025em"
-                    lineClamp={2}
+            <div>
+              <div className="d-flex justify-content-between align-items-start mb-3">
+                <div className="d-flex flex-column gap-1">
+                  <h5
+                    className={`mb-0 fw-semibold ${isDisabled ? 'text-muted' : ''}`}
+                    style={{
+                      letterSpacing: '-0.025em',
+                      overflow: 'hidden',
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical',
+                    }}
                   >
                     {displayName}
-                  </Heading>
+                  </h5>
                   {account.friendlyName && account.ebayUsername && (
-                    <HStack>
-                      <Icon as={FiUser} color="gray.400" size="sm" />
-                      <Text fontSize="sm" color="gray.500" fontFamily="mono" lineClamp={1}>
+                    <div className="d-flex align-items-center gap-1">
+                      <FiUser className="text-secondary" size={14} />
+                      <small className="text-secondary font-monospace text-truncate">
                         @{account.ebayUsername}
-                      </Text>
-                    </HStack>
+                      </small>
+                    </div>
                   )}
-                </VStack>
-                <Box
-                  w="12px"
-                  h="12px"
-                  borderRadius="full"
-                  bg={isActive ? 'green.400' : 'gray.300'}
-                  shadow="sm"
-                  flexShrink={0}
+                </div>
+                <div
+                  style={{
+                    width: '12px',
+                    height: '12px',
+                    borderRadius: '50%',
+                    backgroundColor: isActive ? '#198754' : '#dee2e6',
+                    flexShrink: 0,
+                  }}
+                  role="status"
+                  aria-label={isActive ? 'Account is active' : 'Account is inactive'}
+                  title={isActive ? 'Active' : 'Inactive'}
                 />
-              </HStack>
-            </Box>
+              </div>
+            </div>
 
             {/* Stats Section */}
-            <Box bg="gray.50" p={4} borderRadius="12px" border="1px solid" borderColor="gray.100">
-              <HStack justify="space-between">
-                <VStack align="start" gap={1}>
-                  <Text fontSize="xs" color="gray.500" fontWeight="500" textTransform="uppercase">
+            <div className="bg-white p-3 rounded-3 border">
+              <div className="d-flex justify-content-between">
+                <div className="d-flex flex-column gap-1">
+                  <small className="text-secondary fw-medium text-uppercase">
                     Environment
-                  </Text>
+                  </small>
                   <Badge
-                    colorPalette={environment === 'production' ? 'yellow' : 'red'}
-                    variant="solid"
-                    fontSize="xs"
-                    borderRadius="6px"
+                    bg={environment === 'production' ? 'success' : 'warning'}
+                    className="rounded-2"
                   >
                     {environment.toUpperCase()}
                   </Badge>
-                </VStack>
+                </div>
 
-                <VStack align="center" gap={1}>
-                  <Text fontSize="xs" color="gray.500" fontWeight="500" textTransform="uppercase">
+                <div className="d-flex flex-column align-items-center gap-1">
+                  <small className="text-secondary fw-medium text-uppercase">
                     Status
-                  </Text>
+                  </small>
                   <Badge
-                    colorPalette={isActive ? 'green' : 'gray'}
-                    variant="solid"
-                    fontSize="xs"
-                    borderRadius="6px"
+                    bg={isActive ? 'success' : 'secondary'}
+                    className="rounded-2"
                   >
                     {isActive ? 'Active' : 'Disabled'}
                   </Badge>
-                </VStack>
+                </div>
 
                 {isExpired && (
-                  <VStack align="end" gap={1}>
-                    <Text fontSize="xs" color="gray.500" fontWeight="500" textTransform="uppercase">
+                  <div className="d-flex flex-column align-items-end gap-1">
+                    <small className="text-secondary fw-medium text-uppercase">
                       Token
-                    </Text>
-                    <Badge
-                      colorPalette="red"
-                      variant="solid"
-                      fontSize="xs"
-                      borderRadius="6px"
-                    >
+                    </small>
+                    <Badge bg="danger" className="rounded-2">
                       Expired
                     </Badge>
-                  </VStack>
+                  </div>
                 )}
-              </HStack>
-            </Box>
+              </div>
+            </div>
 
             {/* Account Details */}
-            <VStack align="stretch" gap={3}>
+            <div className="d-flex flex-column gap-2">
               {/* Account ID Row */}
-              <HStack>
-                <Icon as={FiTag} color="green.500" size="sm" />
-                <VStack align="start" gap={0} minW={0} flex={1}>
-                  <Text fontSize="xs" color="gray.500" fontWeight="500">
+              <div className="d-flex align-items-start gap-2">
+                <FiTag className="text-success mt-1" size={14} />
+                <div className="d-flex flex-column flex-grow-1" style={{ minWidth: 0 }}>
+                  <small className="text-secondary fw-medium">
                     Account ID
-                  </Text>
-                  <HStack justify="space-between" w="full">
-                    <Text fontSize="sm" color="gray.700" fontFamily="mono" fontWeight="500" lineClamp={1} flex="1">
+                  </small>
+                  <div className="d-flex justify-content-between align-items-center w-100">
+                    <small className="font-monospace fw-medium text-truncate flex-grow-1">
                       {account.id}
-                    </Text>
-                    <IconButton
-                      aria-label="Copy account ID"
-                      size="xs"
-                      variant="ghost"
-                      colorPalette="gray"
+                    </small>
+                    <Button
+                      variant="link"
+                      size="sm"
+                      className="p-0 text-secondary"
                       onClick={(e) => {
                         e.stopPropagation();
                         copyToClipboard(account.id);
                       }}
+                      aria-label="Copy account ID"
                     >
-                      <MdContentCopy />
-                    </IconButton>
-                  </HStack>
-                </VStack>
-              </HStack>
-            </VStack>
-          </VStack>
+                      <MdContentCopy size={16} />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
 
           {/* Bottom Action Buttons */}
-          <VStack gap={3} mt="auto">
+          <div className="d-flex flex-column gap-2 mt-auto">
             <Button
-              w="full"
-              colorPalette={isFirstTimeConnection ? "orange" : "blue"}
-              variant="subtle"
+              variant={isFirstTimeConnection ? 'warning' : 'primary'}
               size="sm"
-              borderRadius="10px"
-              disabled={isDisabled}
-              loading={isConnecting}
-              loadingText={isFirstTimeConnection ? "Connecting..." : "Reconnecting..."}
+              className="w-100 rounded-3"
+              disabled={isDisabled || isConnecting}
               onClick={(e) => {
                 e.stopPropagation();
                 onConnect?.(account.id);
               }}
             >
-              {isFirstTimeConnection ? "Connect Account" : "Reconnect Account"}
+              {isConnecting
+                ? (isFirstTimeConnection ? 'Connecting...' : 'Reconnecting...')
+                : (isFirstTimeConnection ? 'Connect Account' : 'Reconnect Account')
+              }
             </Button>
 
-            <HStack justify="space-between" w="full">
+            <div className="d-flex justify-content-between w-100">
               {hasBeenConnected ? (
-                <Box onClick={(e) => e.stopPropagation()}>
-                  <Switch.Root
-                    size="sm"
+                <div onClick={(e) => e.stopPropagation()}>
+                  <Form.Check
+                    type="switch"
+                    id={`status-switch-${account.id}`}
+                    label={isActive ? 'Active' : 'Inactive'}
                     checked={isActive}
-                    colorPalette="green"
-                    onCheckedChange={(checked) => onToggleStatus?.(account.id, checked.checked)}
-                  >
-                    <Switch.HiddenInput />
-                    <Switch.Control />
-                    <Switch.Label fontSize="sm" ml={2} fontWeight="500">
-                      {isActive ? 'Active' : 'Inactive'}
-                    </Switch.Label>
-                  </Switch.Root>
-                </Box>
+                    onChange={(e) => onToggleStatus?.(account.id, e.target.checked)}
+                    className="small fw-medium"
+                  />
+                </div>
               ) : (
-                <Box />
+                <div />
               )}
 
-              <HStack gap={2}>
+              <div className="d-flex gap-1">
                 <Button
+                  variant="link"
                   size="sm"
-                  variant="ghost"
-                  colorPalette="blue"
-                  borderRadius="8px"
+                  className="text-primary p-1"
                   onClick={(e) => {
                     e.stopPropagation();
                     onEdit?.(account);
                   }}
+                  aria-label="Edit account"
                 >
-                  <MdEdit />
+                  <MdEdit size={18} />
                 </Button>
                 <Button
+                  variant="link"
                   size="sm"
-                  variant="ghost"
-                  colorPalette="red"
-                  borderRadius="8px"
+                  className="text-danger p-1"
                   onClick={(e) => {
                     e.stopPropagation();
                     onDelete?.(account.id);
                   }}
-                  loading={isDeleting}
+                  disabled={isDeleting}
+                  aria-label="Delete account"
                 >
-                  <MdDelete />
+                  <MdDelete size={18} />
                 </Button>
-              </HStack>
-            </HStack>
-          </VStack>
-        </VStack>
+              </div>
+            </div>
+          </div>
+        </div>
       </Card.Body>
-    </Card.Root>
+    </Card>
   );
 }

@@ -1,18 +1,6 @@
 'use client';
 
-import {
-  Dialog,
-  Field,
-  Input,
-  Button,
-  VStack,
-  HStack,
-  Grid,
-  GridItem,
-  Heading,
-  Badge,
-  Text,
-} from '@chakra-ui/react';
+import { Modal, Form, Button, Badge, Row, Col, Alert, Spinner } from 'react-bootstrap';
 import { useState } from 'react';
 import EbayScopeSelector from './EbayScopeSelector';
 import { DEFAULT_SCOPES } from '@/app/lib/constants/ebayScopes';
@@ -101,174 +89,162 @@ export default function AddEbayAccountModal({
   };
 
   return (
-    <Dialog.Root open={isOpen} onOpenChange={() => handleClose()}  scrollBehavior="inside">
-      <Dialog.Backdrop />
-      <Dialog.Positioner>
-        <Dialog.Content maxW="11/12" p={6}>
-          <Dialog.Header>
-            <Dialog.Title fontSize="xl" fontWeight="bold">
-              Add eBay Account
-            </Dialog.Title>
-          </Dialog.Header>
+    <Modal show={isOpen} onHide={handleClose} size="xl" scrollable>
+      <Modal.Header closeButton>
+        <Modal.Title className="fw-bold">Add eBay Account</Modal.Title>
+      </Modal.Header>
 
-          <Dialog.Body>
-            <form onSubmit={handleSubmit}>
-              <VStack gap={6} align="stretch">
-                {/* Basic Information Section */}
-                <VStack align="stretch" gap={4}>
-                  <Heading size="md" color="gray.700">
-                    Basic Information
-                  </Heading>
+      <Modal.Body>
+        <Form onSubmit={handleSubmit}>
+          <div className="d-flex flex-column gap-4">
+            {/* Basic Information Section */}
+            <div className="d-flex flex-column gap-3">
+              <h5 className="text-dark mb-0">Basic Information</h5>
 
-                  <Grid templateColumns="repeat(2, 1fr)" gap={4}>
-                    <GridItem>
-                      <Field.Root invalid={!!errors.friendlyName}>
-                        <Field.Label>Friendly Name *</Field.Label>
-                        <Input
-                          value={formData.friendlyName}
-                          onChange={(e) =>
-                            setFormData({
-                              ...formData,
-                              friendlyName: e.target.value,
-                            })
-                          }
-                          placeholder="e.g., Main Store Account"
-                        />
-                        {errors.friendlyName && (
-                          <Field.ErrorText>
-                            {errors.friendlyName}
-                          </Field.ErrorText>
-                        )}
-                      </Field.Root>
-                    </GridItem>
+              <Row>
+                <Col md={6}>
+                  <Form.Group>
+                    <Form.Label>Friendly Name *</Form.Label>
+                    <Form.Control
+                      type="text"
+                      value={formData.friendlyName}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          friendlyName: e.target.value,
+                        })
+                      }
+                      placeholder="e.g., Main Store Account"
+                      isInvalid={!!errors.friendlyName}
+                    />
+                    <Form.Control.Feedback type="invalid">
+                      {errors.friendlyName}
+                    </Form.Control.Feedback>
+                  </Form.Group>
+                </Col>
 
-                    <GridItem>
-                      <Field.Root>
-                        <Field.Label>eBay Username (Optional)</Field.Label>
-                        <Input
-                          value={formData.ebayUsername}
-                          onChange={(e) =>
-                            setFormData({
-                              ...formData,
-                              ebayUsername: e.target.value,
-                            })
-                          }
-                          placeholder="Your eBay username"
-                        />
-                        <Field.HelperText>
-                          If known, helps with identification
-                        </Field.HelperText>
-                      </Field.Root>
-                    </GridItem>
-                  </Grid>
+                <Col md={6}>
+                  <Form.Group>
+                    <Form.Label>eBay Username (Optional)</Form.Label>
+                    <Form.Control
+                      type="text"
+                      value={formData.ebayUsername}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          ebayUsername: e.target.value,
+                        })
+                      }
+                      placeholder="Your eBay username"
+                    />
+                    <Form.Text className="text-muted">
+                      If known, helps with identification
+                    </Form.Text>
+                  </Form.Group>
+                </Col>
+              </Row>
+            </div>
 
-                </VStack>
+            {/* Organization Section */}
+            <div className="d-flex flex-column gap-3">
+              <h5 className="text-dark mb-0">Organization</h5>
 
-                {/* Organization Section */}
-                <VStack align="stretch" gap={4}>
-                  <Heading size="md" color="gray.700">
-                    Organization
-                  </Heading>
+              <Form.Group>
+                <Form.Label>Tags</Form.Label>
+                <div className="d-flex gap-2">
+                  <Form.Control
+                    type="text"
+                    value={tagInput}
+                    onChange={(e) => setTagInput(e.target.value)}
+                    placeholder="Add a tag (e.g., electronics, books)"
+                    onKeyDown={handleTagInputKeyDown}
+                  />
+                  <Button
+                    variant="outline-secondary"
+                    onClick={addTag}
+                    disabled={!tagInput.trim()}
+                  >
+                    Add
+                  </Button>
+                </div>
+                <Form.Text className="text-muted">
+                  Tags help organize and filter your accounts
+                </Form.Text>
+              </Form.Group>
 
-                  <Field.Root>
-                    <Field.Label>Tags</Field.Label>
-                    <HStack>
-                      <Input
-                        value={tagInput}
-                        onChange={(e) => setTagInput(e.target.value)}
-                        placeholder="Add a tag (e.g., electronics, books)"
-                        onKeyDown={handleTagInputKeyDown}
-                      />
-                      <Button
-                        variant="outline"
-                        onClick={addTag}
-                        disabled={!tagInput.trim()}
+              {formData.tags.length > 0 && (
+                <div className="d-flex flex-column gap-2">
+                  <p className="small fw-medium text-dark mb-0">
+                    Current Tags:
+                  </p>
+                  <div className="d-flex gap-2 flex-wrap">
+                    {formData.tags.map((tag, index) => (
+                      <Badge
+                        key={index}
+                        bg="primary"
+                        className="px-3 py-2"
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => removeTag(tag)}
                       >
-                        Add
-                      </Button>
-                    </HStack>
-                    <Field.HelperText>
-                      Tags help organize and filter your accounts
-                    </Field.HelperText>
-                  </Field.Root>
+                        {tag} ×
+                      </Badge>
+                    ))}
+                  </div>
+                  <small className="text-muted">
+                    Click on a tag to remove it
+                  </small>
+                </div>
+              )}
+            </div>
 
-                  {formData.tags.length > 0 && (
-                    <VStack align="stretch" gap={2}>
-                      <Text fontSize="sm" fontWeight="medium" color="gray.600">
-                        Current Tags:
-                      </Text>
-                      <HStack gap={2} flexWrap="wrap">
-                        {formData.tags.map((tag, index) => (
-                          <Badge
-                            key={index}
-                            colorPalette="blue"
-                            variant="subtle"
-                            fontSize="sm"
-                            px={3}
-                            py={1}
-                            cursor="pointer"
-                            onClick={() => removeTag(tag)}
-                            _hover={{ bg: 'red.100', colorPalette: 'red' }}
-                          >
-                            {tag} ×
-                          </Badge>
-                        ))}
-                      </HStack>
-                      <Text fontSize="xs" color="gray.500">
-                        Click on a tag to remove it
-                      </Text>
-                    </VStack>
-                  )}
-                </VStack>
+            {/* eBay Permissions Section */}
+            <EbayScopeSelector
+              selectedScopes={formData.selectedScopes}
+              onScopeChange={(scopes) => setFormData({ ...formData, selectedScopes: scopes })}
+              disabled={isSubmitting}
+            />
 
-                {/* eBay Permissions Section */}
-                <EbayScopeSelector
-                  selectedScopes={formData.selectedScopes}
-                  onScopeChange={(scopes) => setFormData({ ...formData, selectedScopes: scopes })}
-                  disabled={isSubmitting}
-                />
+            {/* Connection Info */}
+            <div className="d-flex flex-column gap-3">
+              <h5 className="text-dark mb-0">Next Steps</h5>
+              <Alert variant="warning" className="mb-0">
+                <p className="small fw-medium mb-2">
+                  After creating this account:
+                </p>
+                <div className="d-flex flex-column gap-1 small">
+                  <p className="mb-0">• Click "Connect Account" to authorize with eBay</p>
+                  <p className="mb-0">• Complete the OAuth flow with your selected permissions</p>
+                  <p className="mb-0">• Your account will be ready to use for API calls</p>
+                </div>
+              </Alert>
+            </div>
+          </div>
+        </Form>
+      </Modal.Body>
 
-                {/* Connection Info */}
-                <VStack align="stretch" gap={4}>
-                  <Heading size="md" color="gray.700">
-                    Next Steps
-                  </Heading>
-                  <VStack align="stretch" gap={3} p={4} bg="orange.50" borderRadius="md" border="1px solid" borderColor="orange.200">
-                    <Text fontSize="sm" fontWeight="medium" color="orange.800">
-                      After creating this account:
-                    </Text>
-                    <VStack align="stretch" gap={1} fontSize="sm" color="orange.700">
-                      <Text>• Click "Connect Account" to authorize with eBay</Text>
-                      <Text>• Complete the OAuth flow with your selected permissions</Text>
-                      <Text>• Your account will be ready to use for API calls</Text>
-                    </VStack>
-                  </VStack>
-                </VStack>
-              </VStack>
-            </form>
-          </Dialog.Body>
-
-          <Dialog.Footer>
-            <HStack gap={3} justify="flex-end" w="full">
-              <Button
-                variant="ghost"
-                onClick={handleClose}
-                disabled={isSubmitting}
-              >
-                Cancel
-              </Button>
-              <Button
-                colorPalette="orange"
-                onClick={handleSubmit}
-                loading={isSubmitting}
-                loadingText="Creating..."
-              >
-                Create Account
-              </Button>
-            </HStack>
-          </Dialog.Footer>
-        </Dialog.Content>
-      </Dialog.Positioner>
-    </Dialog.Root>
+      <Modal.Footer>
+        <div className="d-flex gap-2 justify-content-end w-100">
+          <Button
+            variant="outline-secondary"
+            onClick={handleClose}
+            disabled={isSubmitting}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="warning"
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? (
+              <>
+                <Spinner animation="border" size="sm" className="me-2" />
+                Creating...
+              </>
+            ) : 'Create Account'}
+          </Button>
+        </div>
+      </Modal.Footer>
+    </Modal>
   );
 }
