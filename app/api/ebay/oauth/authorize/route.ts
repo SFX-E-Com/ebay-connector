@@ -44,10 +44,18 @@ export async function GET(request: NextRequest) {
     console.log('=== DYNAMIC SCOPE SELECTION ===');
     console.log('User selected scopes from DB:', selectedScopeIds);
 
+    const isSandbox = process.env.EBAY_SANDBOX === 'true';
+    console.log('Environment:', isSandbox ? 'SANDBOX' : 'PRODUCTION');
+
     const accountScopeUrls = selectedScopeIds
       .map((scopeId: string) => {
         const scope = EBAY_OAUTH_SCOPES.find(s => s.id === scopeId);
         if (scope) {
+          // Filter out scopes not available in sandbox
+          if (isSandbox && scope.sandboxAvailable === false) {
+            console.log(`⚠️ Skipping scope "${scopeId}" - not available in sandbox`);
+            return null;
+          }
           console.log(`✅ Mapped scope ID "${scopeId}" to URL: ${scope.url}`);
           return scope.url;
         } else {

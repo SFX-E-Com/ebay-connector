@@ -5,6 +5,7 @@ export interface EbayScope {
   description: string;
   category: 'identity' | 'selling' | 'buying' | 'marketing' | 'analytics' | 'other';
   isRequired?: boolean;
+  sandboxAvailable?: boolean; // false = not available in sandbox
 }
 
 // Authorization Code Grant Type Scopes - ONLY approved scopes for sfxconnector app
@@ -158,13 +159,14 @@ export const EBAY_OAUTH_SCOPES: EbayScope[] = [
     category: 'selling',
   },
 
-  // eDelivery (Note: uses /scope/ not /api_scope/)
+  // eDelivery (Note: uses /scope/ not /api_scope/ - NOT available in sandbox)
   {
     id: 'sell_edelivery',
     url: 'https://api.ebay.com/oauth/scope/sell.edelivery',
     name: 'eDelivery Services',
     description: 'Access eDelivery services for digital goods',
     category: 'selling',
+    sandboxAvailable: false,
   },
 
   // VERO Program
