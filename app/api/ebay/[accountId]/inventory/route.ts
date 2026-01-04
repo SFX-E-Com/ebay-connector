@@ -3,10 +3,8 @@ import {
     withQueryDebugLogging,
     logToDebug,
 } from "@/app/lib/middleware/queryDebugMiddleware";
-import { requireApiToken } from "@/app/lib/middleware/apiAuth";
 import { withEbayAuth, EbayAuthData } from "@/app/lib/middleware/ebayAuth";
-import { EbayTokenRefreshService } from "@/app/lib/services/ebayTokenRefresh";
-import { EbayErrorHandler, EbayApiError } from "@/app/lib/services/ebayErrorHandler";
+import { EbayErrorHandler } from "@/app/lib/services/ebayErrorHandler";
 import { getEbayConfig, getEbayUrls } from "@/app/lib/config/ebay";
 
 interface InventoryItem {

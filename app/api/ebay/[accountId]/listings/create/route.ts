@@ -206,7 +206,7 @@ export async function POST(
       if (body.product) inventoryData.product = body.product;
       if (body.packageWeightAndSize) {
         // Remove problematic packageType field if it exists
-        const { packageType, ...safePackageData } = body.packageWeightAndSize as any;
+        const { packageType: _packageType, ...safePackageData } = body.packageWeightAndSize as any;
         if (Object.keys(safePackageData).length > 0) {
           inventoryData.packageWeightAndSize = safePackageData;
         }

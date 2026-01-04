@@ -85,7 +85,7 @@ export async function POST(
     console.error('[MIGRATE SINGLE API] Error:', error);
 
     // Parse eBay API error details
-    let errorDetails: any = {
+    const errorDetails: any = {
       message: 'Failed to migrate listing',
       error: error.message,
       code: error.code || 'UNKNOWN',

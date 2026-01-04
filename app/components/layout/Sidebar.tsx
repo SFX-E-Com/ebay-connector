@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from "react";
 import { Navigation } from "../Navigation";
-import { Badge } from "react-bootstrap";
 
 interface User {
     id: string;

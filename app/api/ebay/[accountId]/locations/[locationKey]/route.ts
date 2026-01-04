@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { EbayAccountService } from '../../../../../lib/services/ebayAccountService';
-import { EbayListingService, InventoryLocation } from '../../../../../lib/services/ebay-listing';
+import { EbayListingService } from '../../../../../lib/services/ebay-listing';
 
 // GET /api/ebay/[accountId]/locations/[locationKey] - Get specific inventory location
 export async function GET(

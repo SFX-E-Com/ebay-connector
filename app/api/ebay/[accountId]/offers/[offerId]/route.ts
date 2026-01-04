@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { EbayAccountService } from '../../../../../lib/services/ebayAccountService';
-import { EbayListingService, OfferRequest } from '../../../../../lib/services/ebay-listing';
+import { EbayListingService } from '../../../../../lib/services/ebay-listing';
 
 // GET /api/ebay/[accountId]/offers/[offerId] - Get specific offer
 export async function GET(

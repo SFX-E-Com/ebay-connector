@@ -1,7 +1,7 @@
 'use client';
 
 import { Badge, Form } from 'react-bootstrap';
-import { SCOPE_CATEGORIES, type EbayScope } from '@/app/lib/constants/ebayScopes';
+import { type EbayScope } from '@/app/lib/constants/ebayScopes';
 
 interface EbayScopeCardProps {
   scope: EbayScope;

@@ -21,7 +21,7 @@ export async function GET() {
         try {
             const content = JSON.parse(fs.readFileSync(resolvedPath, 'utf8'));
             fileProjectId = content.project_id;
-        } catch (e) {
+        } catch (_e) {
             fileProjectId = 'error reading file';
         }
     }

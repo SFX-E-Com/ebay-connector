@@ -1,9 +1,8 @@
 'use client';
 
-import { MdOutlineSpaceDashboard, MdLogout, MdOutlinePeople, MdVpnKey, MdOutlineStore, MdBugReport, MdBook, MdInventory, MdApi, MdShoppingCart } from "react-icons/md";
+import { MdOutlineSpaceDashboard, MdLogout, MdOutlinePeople, MdVpnKey, MdOutlineStore, MdBugReport, MdInventory, MdApi, MdShoppingCart } from "react-icons/md";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { Nav } from "react-bootstrap";
 
 interface NavigationItemProps {
   icon: any;
@@ -64,7 +63,7 @@ export function Navigation({ collapse }: NavigationProps) {
         } else {
           setIsSuperAdmin(false);
         }
-      } catch (error) {
+      } catch (_error) {
         setIsSuperAdmin(false);
       }
     };

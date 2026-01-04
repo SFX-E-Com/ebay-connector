@@ -7,8 +7,6 @@ import {
   MdAdd,
   MdEdit,
   MdDelete,
-  MdPlayArrow,
-  MdPause,
   MdContentCopy,
 } from 'react-icons/md';
 import { Table, TableAction, TableRef } from '@/app/components/table';
@@ -39,7 +37,7 @@ export default function ApiTokensPage() {
 
   // UI states
   const [newlyCreatedToken, setNewlyCreatedToken] = useState<string | null>(null);
-  const [showFullTokens, setShowFullTokens] = useState<Record<string, boolean>>({});
+  const [showFullTokens, _setShowFullTokens] = useState<Record<string, boolean>>({});
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
 

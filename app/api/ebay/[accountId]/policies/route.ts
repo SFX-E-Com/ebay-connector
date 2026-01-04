@@ -30,7 +30,7 @@ export async function GET(
     // Initialize eBay service
     const ebayService = new EbayListingService(account);
 
-    let policies: any = {};
+    const policies: any = {};
 
     try {
       if (!type || type === 'payment') {

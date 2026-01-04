@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
           unsubscribeCleared();
           try {
             controller.close();
-          } catch (error) {
+          } catch (_error) {
             // Ignore errors when closing
           }
         };
