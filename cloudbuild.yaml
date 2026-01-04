@@ -1,5 +1,6 @@
 # Cloud Build configuration for GitHub integration
 # Triggers on push to main branch
+# Uses Google Secret Manager for sensitive credentials (sandbox- prefix)
 
 steps:
   # Step 1: Build the Docker image
@@ -24,7 +25,7 @@ steps:
       - 'push'
       - 'gcr.io/$PROJECT_ID/ebay-connector:latest'
 
-  # Step 3: Deploy to Cloud Run
+  # Step 3: Deploy to Cloud Run with Secret Manager integration
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
     args:
@@ -50,8 +51,12 @@ steps:
       - '0'
       - '--max-instances'
       - '10'
+      # Environment variables
       - '--set-env-vars'
-      - 'NODE_ENV=production,GOOGLE_CLOUD_PROJECT=$PROJECT_ID,FIRESTORE_DATABASE_ID=ebay-connector,NEXT_TELEMETRY_DISABLED=1'
+      - 'NODE_ENV=production,GOOGLE_CLOUD_PROJECT=$PROJECT_ID,FIRESTORE_DATABASE_ID=ebay-connector,NEXT_TELEMETRY_DISABLED=1,EBAY_SANDBOX=true,EBAY_DEFAULT_MARKETPLACE=EBAY_DE'
+      # Secrets from Google Secret Manager (sandbox- prefix)
+      - '--set-secrets'
+      - 'EBAY_CLIENT_ID=sandbox-ebay-client-id:latest,EBAY_CLIENT_SECRET=sandbox-ebay-client-secret:latest,EBAY_DEV_ID=sandbox-ebay-dev-id:latest,JWT_SECRET=sandbox-jwt-secret:latest,EBAY_REDIRECT_URI=sandbox-ebay-redirect-uri:latest,AUTH_URL=sandbox-auth-url:latest'
 
 # Build timeout
 timeout: 1800s
