@@ -41,8 +41,7 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 
-# Copy service account file (will be overridden by Cloud Run secret)
-COPY --from=builder /app/service-account.json ./service-account.json 2>/dev/null || true
+# Note: No service-account.json needed - Cloud Run uses default SA automatically
 
 # Set correct permissions
 RUN chown -R nextjs:nodejs /app

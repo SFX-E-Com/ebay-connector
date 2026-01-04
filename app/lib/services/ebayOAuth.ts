@@ -159,4 +159,40 @@ export class EbayOAuthService {
   }
 }
 
-export const ebayOAuthService = new EbayOAuthService();
+// Lazy initialization to prevent build-time errors
+let _ebayOAuthService: EbayOAuthService | null = null;
+
+export function getEbayOAuthService(): EbayOAuthService {
+  if (!_ebayOAuthService) {
+    _ebayOAuthService = new EbayOAuthService();
+  }
+  return _ebayOAuthService;
+}
+
+// For backward compatibility - will throw at runtime if env vars missing
+export const ebayOAuthService = {
+  get instance() {
+    return getEbayOAuthService();
+  },
+  generateUserAuthorizationUrl(state: string, scopes?: string[]) {
+    return getEbayOAuthService().generateUserAuthorizationUrl(state, scopes);
+  },
+  exchangeCodeForAccessToken(code: string) {
+    return getEbayOAuthService().exchangeCodeForAccessToken(code);
+  },
+  getApplicationToken(scopes?: string[]) {
+    return getEbayOAuthService().getApplicationToken(scopes);
+  },
+  refreshUserAccessToken(refreshToken: string, scopes?: string[]) {
+    return getEbayOAuthService().refreshUserAccessToken(refreshToken, scopes);
+  },
+  getUserInfo(accessToken: string) {
+    return getEbayOAuthService().getUserInfo(accessToken);
+  },
+  isTokenExpired(expiresAt: Date) {
+    return getEbayOAuthService().isTokenExpired(expiresAt);
+  },
+  calculateExpirationDate(expiresInSeconds: number) {
+    return getEbayOAuthService().calculateExpirationDate(expiresInSeconds);
+  }
+};
