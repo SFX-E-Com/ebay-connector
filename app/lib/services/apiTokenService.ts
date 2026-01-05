@@ -20,6 +20,7 @@ export interface CreateApiTokenData {
   permissions?: {
     endpoints?: string[];
     rateLimit?: number;
+    ebayAccountIds?: string[];  // Optional: restrict token to specific eBay accounts
   };
   expiresAt?: Date;
 }
@@ -416,6 +417,25 @@ export class ApiTokenService {
       usageByEndpoint,
       period: '30 days'
     };
+  }
+
+  /**
+   * Check if token has access to a specific eBay account
+   * Returns true if:
+   * - Token has no ebayAccountIds restriction (empty or undefined)
+   * - Token's ebayAccountIds includes the accountId
+   */
+  static hasAccountAccess(token: ApiTokenResponse | ApiTokenWithUser, accountId: string): boolean {
+    const permissions = token.permissions as ApiTokenPermissions;
+    const ebayAccountIds = permissions?.ebayAccountIds;
+
+    // If no restrictions, allow access to all accounts
+    if (!ebayAccountIds || ebayAccountIds.length === 0) {
+      return true;
+    }
+
+    // Check if accountId is in the allowed list
+    return ebayAccountIds.includes(accountId);
   }
 
   /**

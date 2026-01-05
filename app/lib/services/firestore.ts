@@ -135,6 +135,7 @@ export interface User {
 export interface ApiTokenPermissions {
   endpoints: string[];
   rateLimit: number;
+  ebayAccountIds?: string[];  // Optional: restrict token to specific eBay accounts
   [key: string]: unknown;
 }
 

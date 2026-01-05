@@ -5,6 +5,7 @@ import { EbayTokenRefreshService } from "../services/ebayTokenRefresh";
 import { validateEndpointAccess } from "./endpointValidation";
 import { validateEbayOperation } from "./ebayScopeValidation";
 import { EbayAccountService } from "../services/ebayAccountService";
+import { ApiTokenService } from "../services/apiTokenService";
 
 export interface EbayAuthData {
     user: {
@@ -121,6 +122,37 @@ export function withEbayAuth(
                     return NextResponse.json(
                         { success: false, message: "eBay account not found" },
                         { status: 404 }
+                    );
+                }
+
+                // Check if token has access to this specific eBay account
+                const hasAccountAccess = ApiTokenService.hasAccountAccess(apiAuthData.token, accountId);
+                if (!hasAccountAccess) {
+                    await logToDebug(
+                        "EBAY_AUTH",
+                        "Token not authorized for this eBay account",
+                        {
+                            accountId,
+                            tokenId: apiAuthData.token.id,
+                            tokenName: apiAuthData.token.name,
+                            userId: apiAuthData.user.id,
+                            allowedAccounts: (apiAuthData.token.permissions as any)?.ebayAccountIds || [],
+                        },
+                        "ERROR"
+                    );
+
+                    return NextResponse.json(
+                        {
+                            success: false,
+                            error: "TOKEN_ACCOUNT_RESTRICTED",
+                            message: "This API token is not authorized to access this eBay account",
+                            details: {
+                                tokenName: apiAuthData.token.name,
+                                requestedAccountId: accountId,
+                                hint: "This token is restricted to specific eBay accounts. Use a token with access to this account or update the token permissions."
+                            }
+                        },
+                        { status: 403 }
                     );
                 }
 

@@ -9,6 +9,7 @@ interface CreateApiTokenData {
     permissions?: {
         endpoints?: string[];
         rateLimit?: number;
+        ebayAccountIds?: string[];
     };
     scopes?: string[];
     expiresAt?: string;
@@ -21,12 +22,22 @@ interface ApiToken {
     permissions: {
         endpoints?: string[];
         rateLimit?: number;
+        ebayAccountIds?: string[];
     };
     isActive: boolean;
     lastUsedAt: string | null;
     expiresAt: string | null;
     createdAt: string;
     updatedAt: string;
+}
+
+interface EbayAccount {
+    id: string;
+    friendlyName?: string;
+    ebayUserId: string;
+    ebayUsername?: string;
+    environment: 'sandbox' | 'production';
+    status: string;
 }
 
 interface ApiTokenModalProps {
@@ -71,10 +82,36 @@ export default function ApiTokenModal({
         permissions: {
             endpoints: token?.permissions?.endpoints || DEFAULT_ENDPOINTS,
             rateLimit: token?.permissions?.rateLimit || 1000,
+            ebayAccountIds: token?.permissions?.ebayAccountIds || [],
         },
         expiresAt: formatDateForInput(token?.expiresAt),
     });
     const [errors, setErrors] = useState<Record<string, string>>({});
+    const [ebayAccounts, setEbayAccounts] = useState<EbayAccount[]>([]);
+    const [loadingAccounts, setLoadingAccounts] = useState(false);
+
+    // Fetch eBay accounts when modal opens
+    useEffect(() => {
+        if (isOpen) {
+            const fetchAccounts = async () => {
+                setLoadingAccounts(true);
+                try {
+                    const response = await fetch('/api/ebay-accounts', {
+                        credentials: 'include',
+                    });
+                    const result = await response.json();
+                    if (result.success && result.data) {
+                        setEbayAccounts(result.data);
+                    }
+                } catch (error) {
+                    console.error('Failed to fetch eBay accounts:', error);
+                } finally {
+                    setLoadingAccounts(false);
+                }
+            };
+            fetchAccounts();
+        }
+    }, [isOpen]);
 
     // Update form data when token prop changes (for editing)
     useEffect(() => {
@@ -84,6 +121,7 @@ export default function ApiTokenModal({
                 permissions: {
                     endpoints: token.permissions?.endpoints || DEFAULT_ENDPOINTS,
                     rateLimit: token.permissions?.rateLimit || 1000,
+                    ebayAccountIds: token.permissions?.ebayAccountIds || [],
                 },
                 expiresAt: formatDateForInput(token.expiresAt),
             });
@@ -94,6 +132,7 @@ export default function ApiTokenModal({
                 permissions: {
                     endpoints: DEFAULT_ENDPOINTS,
                     rateLimit: 1000,
+                    ebayAccountIds: [],
                 },
                 expiresAt: "",
             });
@@ -137,6 +176,7 @@ export default function ApiTokenModal({
             permissions: {
                 endpoints: formData.permissions?.endpoints || [],
                 rateLimit: formData.permissions?.rateLimit || 1000,
+                ebayAccountIds: formData.permissions?.ebayAccountIds || [],
             },
         };
 
@@ -153,11 +193,31 @@ export default function ApiTokenModal({
             permissions: {
                 endpoints: DEFAULT_ENDPOINTS,
                 rateLimit: 1000,
+                ebayAccountIds: [],
             },
             expiresAt: "",
         });
         setErrors({});
         onClose();
+    };
+
+    const handleAccountChange = (accountId: string, checked: boolean) => {
+        const currentAccounts = formData.permissions?.ebayAccountIds || [];
+        let newAccounts;
+
+        if (checked) {
+            newAccounts = [...currentAccounts, accountId];
+        } else {
+            newAccounts = currentAccounts.filter(id => id !== accountId);
+        }
+
+        setFormData({
+            ...formData,
+            permissions: {
+                ...formData.permissions,
+                ebayAccountIds: newAccounts,
+            },
+        });
     };
 
     const handleEndpointChange = (endpoint: string, checked: boolean) => {
@@ -315,6 +375,65 @@ export default function ApiTokenModal({
                                 <p className="small text-secondary mt-2">
                                     Token will only be able to access the selected API endpoints
                                 </p>
+                            </div>
+                        </div>
+
+                        {/* eBay Account Access Section */}
+                        <div className="d-flex flex-column gap-3">
+                            <h5 className="text-dark mb-0">
+                                eBay Account Access
+                            </h5>
+
+                            <div>
+                                <p className="small text-secondary mb-3">
+                                    Restrict this token to specific eBay accounts (optional):
+                                </p>
+
+                                {loadingAccounts ? (
+                                    <div className="d-flex align-items-center gap-2 py-3">
+                                        <Spinner animation="border" size="sm" />
+                                        <span className="small text-muted">Loading accounts...</span>
+                                    </div>
+                                ) : ebayAccounts.length === 0 ? (
+                                    <Alert variant="info" className="small mb-0">
+                                        No eBay accounts found. Connect an eBay account first to restrict token access.
+                                    </Alert>
+                                ) : (
+                                    <>
+                                        <Row>
+                                            {ebayAccounts.map((account) => (
+                                                <Col md={6} key={account.id} className="mb-3">
+                                                    <Form.Check
+                                                        type="checkbox"
+                                                        id={`account-${account.id}`}
+                                                        checked={formData.permissions?.ebayAccountIds?.includes(account.id) || false}
+                                                        onChange={(e) => handleAccountChange(account.id, e.target.checked)}
+                                                        label={
+                                                            <div className="d-flex flex-column">
+                                                                <div className="d-flex align-items-center gap-2">
+                                                                    <span className="small fw-medium text-dark">
+                                                                        {account.friendlyName || account.ebayUsername || account.ebayUserId}
+                                                                    </span>
+                                                                    <span className={`badge ${account.environment === 'production' ? 'bg-success' : 'bg-warning text-dark'}`} style={{ fontSize: '0.65rem' }}>
+                                                                        {account.environment.toUpperCase()}
+                                                                    </span>
+                                                                </div>
+                                                                <span className="small text-secondary">
+                                                                    {account.ebayUserId}
+                                                                </span>
+                                                            </div>
+                                                        }
+                                                    />
+                                                </Col>
+                                            ))}
+                                        </Row>
+                                        <p className="small text-secondary mt-2">
+                                            {formData.permissions?.ebayAccountIds?.length === 0
+                                                ? "No accounts selected = Token can access ALL your eBay accounts"
+                                                : `Token restricted to ${formData.permissions?.ebayAccountIds?.length} account(s)`}
+                                        </p>
+                                    </>
+                                )}
                             </div>
                         </div>
 
