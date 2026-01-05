@@ -88,6 +88,7 @@ export function withQueryDebugLogging<T extends any[]>(
 
 /**
  * Manually log a debug message to database
+ * Only logs if DEBUG_LOGGING=true environment variable is set
  */
 export async function logToDebug(
   category: string,
@@ -95,6 +96,11 @@ export async function logToDebug(
   metadata?: any,
   level: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' = 'INFO'
 ) {
+  // Skip logging if DEBUG_LOGGING is not enabled
+  if (process.env.DEBUG_LOGGING !== 'true') {
+    return;
+  }
+
   switch (level) {
     case 'DEBUG':
       await RealtimeDebugLogger.debug(category, message, metadata);
