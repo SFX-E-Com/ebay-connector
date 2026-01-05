@@ -7,8 +7,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 eBay Connector is a Next.js 16 application that provides a unified API and dashboard for managing eBay seller accounts. It handles OAuth authentication, token management, and provides REST API endpoints for eBay operations (inventory, orders, listings, returns, cancellations).
 
 **Context:**
-- **Deployment target:** Google Cloud Run (not yet deployed)
-- **Usage:** Internal tool for managing own eBay accounts (currently one account)
+- **Deployment:** Google Cloud Run (europe-west1), auto-deploy via GitHub push to `main`
+- **Project:** `sharkyv0` (GCP)
+- **Usage:** Internal tool for managing own eBay accounts
 - **Why Trading API:** The legacy XML-based Trading API is still required because the modern REST APIs don't work reliably for Germany
 
 ## Commands
@@ -28,6 +29,23 @@ npm run test:e2e     # Run Playwright E2E tests
 npm run test:e2e:ui  # Run E2E tests with Playwright UI
 npm run emulator     # Start Firebase Emulator (for manual testing)
 ```
+
+## Build & Deploy Workflow
+
+**WICHTIG: Immer erst lokal mit Docker bauen bevor gepusht wird!**
+
+```bash
+# 1. Lokaler Docker Build (simuliert Cloud Build)
+docker build -t ebay-connector .
+
+# 2. Optional: Lokal testen
+docker run -p 3000:3000 ebay-connector
+
+# 3. Erst wenn Docker Build erfolgreich: Push triggert Auto-Deploy
+git push origin main
+```
+
+Dies verhindert fehlgeschlagene Cloud Builds und spart Zeit/Kosten.
 
 ## Architecture
 
