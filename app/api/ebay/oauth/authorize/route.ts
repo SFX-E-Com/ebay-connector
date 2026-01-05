@@ -100,6 +100,8 @@ export async function GET(request: NextRequest) {
     authUrl.searchParams.set('redirect_uri', redirectValue);
     authUrl.searchParams.set('scope', scopes);
     authUrl.searchParams.set('state', state);
+    // Force eBay to show the consent screen every time (prevents silent re-auth)
+    authUrl.searchParams.set('prompt', 'login');
 
     // DEBUG: Log the complete OAuth request details
     console.log('=== PRODUCTION OAUTH DEBUG ===');
