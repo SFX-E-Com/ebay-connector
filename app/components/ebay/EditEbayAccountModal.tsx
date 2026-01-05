@@ -11,6 +11,7 @@ interface EditEbayAccountFormData {
   tags: string[];
   ebayUsername?: string;
   selectedScopes: string[];
+  status: 'active' | 'disabled';
 }
 
 interface EditEbayAccountModalProps {
@@ -33,6 +34,7 @@ export default function EditEbayAccountModal({
     tags: [],
     ebayUsername: '',
     selectedScopes: [],
+    status: 'active',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [tagInput, setTagInput] = useState('');
@@ -95,6 +97,7 @@ export default function EditEbayAccountModal({
         tags: parseTags(account.tags),
         ebayUsername: account.ebayUsername || '',
         selectedScopes: parseScopes(account.userSelectedScopes),
+        status: account.status === 'active' ? 'active' : 'disabled',
       });
     }
   }, [account, isOpen]);
@@ -202,6 +205,34 @@ export default function EditEbayAccountModal({
                   </Form.Group>
                 </Col>
               </Row>
+            </div>
+
+            {/* Account Status Section */}
+            <div className="d-flex flex-column gap-3">
+              <h5 className="text-secondary mb-0">Account Status</h5>
+              <div className="d-flex align-items-center justify-content-between p-3 bg-light rounded">
+                <div>
+                  <p className="mb-1 fw-medium">Enable Account</p>
+                  <p className="mb-0 small text-muted">
+                    {formData.status === 'active'
+                      ? 'Account is active and can be used for API calls'
+                      : 'Account is disabled and will not process any requests'}
+                  </p>
+                </div>
+                <Form.Check
+                  type="switch"
+                  id="account-status-switch"
+                  checked={formData.status === 'active'}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      status: e.target.checked ? 'active' : 'disabled',
+                    })
+                  }
+                  disabled={isSubmitting}
+                  className="fs-4"
+                />
+              </div>
             </div>
 
             {/* Organization Section */}

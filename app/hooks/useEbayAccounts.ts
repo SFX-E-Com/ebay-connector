@@ -106,7 +106,7 @@ export function useEbayAccounts(): UseEbayAccountsReturn {
           'Content-Type': 'application/json',
         },
         credentials: 'include',
-        body: JSON.stringify({ status: isActive ? 'active' : 'inactive' }),
+        body: JSON.stringify({ status: isActive ? 'active' : 'disabled' }),
       });
 
       const result = await response.json();
@@ -119,7 +119,7 @@ export function useEbayAccounts(): UseEbayAccountsReturn {
         setAccounts(prev =>
           prev.map(account =>
             account.id === accountId
-              ? { ...account, status: isActive ? 'active' : 'inactive' }
+              ? { ...account, status: isActive ? 'active' : 'disabled' }
               : account
           )
         );
