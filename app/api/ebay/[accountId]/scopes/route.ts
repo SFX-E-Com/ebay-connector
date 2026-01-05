@@ -3,7 +3,7 @@ import { withEbayAuth, EbayAuthData } from '@/app/lib/middleware/ebayAuth';
 import { withQueryDebugLogging } from '@/app/lib/middleware/queryDebugMiddleware';
 import { EbayAccountService } from '@/app/lib/services/ebayAccountService';
 
-const getHandler = withEbayAuth('/ebay/{accountId}/scopes', async (request: NextRequest, authData: EbayAuthData, { params }: { params: Promise<{ accountId: string }> }) => {
+const getHandler = withEbayAuth('ebay:account:read', async (request: NextRequest, authData: EbayAuthData, { params }: { params: Promise<{ accountId: string }> }) => {
     const { accountId: _accountId } = await params;
 
     try {

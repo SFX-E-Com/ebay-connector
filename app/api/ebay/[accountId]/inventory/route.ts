@@ -143,7 +143,7 @@ async function fetchEbayInventory(
     }
 }
 
-const getHandler = withEbayAuth('/ebay/{accountId}/inventory', async (request: NextRequest, authData: EbayAuthData, { params }: { params: Promise<{ accountId: string }> }) => {
+const getHandler = withEbayAuth('ebay:inventory:read', async (request: NextRequest, authData: EbayAuthData, { params }: { params: Promise<{ accountId: string }> }) => {
     const config = getEbayConfig();
     const { accountId } = await params;
 

@@ -10,67 +10,144 @@ export interface EndpointConfig {
 }
 
 export const AVAILABLE_ENDPOINTS: EndpointConfig[] = [
-  // Core eBay API Endpoints
+  // Core eBay API Endpoints - Orders
   {
-    id: '/ebay/{accountId}/inventory',
-    name: 'Inventory Management',
-    description: 'View and manage inventory items, stock levels, and offers',
+    id: 'ebay:orders:read',
+    name: 'Orders (Read)',
+    description: 'View orders, fulfillment status, and order details',
     category: 'core',
     requiredPlan: 'FREE'
   },
   {
-    id: '/ebay/{accountId}/trading',
-    name: 'Trading APIs',
-    description: 'View and manage items with trading api',
+    id: 'ebay:orders:write',
+    name: 'Orders (Write)',
+    description: 'Ship orders, update tracking, send buyer messages',
+    category: 'core',
+    requiredPlan: 'FREE'
+  },
+  // Inventory & Listings
+  {
+    id: 'ebay:inventory:read',
+    name: 'Inventory (Read)',
+    description: 'View inventory items, stock levels, and SKUs',
     category: 'core',
     requiredPlan: 'FREE'
   },
   {
-    id: '/ebay/{accountId}/orders',
-    name: 'Order Management',
-    description: 'Access order data, fulfillment, and tracking information',
+    id: 'ebay:inventory:write',
+    name: 'Inventory (Write)',
+    description: 'Create and update inventory items',
     category: 'core',
     requiredPlan: 'FREE'
   },
   {
-    id: '/ebay/{accountId}/listings',
-    name: 'Listing Management',
-    description: 'Create, update, and manage eBay listings and items',
+    id: 'ebay:listings:read',
+    name: 'Listings (Read)',
+    description: 'View active listings and offers',
     category: 'core',
     requiredPlan: 'FREE'
   },
   {
-    id: '/ebay/{accountId}/account',
-    name: 'Account Settings',
-    description: 'View and manage account settings and seller policies',
+    id: 'ebay:listings:write',
+    name: 'Listings (Write)',
+    description: 'Create, update, and end listings',
+    category: 'core',
+    requiredPlan: 'FREE'
+  },
+  // Trading API
+  {
+    id: 'ebay:trading:read',
+    name: 'Trading API (Read)',
+    description: 'View items via legacy Trading API',
     category: 'core',
     requiredPlan: 'FREE'
   },
   {
-    id: '/ebay/{accountId}/finances',
-    name: 'Financial Information',
+    id: 'ebay:trading:write',
+    name: 'Trading API (Write)',
+    description: 'Create and manage listings via Trading API',
+    category: 'core',
+    requiredPlan: 'FREE'
+  },
+  // Returns & Cancellations
+  {
+    id: 'ebay:returns:read',
+    name: 'Returns (Read)',
+    description: 'View return requests and status',
+    category: 'core',
+    requiredPlan: 'FREE'
+  },
+  {
+    id: 'ebay:returns:write',
+    name: 'Returns (Write)',
+    description: 'Accept, decline, or process returns',
+    category: 'core',
+    requiredPlan: 'FREE'
+  },
+  {
+    id: 'ebay:cancellations:read',
+    name: 'Cancellations (Read)',
+    description: 'View cancellation requests',
+    category: 'core',
+    requiredPlan: 'FREE'
+  },
+  {
+    id: 'ebay:cancellations:write',
+    name: 'Cancellations (Write)',
+    description: 'Approve or reject cancellation requests',
+    category: 'core',
+    requiredPlan: 'FREE'
+  },
+  // Messages & Inquiries
+  {
+    id: 'ebay:inquiries:read',
+    name: 'Inquiries (Read)',
+    description: 'View buyer inquiries and messages',
+    category: 'core',
+    requiredPlan: 'FREE'
+  },
+  {
+    id: 'ebay:inquiries:write',
+    name: 'Inquiries (Write)',
+    description: 'Respond to buyer inquiries',
+    category: 'core',
+    requiredPlan: 'FREE'
+  },
+  // Account & Settings
+  {
+    id: 'ebay:account:read',
+    name: 'Account (Read)',
+    description: 'View account settings and seller policies',
+    category: 'core',
+    requiredPlan: 'FREE'
+  },
+  // Advanced Features
+  {
+    id: 'ebay:finances:read',
+    name: 'Finances (Read)',
     description: 'View payment and financial data',
     category: 'advanced',
     requiredPlan: 'BASIC'
   },
   {
-    id: '/ebay/{accountId}/marketing',
-    name: 'Marketing Activities',
-    description: 'View and manage marketing campaigns and promotions',
+    id: 'ebay:marketing:read',
+    name: 'Marketing (Read)',
+    description: 'View marketing campaigns and promotions',
     category: 'advanced',
     requiredPlan: 'BASIC'
   },
   {
-    id: '/ebay/{accountId}/analytics',
-    name: 'Analytics & Reports',
-    description: 'View selling performance data and marketplace insights',
-    category: 'premium',
-    requiredPlan: 'PRO'
+    id: 'ebay:marketing:write',
+    name: 'Marketing (Write)',
+    description: 'Manage marketing campaigns',
+    category: 'advanced',
+    requiredPlan: 'BASIC'
   },
+  // Premium Features
   {
-    id: '/ebay/{accountId}/stores',
-    name: 'eBay Stores',
-    description: 'View and manage eBay store settings and configurations',
+    id: 'ebay:analytics:read',
+    name: 'Analytics (Read)',
+    description: 'View selling performance and insights',
     category: 'premium',
     requiredPlan: 'PRO'
   }
@@ -101,9 +178,18 @@ export const getEndpointIds = (): string[] => {
 
 // Default endpoints for new tokens
 export const DEFAULT_ENDPOINTS = [
-  '/ebay/{accountId}/inventory',
-  '/ebay/{accountId}/orders',
-  '/ebay/{accountId}/account'
+  'ebay:orders:read',
+  'ebay:orders:write',
+  'ebay:inventory:read',
+  'ebay:inventory:write',
+  'ebay:listings:read',
+  'ebay:listings:write',
+  'ebay:trading:read',
+  'ebay:trading:write',
+  'ebay:returns:read',
+  'ebay:cancellations:read',
+  'ebay:inquiries:read',
+  'ebay:account:read'
 ];
 
 // Rate limiting tiers based on endpoint categories
