@@ -13,21 +13,857 @@ const swaggerDocument = {
   },
   servers: [
     {
-      url: 'http://localhost:3000',
-      description: 'Development server'
+      url: 'https://ebay-connector-187959688255.europe-west1.run.app',
+      description: 'Production (Cloud Run)'
     },
     {
-      url: 'https://api.yourdomain.com',
-      description: 'Production server'
+      url: 'http://localhost:3000',
+      description: 'Development'
     }
   ],
   tags: [
+    { name: 'Orders', description: 'Order management, fulfillment & shipping' },
+    { name: 'Returns', description: 'Return requests management' },
+    { name: 'Cancellations', description: 'Order cancellation handling' },
+    { name: 'API Tokens', description: 'API token management for authentication' },
+    { name: 'eBay Accounts', description: 'Connected eBay account management' },
+    { name: 'Inventory', description: 'Inventory API - Modern REST-based inventory management' },
+    { name: 'Offers', description: 'Offer management - Create and publish listings via Inventory API' },
+    { name: 'Messages', description: 'eBay messaging and inquiries' },
     { name: 'Trading Listing', description: 'eBay Trading API listing operations - Create, update, relist, and manage listings' },
     { name: 'Legacy Listings', description: 'Trading API legacy listings' },
     { name: 'Migration', description: 'Migration tools from Trading API to Inventory API' }
   ],
   paths: {
+    // ============================================
+    // Orders API
+    // ============================================
+    '/api/ebay/{accountId}/orders': {
+      get: {
+        tags: ['Orders'],
+        summary: 'List orders',
+        description: 'Get orders for an eBay account with optional filtering by status, date range, and pagination.',
+        parameters: [
+          { name: 'accountId', in: 'path', required: true, schema: { type: 'string' }, description: 'eBay account ID' },
+          { name: 'orderIds', in: 'query', schema: { type: 'string' }, description: 'Comma-separated order IDs to fetch specific orders' },
+          { name: 'status', in: 'query', schema: { type: 'string', enum: ['NOT_STARTED', 'IN_PROGRESS', 'FULFILLED'] }, description: 'Filter by fulfillment status' },
+          { name: 'creationDateStart', in: 'query', schema: { type: 'string', format: 'date-time' }, description: 'Filter orders created after this date' },
+          { name: 'creationDateEnd', in: 'query', schema: { type: 'string', format: 'date-time' }, description: 'Filter orders created before this date' },
+          { name: 'limit', in: 'query', schema: { type: 'integer', default: 50, maximum: 200 }, description: 'Max results per page' },
+          { name: 'offset', in: 'query', schema: { type: 'integer', default: 0 }, description: 'Pagination offset' }
+        ],
+        responses: {
+          '200': {
+            description: 'Orders retrieved successfully',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean', example: true },
+                    data: {
+                      type: 'object',
+                      properties: {
+                        orders: { type: 'array', items: { type: 'object' } },
+                        total: { type: 'integer', example: 42 },
+                        limit: { type: 'integer', example: 50 },
+                        offset: { type: 'integer', example: 0 },
+                        hasMore: { type: 'boolean', example: false }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    '/api/ebay/{accountId}/orders/pending': {
+      get: {
+        tags: ['Orders'],
+        summary: 'Get pending orders',
+        description: 'Get orders that are awaiting fulfillment (NOT_STARTED status)',
+        parameters: [
+          { name: 'accountId', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'limit', in: 'query', schema: { type: 'integer', default: 50 } }
+        ],
+        responses: {
+          '200': { description: 'Pending orders retrieved' }
+        }
+      }
+    },
+    '/api/ebay/{accountId}/orders/{orderId}': {
+      get: {
+        tags: ['Orders'],
+        summary: 'Get order details',
+        description: 'Get detailed information about a specific order',
+        parameters: [
+          { name: 'accountId', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'orderId', in: 'path', required: true, schema: { type: 'string' }, description: 'eBay Order ID' }
+        ],
+        responses: {
+          '200': { description: 'Order details retrieved' },
+          '404': { description: 'Order not found' }
+        }
+      }
+    },
+    '/api/ebay/{accountId}/orders/{orderId}/ship': {
+      post: {
+        tags: ['Orders'],
+        summary: 'Ship order',
+        description: 'Create shipping fulfillment for an order. Marks order as shipped with tracking info.',
+        parameters: [
+          { name: 'accountId', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'orderId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['trackingNumber', 'carrierCode'],
+                properties: {
+                  trackingNumber: { type: 'string', description: 'Tracking number', example: 'JJD0001234567890' },
+                  carrierCode: { type: 'string', description: 'Shipping carrier', enum: ['DHL', 'DPD', 'GLS', 'HERMES', 'UPS', 'FEDEX', 'DHL_EXPRESS', 'DEUTSCHE_POST'], example: 'DHL' },
+                  shippedDate: { type: 'string', format: 'date-time', description: 'Ship date (defaults to now)' },
+                  lineItems: {
+                    type: 'array',
+                    description: 'Optional: Ship specific line items only',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        lineItemId: { type: 'string' },
+                        quantity: { type: 'integer' }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          '200': {
+            description: 'Shipping fulfillment created',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean', example: true },
+                    message: { type: 'string', example: 'Shipping fulfillment created successfully' },
+                    data: { type: 'object' }
+                  }
+                }
+              }
+            }
+          },
+          '400': { description: 'Missing tracking number or carrier code' }
+        }
+      }
+    },
+    '/api/ebay/{accountId}/orders/{orderId}/messages': {
+      post: {
+        tags: ['Orders'],
+        summary: 'Send order message',
+        description: 'Send a message to the buyer for this order',
+        parameters: [
+          { name: 'accountId', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'orderId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['message'],
+                properties: {
+                  message: { type: 'string', description: 'Message text to send to buyer' }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          '200': { description: 'Message sent successfully' }
+        }
+      }
+    },
+
+    // ============================================
+    // Returns API
+    // ============================================
+    '/api/ebay/{accountId}/returns': {
+      get: {
+        tags: ['Returns'],
+        summary: 'List returns',
+        description: 'Search return requests for an eBay account',
+        parameters: [
+          { name: 'accountId', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'state', in: 'query', schema: { type: 'string', enum: ['RETURN_REQUESTED', 'RETURN_ACCEPTED', 'RETURN_RECEIVED', 'RETURN_CLOSED', 'REFUND_ISSUED'] }, description: 'Filter by return state' },
+          { name: 'creationDateStart', in: 'query', schema: { type: 'string', format: 'date-time' } },
+          { name: 'creationDateEnd', in: 'query', schema: { type: 'string', format: 'date-time' } },
+          { name: 'limit', in: 'query', schema: { type: 'integer', default: 50, maximum: 200 } },
+          { name: 'offset', in: 'query', schema: { type: 'integer', default: 0 } }
+        ],
+        responses: {
+          '200': {
+            description: 'Returns retrieved',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean' },
+                    data: {
+                      type: 'object',
+                      properties: {
+                        returns: { type: 'array', items: { type: 'object' } },
+                        total: { type: 'integer' },
+                        limit: { type: 'integer' },
+                        offset: { type: 'integer' },
+                        hasMore: { type: 'boolean' }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    '/api/ebay/{accountId}/returns/{returnId}': {
+      get: {
+        tags: ['Returns'],
+        summary: 'Get return details',
+        description: 'Get detailed information about a specific return request',
+        parameters: [
+          { name: 'accountId', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'returnId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+        responses: {
+          '200': { description: 'Return details retrieved' },
+          '404': { description: 'Return not found' }
+        }
+      }
+    },
+
+    // ============================================
+    // Cancellations API
+    // ============================================
+    '/api/ebay/{accountId}/cancellations': {
+      get: {
+        tags: ['Cancellations'],
+        summary: 'List cancellations',
+        description: 'Get order cancellation requests',
+        parameters: [
+          { name: 'accountId', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'limit', in: 'query', schema: { type: 'integer', default: 50 } },
+          { name: 'offset', in: 'query', schema: { type: 'integer', default: 0 } }
+        ],
+        responses: {
+          '200': { description: 'Cancellations retrieved' }
+        }
+      }
+    },
+    '/api/ebay/{accountId}/cancellations/check-eligibility': {
+      post: {
+        tags: ['Cancellations'],
+        summary: 'Check cancellation eligibility',
+        description: 'Check if an order is eligible for cancellation',
+        parameters: [
+          { name: 'accountId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['orderId'],
+                properties: {
+                  orderId: { type: 'string', description: 'Order ID to check' }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          '200': { description: 'Eligibility status returned' }
+        }
+      }
+    },
+
+    // ============================================
+    // API Tokens
+    // ============================================
+    '/api/tokens': {
+      get: {
+        tags: ['API Tokens'],
+        summary: 'List API tokens',
+        description: 'Get all API tokens for the authenticated user. Token strings are masked for security.',
+        parameters: [
+          { name: 'status', in: 'query', schema: { type: 'string', enum: ['active', 'inactive', 'all'], default: 'all' }, description: 'Filter by token status' }
+        ],
+        responses: {
+          '200': {
+            description: 'Tokens retrieved',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean' },
+                    data: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          id: { type: 'string' },
+                          name: { type: 'string' },
+                          token: { type: 'string', description: 'Masked token (first 12 + last 4 chars)' },
+                          permissions: {
+                            type: 'object',
+                            properties: {
+                              endpoints: { type: 'array', items: { type: 'string' } },
+                              rateLimit: { type: 'integer' },
+                              ebayAccountIds: { type: 'array', items: { type: 'string' } }
+                            }
+                          },
+                          isActive: { type: 'boolean' },
+                          lastUsedAt: { type: 'string', format: 'date-time', nullable: true },
+                          expiresAt: { type: 'string', format: 'date-time', nullable: true },
+                          createdAt: { type: 'string', format: 'date-time' }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        security: []
+      },
+      post: {
+        tags: ['API Tokens'],
+        summary: 'Create API token',
+        description: 'Create a new API token. The full token is only shown once in the response!',
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['name'],
+                properties: {
+                  name: { type: 'string', maxLength: 100, description: 'Token name', example: 'Production API Token' },
+                  permissions: {
+                    type: 'object',
+                    properties: {
+                      endpoints: { type: 'array', items: { type: 'string' }, description: 'Allowed API endpoints' },
+                      rateLimit: { type: 'integer', default: 1000, description: 'Requests per hour' },
+                      ebayAccountIds: { type: 'array', items: { type: 'string' }, description: 'Restrict to specific eBay accounts (empty = all)' }
+                    }
+                  },
+                  expiresAt: { type: 'string', format: 'date-time', description: 'Optional expiration date' }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          '201': {
+            description: 'Token created - SAVE THE TOKEN NOW!',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean' },
+                    message: { type: 'string' },
+                    data: {
+                      type: 'object',
+                      properties: {
+                        id: { type: 'string' },
+                        name: { type: 'string' },
+                        token: { type: 'string', description: 'Full token - only shown once!' }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          '400': { description: 'Invalid name or token limit reached' }
+        },
+        security: []
+      }
+    },
+    '/api/tokens/{id}': {
+      get: {
+        tags: ['API Tokens'],
+        summary: 'Get token details',
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: { '200': { description: 'Token details' } },
+        security: []
+      },
+      put: {
+        tags: ['API Tokens'],
+        summary: 'Update token',
+        description: 'Update token name, permissions, or expiration',
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string' },
+                  permissions: { type: 'object' },
+                  expiresAt: { type: 'string', format: 'date-time' }
+                }
+              }
+            }
+          }
+        },
+        responses: { '200': { description: 'Token updated' } },
+        security: []
+      },
+      delete: {
+        tags: ['API Tokens'],
+        summary: 'Delete token',
+        description: 'Soft-delete an API token (marks as deleted)',
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: { '200': { description: 'Token deleted' } },
+        security: []
+      }
+    },
+    '/api/tokens/{id}/status': {
+      patch: {
+        tags: ['API Tokens'],
+        summary: 'Activate/Deactivate token',
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['isActive'],
+                properties: {
+                  isActive: { type: 'boolean' }
+                }
+              }
+            }
+          }
+        },
+        responses: { '200': { description: 'Status updated' } },
+        security: []
+      }
+    },
+
+    // ============================================
+    // eBay Accounts
+    // ============================================
+    '/api/ebay-accounts': {
+      get: {
+        tags: ['eBay Accounts'],
+        summary: 'List eBay accounts',
+        description: 'Get all connected eBay accounts for the authenticated user',
+        responses: {
+          '200': {
+            description: 'Accounts retrieved',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean' },
+                    data: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          id: { type: 'string' },
+                          ebayUserId: { type: 'string' },
+                          ebayUsername: { type: 'string' },
+                          friendlyName: { type: 'string' },
+                          status: { type: 'string', enum: ['active', 'disabled', 'inactive'] },
+                          environment: { type: 'string', enum: ['sandbox', 'production'] },
+                          scopes: { type: 'array', items: { type: 'string' } },
+                          tags: { type: 'array', items: { type: 'string' } },
+                          expiresAt: { type: 'string', format: 'date-time' },
+                          lastUsedAt: { type: 'string', format: 'date-time' }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        security: []
+      },
+      post: {
+        tags: ['eBay Accounts'],
+        summary: 'Create eBay account placeholder',
+        description: 'Create a placeholder account to initiate OAuth connection',
+        requestBody: {
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  friendlyName: { type: 'string', example: 'My eBay Store' },
+                  selectedScopes: { type: 'array', items: { type: 'string' } },
+                  tags: { type: 'array', items: { type: 'string' } }
+                }
+              }
+            }
+          }
+        },
+        responses: { '200': { description: 'Account placeholder created' } },
+        security: []
+      }
+    },
+    '/api/ebay-accounts/{id}': {
+      get: {
+        tags: ['eBay Accounts'],
+        summary: 'Get account details',
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: { '200': { description: 'Account details' } },
+        security: []
+      },
+      put: {
+        tags: ['eBay Accounts'],
+        summary: 'Update account',
+        description: 'Update friendly name, tags, or status',
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  friendlyName: { type: 'string' },
+                  tags: { type: 'array', items: { type: 'string' } },
+                  status: { type: 'string', enum: ['active', 'disabled'] }
+                }
+              }
+            }
+          }
+        },
+        responses: { '200': { description: 'Account updated' } },
+        security: []
+      },
+      delete: {
+        tags: ['eBay Accounts'],
+        summary: 'Delete account',
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: { '200': { description: 'Account deleted' } },
+        security: []
+      }
+    },
+
+    // ============================================
+    // Inventory API
+    // ============================================
+    '/api/ebay/{accountId}/inventory': {
+      get: {
+        tags: ['Inventory'],
+        summary: 'List inventory items',
+        description: 'Get inventory items using the modern Inventory API',
+        parameters: [
+          { name: 'accountId', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'limit', in: 'query', schema: { type: 'integer', default: 25, maximum: 100 } },
+          { name: 'offset', in: 'query', schema: { type: 'integer', default: 0 } }
+        ],
+        responses: { '200': { description: 'Inventory items retrieved' } }
+      },
+      post: {
+        tags: ['Inventory'],
+        summary: 'Create inventory item',
+        description: 'Create a new inventory item (SKU-based)',
+        parameters: [{ name: 'accountId', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['sku', 'product', 'availability'],
+                properties: {
+                  sku: { type: 'string', example: 'PROD-001' },
+                  product: {
+                    type: 'object',
+                    properties: {
+                      title: { type: 'string' },
+                      description: { type: 'string' },
+                      imageUrls: { type: 'array', items: { type: 'string' } },
+                      aspects: { type: 'object' }
+                    }
+                  },
+                  availability: {
+                    type: 'object',
+                    properties: {
+                      shipToLocationAvailability: {
+                        type: 'object',
+                        properties: {
+                          quantity: { type: 'integer' }
+                        }
+                      }
+                    }
+                  },
+                  condition: { type: 'string', enum: ['NEW', 'LIKE_NEW', 'NEW_OTHER', 'NEW_WITH_DEFECTS', 'MANUFACTURER_REFURBISHED', 'CERTIFIED_REFURBISHED', 'EXCELLENT_REFURBISHED', 'VERY_GOOD_REFURBISHED', 'GOOD_REFURBISHED', 'SELLER_REFURBISHED', 'USED_EXCELLENT', 'USED_VERY_GOOD', 'USED_GOOD', 'USED_ACCEPTABLE', 'FOR_PARTS_OR_NOT_WORKING'] }
+                }
+              }
+            }
+          }
+        },
+        responses: { '200': { description: 'Inventory item created' } }
+      }
+    },
+    '/api/ebay/{accountId}/inventory/{sku}': {
+      get: {
+        tags: ['Inventory'],
+        summary: 'Get inventory item by SKU',
+        parameters: [
+          { name: 'accountId', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'sku', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+        responses: { '200': { description: 'Inventory item details' }, '404': { description: 'Item not found' } }
+      },
+      put: {
+        tags: ['Inventory'],
+        summary: 'Update inventory item',
+        parameters: [
+          { name: 'accountId', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'sku', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+        requestBody: { content: { 'application/json': { schema: { type: 'object' } } } },
+        responses: { '200': { description: 'Item updated' } }
+      },
+      delete: {
+        tags: ['Inventory'],
+        summary: 'Delete inventory item',
+        parameters: [
+          { name: 'accountId', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'sku', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+        responses: { '200': { description: 'Item deleted' } }
+      }
+    },
+
+    // ============================================
+    // Offers API
+    // ============================================
+    '/api/ebay/{accountId}/offers': {
+      get: {
+        tags: ['Offers'],
+        summary: 'List offers',
+        description: 'Get all offers for inventory items',
+        parameters: [
+          { name: 'accountId', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'sku', in: 'query', schema: { type: 'string' }, description: 'Filter by SKU' },
+          { name: 'limit', in: 'query', schema: { type: 'integer', default: 25 } },
+          { name: 'offset', in: 'query', schema: { type: 'integer', default: 0 } }
+        ],
+        responses: { '200': { description: 'Offers retrieved' } }
+      },
+      post: {
+        tags: ['Offers'],
+        summary: 'Create offer',
+        description: 'Create an offer for an inventory item (unpublished listing)',
+        parameters: [{ name: 'accountId', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['sku', 'marketplaceId', 'format', 'pricingSummary', 'categoryId'],
+                properties: {
+                  sku: { type: 'string' },
+                  marketplaceId: { type: 'string', enum: ['EBAY_US', 'EBAY_DE', 'EBAY_UK', 'EBAY_AU', 'EBAY_CA', 'EBAY_FR', 'EBAY_IT', 'EBAY_ES'] },
+                  format: { type: 'string', enum: ['FIXED_PRICE', 'AUCTION'] },
+                  pricingSummary: {
+                    type: 'object',
+                    properties: {
+                      price: {
+                        type: 'object',
+                        properties: {
+                          value: { type: 'string', example: '99.99' },
+                          currency: { type: 'string', example: 'EUR' }
+                        }
+                      }
+                    }
+                  },
+                  categoryId: { type: 'string', example: '139973' },
+                  listingDuration: { type: 'string', default: 'GTC' }
+                }
+              }
+            }
+          }
+        },
+        responses: { '200': { description: 'Offer created (not yet published)' } }
+      }
+    },
+    '/api/ebay/{accountId}/offers/{offerId}': {
+      get: {
+        tags: ['Offers'],
+        summary: 'Get offer details',
+        parameters: [
+          { name: 'accountId', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'offerId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+        responses: { '200': { description: 'Offer details' } }
+      },
+      put: {
+        tags: ['Offers'],
+        summary: 'Update offer',
+        parameters: [
+          { name: 'accountId', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'offerId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+        requestBody: { content: { 'application/json': { schema: { type: 'object' } } } },
+        responses: { '200': { description: 'Offer updated' } }
+      },
+      delete: {
+        tags: ['Offers'],
+        summary: 'Delete/Withdraw offer',
+        parameters: [
+          { name: 'accountId', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'offerId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+        responses: { '200': { description: 'Offer deleted' } }
+      }
+    },
+    '/api/ebay/{accountId}/offers/{offerId}/publish': {
+      post: {
+        tags: ['Offers'],
+        summary: 'Publish offer',
+        description: 'Publish an unpublished offer to create an active listing',
+        parameters: [
+          { name: 'accountId', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'offerId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+        responses: {
+          '200': {
+            description: 'Listing created',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean' },
+                    data: {
+                      type: 'object',
+                      properties: {
+                        listingId: { type: 'string', description: 'eBay ItemID' }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    '/api/ebay/{accountId}/offers/{offerId}/withdraw': {
+      post: {
+        tags: ['Offers'],
+        summary: 'Withdraw offer',
+        description: 'End a published listing',
+        parameters: [
+          { name: 'accountId', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'offerId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+        responses: { '200': { description: 'Listing ended' } }
+      }
+    },
+
+    // ============================================
+    // Messages & Inquiries
+    // ============================================
+    '/api/ebay/{accountId}/messages': {
+      get: {
+        tags: ['Messages'],
+        summary: 'List messages',
+        description: 'Get buyer/seller messages',
+        parameters: [
+          { name: 'accountId', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'folder', in: 'query', schema: { type: 'string', enum: ['INBOX', 'SENT'] } },
+          { name: 'limit', in: 'query', schema: { type: 'integer', default: 50 } }
+        ],
+        responses: { '200': { description: 'Messages retrieved' } }
+      }
+    },
+    '/api/ebay/{accountId}/messages/{messageId}': {
+      get: {
+        tags: ['Messages'],
+        summary: 'Get message details',
+        parameters: [
+          { name: 'accountId', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'messageId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+        responses: { '200': { description: 'Message details' } }
+      }
+    },
+    '/api/ebay/{accountId}/inquiries': {
+      get: {
+        tags: ['Messages'],
+        summary: 'List inquiries',
+        description: 'Get buyer inquiries (Item Not Received, etc.)',
+        parameters: [
+          { name: 'accountId', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'limit', in: 'query', schema: { type: 'integer', default: 50 } }
+        ],
+        responses: { '200': { description: 'Inquiries retrieved' } }
+      }
+    },
+    '/api/ebay/{accountId}/inquiries/{inquiryId}': {
+      get: {
+        tags: ['Messages'],
+        summary: 'Get inquiry details',
+        parameters: [
+          { name: 'accountId', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'inquiryId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+        responses: { '200': { description: 'Inquiry details' } }
+      },
+      post: {
+        tags: ['Messages'],
+        summary: 'Respond to inquiry',
+        parameters: [
+          { name: 'accountId', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'inquiryId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+        requestBody: {
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  message: { type: 'string' },
+                  action: { type: 'string', enum: ['RESPOND', 'ESCALATE', 'CLOSE'] }
+                }
+              }
+            }
+          }
+        },
+        responses: { '200': { description: 'Response sent' } }
+      }
+    },
+
+    // ============================================
     // Trading Listing API - Single Operations
+    // ============================================
     '/api/ebay/{accountId}/trading/listing': {
       post: {
         tags: ['Trading Listing'],
@@ -1516,12 +2352,9 @@ Use Cases:
     securitySchemes: {
       bearerAuth: {
         type: 'http',
-        scheme: 'bearer'
-      },
-      apiKey: {
-        type: 'apiKey',
-        in: 'header',
-        name: 'X-API-Key'
+        scheme: 'bearer',
+        bearerFormat: 'API Token',
+        description: 'API Token im Format: ebay_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
       }
     },
     schemas: {
@@ -1537,8 +2370,7 @@ Use Cases:
     }
   },
   security: [
-    { bearerAuth: [] },
-    { apiKey: [] }
+    { bearerAuth: [] }
   ]
 };
 
