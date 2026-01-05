@@ -73,7 +73,7 @@ export class ApiTokenService {
       ...data.permissions
     };
 
-    const apiToken = await createDoc<ApiToken>(Collections.API_TOKENS, {
+    const tokenData: Partial<ApiToken> = {
       id: generateId(),
       userId,
       name: data.name,
@@ -81,10 +81,16 @@ export class ApiTokenService {
       permissions: defaultPermissions,
       isActive: true,
       isDeleted: false,
-      expiresAt: data.expiresAt,
       createdAt: new Date(),
       updatedAt: new Date(),
-    });
+    };
+
+    // Only add expiresAt if it's defined (Firestore doesn't accept undefined)
+    if (data.expiresAt) {
+      tokenData.expiresAt = data.expiresAt;
+    }
+
+    const apiToken = await createDoc<ApiToken>(Collections.API_TOKENS, tokenData as ApiToken);
 
     return {
       id: apiToken.id,

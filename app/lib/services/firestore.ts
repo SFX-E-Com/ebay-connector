@@ -58,6 +58,10 @@ function initializeFirebase(): Firestore {
     // Get Firestore instance with custom database ID
     const databaseId = process.env.FIRESTORE_DATABASE_ID || '(default)';
     _db = getFirestore(databaseId);
+
+    // Ignore undefined properties to prevent "Cannot use undefined as Firestore value" errors
+    _db.settings({ ignoreUndefinedProperties: true });
+
     return _db;
   } catch (error) {
     _initializationError = error as Error;
