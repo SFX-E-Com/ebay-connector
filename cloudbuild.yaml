@@ -1,31 +1,38 @@
-# Cloud Build configuration for GitHub integration
-# Triggers on push to main branch
-# Uses Google Secret Manager for sensitive credentials (sandbox- prefix)
+# Cloud Build configuration with Docker layer caching
+# Triggers on push to main branch via Cloud Build GitHub trigger
 
 steps:
-  # Step 1: Build the Docker image
+  # Pull cached image for layer reuse (ignore failure if not exists)
+  - name: 'gcr.io/cloud-builders/docker'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - 'docker pull europe-west1-docker.pkg.dev/$PROJECT_ID/ebay-connector/app:latest || true'
+
+  # Build with cache from previous image
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'build'
+      - '--cache-from'
+      - 'europe-west1-docker.pkg.dev/$PROJECT_ID/ebay-connector/app:latest'
+      - '--build-arg'
+      - 'BUILDKIT_INLINE_CACHE=1'
       - '-t'
-      - 'gcr.io/$PROJECT_ID/ebay-connector:$COMMIT_SHA'
+      - 'europe-west1-docker.pkg.dev/$PROJECT_ID/ebay-connector/app:$COMMIT_SHA'
       - '-t'
-      - 'gcr.io/$PROJECT_ID/ebay-connector:latest'
+      - 'europe-west1-docker.pkg.dev/$PROJECT_ID/ebay-connector/app:latest'
       - '.'
-    timeout: 1200s
+    env:
+      - 'DOCKER_BUILDKIT=1'
 
-  # Step 2: Push the image to Container Registry
+  # Push the image to Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'push'
-      - 'gcr.io/$PROJECT_ID/ebay-connector:$COMMIT_SHA'
+      - '--all-tags'
+      - 'europe-west1-docker.pkg.dev/$PROJECT_ID/ebay-connector/app'
 
-  - name: 'gcr.io/cloud-builders/docker'
-    args:
-      - 'push'
-      - 'gcr.io/$PROJECT_ID/ebay-connector:latest'
-
-  # Step 3: Deploy to Cloud Run with Secret Manager integration
+  # Deploy to Cloud Run with Secret Manager integration
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
     args:
@@ -33,7 +40,7 @@ steps:
       - 'deploy'
       - 'ebay-connector'
       - '--image'
-      - 'gcr.io/$PROJECT_ID/ebay-connector:$COMMIT_SHA'
+      - 'europe-west1-docker.pkg.dev/$PROJECT_ID/ebay-connector/app:$COMMIT_SHA'
       - '--region'
       - 'europe-west1'
       - '--platform'
@@ -58,15 +65,15 @@ steps:
       - '--set-secrets'
       - 'EBAY_CLIENT_ID=sandbox-ebay-client-id:latest,EBAY_CLIENT_SECRET=sandbox-ebay-client-secret:latest,EBAY_DEV_ID=sandbox-ebay-dev-id:latest,JWT_SECRET=sandbox-jwt-secret:latest,EBAY_REDIRECT_URI=sandbox-ebay-redirect-uri:latest,AUTH_URL=sandbox-auth-url:latest'
 
-# Build timeout
+# Build timeout (30 min)
 timeout: 1800s
 
-# Images to save
+# Images to save in Artifact Registry
 images:
-  - 'gcr.io/$PROJECT_ID/ebay-connector:$COMMIT_SHA'
-  - 'gcr.io/$PROJECT_ID/ebay-connector:latest'
+  - 'europe-west1-docker.pkg.dev/$PROJECT_ID/ebay-connector/app:$COMMIT_SHA'
+  - 'europe-west1-docker.pkg.dev/$PROJECT_ID/ebay-connector/app:latest'
 
-# Options
+# Build options - use faster E2 machine
 options:
-  machineType: 'N1_HIGHCPU_8'
+  machineType: 'E2_HIGHCPU_32'
   logging: CLOUD_LOGGING_ONLY
