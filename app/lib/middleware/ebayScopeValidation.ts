@@ -48,20 +48,31 @@ export async function validateEbayScopes(
             }
         }
 
+        const grantedScopeUrls = new Set(grantedScopes);
+        const grantedScopeIds = new Set(
+            grantedScopes.map(url => {
+                const scopeDef = EBAY_OAUTH_SCOPES.find(s => s.url === url);
+                return scopeDef?.id || url;
+            })
+        );
+
         await logToDebug(
             "EBAY_SCOPE_VALIDATION",
             "Parsed granted scopes",
             {
                 grantedScopes,
+                grantedScopeIds: Array.from(grantedScopeIds),
                 accountId: ebayAccount.id,
                 context,
             },
             "DEBUG"
         );
 
-        const missingScopes = requiredScopes.filter(
-            (scope) => !grantedScopes.includes(scope)
-        );
+        const missingScopes = requiredScopes.filter((scopeId) => {
+            const scopeDef = EBAY_OAUTH_SCOPES.find(s => s.id === scopeId);
+            const scopeUrl = scopeDef?.url;
+            return !grantedScopeIds.has(scopeId) && (!scopeUrl || !grantedScopeUrls.has(scopeUrl));
+        });
 
         if (missingScopes.length > 0) {
             // Get scope details for better error messaging
