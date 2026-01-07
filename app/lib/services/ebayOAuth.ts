@@ -86,31 +86,32 @@ export class EbayOAuthService {
 
   /**
    * Refresh an expired access token
+   * Note: Per eBay docs, scope is optional. If not specified, eBay uses the original consent scopes.
+   * Passing scopes that weren't in the original consent will cause the refresh to fail.
    */
   async refreshUserAccessToken(refreshToken: string, scopes?: string[]): Promise<any> {
     try {
-      const defaultScopes = [
-        'https://api.ebay.com/oauth/api_scope',
-        'https://api.ebay.com/oauth/api_scope/sell.marketing.readonly',
-        'https://api.ebay.com/oauth/api_scope/sell.marketing',
-        'https://api.ebay.com/oauth/api_scope/sell.inventory.readonly',
-        'https://api.ebay.com/oauth/api_scope/sell.inventory',
-        'https://api.ebay.com/oauth/api_scope/sell.account.readonly',
-        'https://api.ebay.com/oauth/api_scope/sell.account',
-        'https://api.ebay.com/oauth/api_scope/sell.fulfillment.readonly',
-        'https://api.ebay.com/oauth/api_scope/sell.fulfillment',
-        'https://api.ebay.com/oauth/api_scope/sell.analytics.readonly',
-        'https://api.ebay.com/oauth/api_scope/sell.finances',
-        'https://api.ebay.com/oauth/api_scope/sell.payment.dispute',
-        'https://api.ebay.com/oauth/api_scope/commerce.identity.readonly'
-      ];
-
-      const token = await this.ebayAuthToken.getAccessToken(
-        process.env.EBAY_SANDBOX === 'true' ? 'SANDBOX' : 'PRODUCTION',
-        refreshToken,
-        scopes || defaultScopes
-      );
-      return token;
+      // Only pass scopes if explicitly provided
+      // Per eBay documentation: "If you do not specify a scope parameter, 
+      // the default will be the set of scope values included in the consent request"
+      const environment = process.env.EBAY_SANDBOX === 'true' ? 'SANDBOX' : 'PRODUCTION';
+      
+      if (scopes && scopes.length > 0) {
+        // Use provided scopes (must be subset of original consent)
+        const token = await this.ebayAuthToken.getAccessToken(
+          environment,
+          refreshToken,
+          scopes
+        );
+        return token;
+      } else {
+        // Let eBay use default scopes from original consent
+        const token = await this.ebayAuthToken.getAccessToken(
+          environment,
+          refreshToken
+        );
+        return token;
+      }
     } catch (error) {
       console.error('Error refreshing access token:', error);
       throw error;

@@ -163,6 +163,14 @@ export async function GET(request: NextRequest) {
     // Calculate expiration date
     const expiresAt = new Date(Date.now() + (tokenData.expires_in * 1000));
 
+    // Calculate refresh token expiration (eBay returns this as refresh_token_expires_in)
+    // Default to 18 months if not provided
+    const refreshTokenExpiresAt = tokenData.refresh_token_expires_in 
+      ? new Date(Date.now() + (tokenData.refresh_token_expires_in * 1000))
+      : new Date(Date.now() + (47304000 * 1000)); // ~18 months default
+
+    console.log('Refresh Token Expires At:', refreshTokenExpiresAt.toISOString());
+
     // Get the account's selected scopes before updating
     const existingAccount = await EbayAccountService.getAccountById(accountId);
 
@@ -179,13 +187,13 @@ export async function GET(request: NextRequest) {
     console.log('Preserved userSelectedScopes (no conversion):', preservedUserSelectedScopes);
     console.log('eBay granted scopes (from tokenData.scope):', tokenData.scope);
 
-    // Prepare data for database update
     const updateData = {
       ebayUserId: ebayUserId,
       ebayUsername: ebayUsername,
       accessToken: tokenData.access_token,
       refreshToken: tokenData.refresh_token || undefined,
       expiresAt: expiresAt,
+      refreshTokenExpiresAt: refreshTokenExpiresAt,
       tokenType: tokenData.token_type || 'Bearer',
       scopes: tokenData.scope ? tokenData.scope.split(' ') : [EBAY_SCOPES.READ_BASIC],
       userSelectedScopes: preservedUserSelectedScopes,

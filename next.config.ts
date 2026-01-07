@@ -10,6 +10,20 @@ const nextConfig: NextConfig = {
     '@google-cloud/firestore',
     '@google-cloud/storage',
   ],
+  
+  // Rewrite OAuth callback URLs to match eBay Developer Portal configuration
+  async rewrites() {
+    return [
+      {
+        source: '/oauth/accepted',
+        destination: '/api/ebay/oauth/callback',
+      },
+      {
+        source: '/oauth/declined', 
+        destination: '/api/ebay/oauth/declined',
+      },
+    ];
+  },
 };
 
 export default nextConfig;
