@@ -1,101 +1,163 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { EbayAccountService } from '@/app/lib/services/ebayAccountService';
 import { EBAY_SCOPES } from '@/app/lib/config/ebay';
-import { logToDebug } from '@/app/lib/middleware/queryDebugMiddleware';
+
+/**
+ * Get the public base URL from request headers.
+ * Cloud Run sets X-Forwarded-* headers with the public URL.
+ */
+function getBaseUrl(request: NextRequest): string {
+  const forwardedHost = request.headers.get('x-forwarded-host');
+  const forwardedProto = request.headers.get('x-forwarded-proto') || 'https';
+  
+  if (forwardedHost) {
+    return `${forwardedProto}://${forwardedHost}`;
+  }
+  
+  // Fallback for local development
+  const host = request.headers.get('host') || request.nextUrl.host;
+  const protocol = host.includes('localhost') ? 'http' : 'https';
+  return `${protocol}://${host}`;
+}
+
+/**
+ * Check if this is an API call (fetch) vs direct browser navigation.
+ */
+function isApiCall(request: NextRequest): boolean {
+  return request.headers.get('accept')?.includes('application/json') === true ||
+         request.headers.get('x-requested-with') === 'XMLHttpRequest';
+}
+
+/**
+ * Return either JSON or redirect based on how the endpoint was called.
+ */
+function respondWithSuccessOrRedirect(
+  request: NextRequest,
+  baseUrl: string,
+  data: Record<string, unknown>
+): NextResponse {
+  const redirectPath = '/ebay-connections?success=connected';
+  
+  if (isApiCall(request)) {
+    return NextResponse.json({
+      success: true,
+      ...data,
+      redirectTo: redirectPath
+    });
+  }
+  
+  const response = NextResponse.redirect(new URL(redirectPath, baseUrl));
+  response.cookies.delete('ebay_oauth_state');
+  return response;
+}
+
+function respondWithErrorOrRedirect(
+  request: NextRequest,
+  baseUrl: string,
+  errorCode: string,
+  message: string
+): NextResponse {
+  const redirectPath = `/ebay-connections?error=${errorCode}`;
+  
+  if (isApiCall(request)) {
+    return NextResponse.json({
+      success: false,
+      error: errorCode,
+      message
+    }, { status: 400 });
+  }
+  
+  return NextResponse.redirect(new URL(redirectPath, baseUrl));
+}
 
 export async function GET(request: NextRequest) {
-  console.log('========== OAUTH CALLBACK START ==========');
+  const { searchParams } = new URL(request.url);
+  const isDebug = process.env.DEBUG_LOGGING === 'true' || searchParams.get('debug') === '1';
+  
+  if (isDebug) console.log('========== OAUTH CALLBACK START ==========');
   
   try {
-    const { searchParams } = new URL(request.url);
     const code = searchParams.get('code');
     const state = searchParams.get('state');
     const error = searchParams.get('error');
 
-    console.log('CALLBACK PARAMS:', { 
-      hasCode: !!code, 
-      codeLength: code?.length || 0,
-      hasState: !!state,
-      state: state?.substring(0, 30),
-      hasError: !!error 
-    });
+    if (isDebug) {
+      console.log('CALLBACK PARAMS:', { 
+        hasCode: !!code, 
+        codeLength: code?.length || 0,
+        hasState: !!state,
+        state: state?.substring(0, 30),
+        hasError: !!error 
+      });
+    }
 
-    const baseUrl = `${request.nextUrl.protocol}//${request.nextUrl.host}`;
+    const baseUrl = getBaseUrl(request);
 
-    // Check for OAuth errors
     if (error) {
-      console.error('eBay OAuth error received:', error);
-      return NextResponse.redirect(new URL('/ebay-connections?error=oauth_failed', baseUrl));
+      if (isDebug) console.error('eBay OAuth error received:', error);
+      return respondWithErrorOrRedirect(request, baseUrl, 'oauth_failed', 'eBay authorization failed');
     }
 
     if (!code) {
-      console.error('Missing required parameters:', { code: !!code, state: !!state });
-      return NextResponse.redirect(new URL('/ebay-connections?error=missing_params', baseUrl));
+      if (isDebug) console.error('Missing required parameters:', { code: !!code, state: !!state });
+      return respondWithErrorOrRedirect(request, baseUrl, 'missing_params', 'Missing authorization code');
     }
 
-    // Handle state parameter (might be missing in consent flow)
     if (state) {
-      // Verify state parameter only if present
       const storedState = request.cookies.get('ebay_oauth_state')?.value;
 
-      console.log('=== STATE PARAMETER DEBUG ===');
-      console.log('Received state from eBay:', state);
-      console.log('Stored state in cookie:', storedState);
-      console.log('States match:', storedState === state);
+      if (isDebug) {
+        console.log('=== STATE PARAMETER DEBUG ===');
+        console.log('Received state from eBay:', state);
+        console.log('Stored state in cookie:', storedState);
+        console.log('States match:', storedState === state);
+      }
 
       if (!storedState || storedState !== state) {
-        console.error('State parameter mismatch or missing');
-        console.error('This usually means multiple OAuth requests or expired cookie');
-        return NextResponse.redirect(new URL('/ebay-connections?error=invalid_state', baseUrl));
+        if (isDebug) console.error('State parameter mismatch or missing');
+        return respondWithErrorOrRedirect(request, baseUrl, 'invalid_state', 'State parameter mismatch');
       }
     } else {
-      console.warn('State parameter missing - this might be from consent flow');
+      if (isDebug) console.warn('State parameter missing - this might be from consent flow');
     }
 
-    // Extract account ID from state (if available)
     let accountId: string | null = null;
 
     if (state) {
       accountId = state.split('_')[0];
     } else {
-      // For consent flow without state, try to get from referrer or use a fallback
-      console.warn('No state parameter - cannot determine account ID from consent flow');
-      // You may need to store account ID in session/cookie or get from referrer
-      return NextResponse.redirect(new URL('/ebay-connections?error=missing_account_id', baseUrl));
+      if (isDebug) console.warn('No state parameter - cannot determine account ID');
+      return respondWithErrorOrRedirect(request, baseUrl, 'missing_account_id', 'Cannot determine account');
     }
 
     if (!accountId) {
-      console.error('Could not extract account ID from state');
-      return NextResponse.redirect(new URL('/ebay-connections?error=invalid_account', baseUrl));
+      if (isDebug) console.error('Could not extract account ID from state');
+      return respondWithErrorOrRedirect(request, baseUrl, 'invalid_account', 'Invalid account ID');
     }
 
-    // Validate required environment variables
     if (!process.env.EBAY_CLIENT_ID || !process.env.EBAY_CLIENT_SECRET || !process.env.EBAY_REDIRECT_URI) {
-      console.error('Missing required environment variables');
-      return NextResponse.redirect(new URL('/ebay-connections?error=missing_config', baseUrl));
+      if (isDebug) console.error('Missing required environment variables');
+      return respondWithErrorOrRedirect(request, baseUrl, 'missing_config', 'Server configuration error');
     }
 
-    // Manual token exchange implementation
     const tokenUrl = process.env.EBAY_SANDBOX === 'true'
       ? 'https://api.sandbox.ebay.com/identity/v1/oauth2/token'
       : 'https://api.ebay.com/identity/v1/oauth2/token';
 
     const credentials = Buffer.from(`${process.env.EBAY_CLIENT_ID}:${process.env.EBAY_CLIENT_SECRET}`).toString('base64');
-
-    // Use RuName for both sandbox and production as per eBay documentation
     const redirectValue = process.env.EBAY_REDIRECT_URI;
 
-    console.log('=== TOKEN EXCHANGE REDIRECT CONFIGURATION ===');
-    console.log('Environment:', process.env.EBAY_SANDBOX === 'true' ? 'SANDBOX' : 'PRODUCTION');
-    console.log('Using RuName (as per eBay docs):', redirectValue);
+    if (isDebug) {
+      console.log('=== TOKEN EXCHANGE ===');
+      console.log('Environment:', process.env.EBAY_SANDBOX === 'true' ? 'SANDBOX' : 'PRODUCTION');
+      console.log('Token URL:', tokenUrl);
+    }
 
     const tokenParams = new URLSearchParams({
       grant_type: 'authorization_code',
       code: code,
       redirect_uri: redirectValue!
     });
-
-    console.log('TOKEN EXCHANGE: Starting...', { tokenUrl, accountId });
 
     const tokenResponse = await fetch(tokenUrl, {
       method: 'POST',
@@ -107,35 +169,25 @@ export async function GET(request: NextRequest) {
       body: tokenParams.toString()
     });
 
-    console.log('TOKEN EXCHANGE: Response status:', tokenResponse.status, tokenResponse.ok);
+    if (isDebug) console.log('TOKEN EXCHANGE: Response status:', tokenResponse.status);
 
     if (!tokenResponse.ok) {
       const errorText = await tokenResponse.text();
-      console.error('TOKEN EXCHANGE FAILED:', tokenResponse.status, errorText);
+      if (isDebug) console.error('TOKEN EXCHANGE FAILED:', tokenResponse.status, errorText);
       throw new Error(`Token exchange failed: ${tokenResponse.status} ${errorText}`);
     }
 
     const tokenData = await tokenResponse.json();
     
-    console.log('TOKEN EXCHANGE SUCCESS:', {
-      hasAccessToken: !!tokenData.access_token,
-      accessTokenLength: tokenData.access_token?.length || 0,
-      accessTokenPreview: tokenData.access_token?.substring(0, 30) || 'NONE',
-      hasRefreshToken: !!tokenData.refresh_token,
-      expiresIn: tokenData.expires_in
-    });
-
-    // DEBUG: Log complete OAuth token response
-    console.log('=== OAUTH CALLBACK DEBUG - COMPLETE TOKEN DATA ===');
-    console.log('Token Response Status:', tokenResponse.status);
-    console.log('Token Response Headers:', Object.fromEntries(tokenResponse.headers.entries()));
-    console.log('Complete Token Data:', JSON.stringify(tokenData, null, 2));
-    console.log('Access Token (first 50 chars):', tokenData.access_token?.substring(0, 50) + '...');
-    console.log('Refresh Token (first 50 chars):', tokenData.refresh_token?.substring(0, 50) + '...');
-    console.log('Token Type:', tokenData.token_type);
-    console.log('Expires In (seconds):', tokenData.expires_in);
-    console.log('Granted Scopes:', tokenData.scope);
-    console.log('Scope Array:', tokenData.scope ? tokenData.scope.split(' ') : 'No scopes');
+    if (isDebug) {
+      console.log('TOKEN EXCHANGE SUCCESS:', {
+        hasAccessToken: !!tokenData.access_token,
+        accessTokenLength: tokenData.access_token?.length || 0,
+        hasRefreshToken: !!tokenData.refresh_token,
+        expiresIn: tokenData.expires_in,
+        scopes: tokenData.scope?.split(' ')?.length || 0
+      });
+    }
 
     let ebayUserId = `ebay_user_${Date.now()}`;
     let ebayUsername = null;
@@ -145,10 +197,6 @@ export async function GET(request: NextRequest) {
         ? 'https://apiz.sandbox.ebay.com'
         : 'https://apiz.ebay.com';
 
-      console.log('=== FETCHING USER INFO ===');
-      console.log('User Info URL:', `${baseApiUrl}/commerce/identity/v1/user/`);
-      console.log('Authorization Header:', `Bearer ${tokenData.access_token?.substring(0, 20)}...`);
-
       const userResponse = await fetch(`${baseApiUrl}/commerce/identity/v1/user/`, {
         headers: {
           'Authorization': `Bearer ${tokenData.access_token}`,
@@ -156,49 +204,31 @@ export async function GET(request: NextRequest) {
         },
       });
 
-      console.log('User Info Response Status:', userResponse.status);
-      console.log('User Info Response Headers:', Object.fromEntries(userResponse.headers.entries()));
-
       if (userResponse.ok) {
         const userData = await userResponse.json();
-
-        // DEBUG: Log complete user data response
-        console.log('=== OAUTH CALLBACK DEBUG - COMPLETE USER DATA ===');
-        console.log('Complete User Data:', JSON.stringify(userData, null, 2));
-        console.log('User ID:', userData.userId);
-        console.log('Username:', userData.username);
-        console.log('Business Account:', userData.businessAccount);
-        console.log('Registration Date:', userData.registrationDate);
-
         ebayUserId = userData.userId || ebayUserId;
         ebayUsername = userData.username || null;
-      } else {
-        const errorText = await userResponse.text();
-        console.error('User info request failed:', userResponse.status, userResponse.statusText);
-        console.error('User info error response:', errorText);
+        
+        if (isDebug) {
+          console.log('USER INFO:', { userId: ebayUserId, username: ebayUsername });
+        }
+      } else if (isDebug) {
+        console.error('User info request failed:', userResponse.status);
       }
     } catch (userInfoError) {
-      console.warn('Could not fetch user info, using fallback values:', userInfoError);
+      if (isDebug) console.warn('Could not fetch user info:', userInfoError);
     }
 
-    // Calculate expiration date
     const expiresAt = new Date(Date.now() + (tokenData.expires_in * 1000));
-
-    // Calculate refresh token expiration (eBay returns this as refresh_token_expires_in)
-    // Default to 18 months if not provided
     const refreshTokenExpiresAt = tokenData.refresh_token_expires_in 
       ? new Date(Date.now() + (tokenData.refresh_token_expires_in * 1000))
-      : new Date(Date.now() + (47304000 * 1000)); // ~18 months default
-
-    console.log('Refresh Token Expires At:', refreshTokenExpiresAt.toISOString());
+      : new Date(Date.now() + (47304000 * 1000));
 
     const existingAccount = await EbayAccountService.getAccountById(accountId);
 
-    console.log('EXISTING ACCOUNT:', {
-      accountId,
-      exists: !!existingAccount,
-      currentToken: existingAccount?.accessToken?.substring(0, 20) || 'none'
-    });
+    if (isDebug) {
+      console.log('EXISTING ACCOUNT:', { accountId, exists: !!existingAccount });
+    }
 
     const preservedUserSelectedScopes = existingAccount?.userSelectedScopes || ['api_scope'];
 
@@ -215,38 +245,28 @@ export async function GET(request: NextRequest) {
       status: 'active',
     };
 
-    console.log('DATABASE UPDATE: Calling updateAccount...', {
-      accountId,
-      newTokenLength: tokenData.access_token?.length || 0,
-      newTokenPreview: tokenData.access_token?.substring(0, 30) || 'NONE'
-    });
+    if (isDebug) {
+      console.log('DATABASE UPDATE:', { accountId, tokenLength: tokenData.access_token?.length || 0 });
+    }
 
     const updatedAccount = await EbayAccountService.updateAccount(accountId, updateData);
 
-    console.log('DATABASE UPDATE RESULT:', {
-      success: !!updatedAccount,
-      updatedId: updatedAccount?.id,
-      updatedStatus: updatedAccount?.status
+    if (isDebug) {
+      console.log('DATABASE UPDATE RESULT:', { success: !!updatedAccount, status: updatedAccount?.status });
+      console.log('========== OAUTH CALLBACK END ==========');
+    }
+
+    return respondWithSuccessOrRedirect(request, baseUrl, {
+      message: 'eBay account connected successfully',
+      accountId: updatedAccount?.id,
+      ebayUsername: ebayUsername
     });
-    
-    console.log('========== OAUTH CALLBACK END ==========');
-
-    // Clear the OAuth state cookie
-    const response = NextResponse.redirect(new URL('/ebay-connections?success=connected', baseUrl));
-    response.cookies.delete('ebay_oauth_state');
-
-    return response;
 
   } catch (error) {
-    console.error('=== OAUTH CALLBACK ERROR ===');
-    console.error('Error details:', {
-      message: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined,
-      name: error instanceof Error ? error.name : typeof error,
-      fullError: error
-    });
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error('OAUTH CALLBACK ERROR:', errorMessage);
 
-    const baseUrl = `${request.nextUrl.protocol}//${request.nextUrl.host}`;
-    return NextResponse.redirect(new URL('/ebay-connections?error=callback_failed', baseUrl));
+    const baseUrl = getBaseUrl(request);
+    return respondWithErrorOrRedirect(request, baseUrl, 'callback_failed', errorMessage);
   }
 }

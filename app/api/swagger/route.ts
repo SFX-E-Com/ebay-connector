@@ -14,12 +14,8 @@ const swaggerDocument = {
   servers: [
     {
       url: 'https://ebay-connector-187959688255.europe-west1.run.app',
-      description: 'Production (Cloud Run)'
+      description: 'Production'
     },
-    {
-      url: 'http://localhost:3000',
-      description: 'Development'
-    }
   ],
   tags: [
     { name: 'Orders', description: 'Order management, fulfillment & shipping' },

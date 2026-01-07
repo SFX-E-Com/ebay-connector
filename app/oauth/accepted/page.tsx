@@ -31,29 +31,26 @@ function OAuthCallbackHandler() {
       }
 
       try {
-        // Call the callback API to exchange the code for tokens
         const callbackUrl = `/api/ebay/oauth/callback?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`;
-        
-        console.log('Calling callback API:', callbackUrl);
         
         const response = await fetch(callbackUrl, {
           method: 'GET',
-          credentials: 'include', // Include cookies for state verification
+          credentials: 'include',
+          headers: {
+            'Accept': 'application/json',
+          },
         });
 
-        console.log('Callback API response:', response.status);
+        const data = await response.json();
 
-        if (response.ok) {
+        if (data.success) {
           setStatus('success');
-          // Redirect after short delay
           setTimeout(() => {
-            router.push('/ebay-connections?success=connected');
+            router.push(data.redirectTo || '/ebay-connections?success=connected');
           }, 2000);
         } else {
-          const text = await response.text();
-          console.error('Callback API error:', text);
           setStatus('error');
-          setErrorMessage('Failed to complete eBay authorization. Please try again.');
+          setErrorMessage(data.message || 'Failed to complete eBay authorization.');
         }
       } catch (err) {
         console.error('Callback error:', err);
