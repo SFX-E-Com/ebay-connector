@@ -72,52 +72,40 @@ export async function POST(request: NextRequest) {
       expiresAt,
       tokenType = 'Bearer',
       scopes = [],
-      selectedScopes = [],
-      status = 'inactive', // Default to inactive until OAuth is completed
+      status = 'inactive',
       friendlyName,
       tags = [],
     } = await request.json();
 
-    // Use selectedScopes if provided, otherwise fall back to scopes
-    const finalScopes = selectedScopes.length > 0 ? selectedScopes : scopes;
-
-    // For manual account creation (without OAuth tokens initially)
     if (!ebayUserId && !accessToken) {
-      // Create a placeholder account that will be completed later via OAuth
       const placeholderAccount = await EbayAccountService.createAccount({
         userId: decoded.userId,
-        ebayUserId: `placeholder_${Date.now()}`, // Temporary placeholder
+        ebayUserId: `placeholder_${Date.now()}`,
         ebayUsername: ebayUsername || undefined,
-        accessToken: 'pending_oauth', // Placeholder token
-        refreshToken: 'pending_oauth', // Placeholder token
-        expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now
+        accessToken: 'pending_oauth',
+        refreshToken: 'pending_oauth',
+        expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
         tokenType,
-        scopes: finalScopes,
-        userSelectedScopes: selectedScopes,
-        status: 'inactive', // Inactive until OAuth is completed
+        scopes: [],
+        status: 'inactive',
         friendlyName: friendlyName || 'New eBay Account',
         tags,
       });
 
       return NextResponse.json({
         success: true,
-        message: 'eBay account placeholder created successfully',
+        message: 'eBay account placeholder created. Connect to eBay to grant permissions.',
         data: placeholderAccount,
       });
     }
 
-    // Validation for OAuth-based account creation
     if (!ebayUserId || !accessToken || !expiresAt) {
       return NextResponse.json(
-        {
-          success: false,
-          message: 'ebayUserId, accessToken, and expiresAt are required',
-        },
+        { success: false, message: 'ebayUserId, accessToken, and expiresAt are required' },
         { status: 400 }
       );
     }
 
-    // Create or update eBay account
     const ebayAccount = await EbayAccountService.upsertAccount({
       userId: decoded.userId,
       ebayUserId,
@@ -126,8 +114,7 @@ export async function POST(request: NextRequest) {
       refreshToken,
       expiresAt: new Date(expiresAt),
       tokenType,
-      scopes: finalScopes,
-      userSelectedScopes: selectedScopes,
+      scopes,
       status,
       friendlyName,
       tags,

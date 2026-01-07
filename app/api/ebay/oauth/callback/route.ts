@@ -224,13 +224,7 @@ export async function GET(request: NextRequest) {
       ? new Date(Date.now() + (tokenData.refresh_token_expires_in * 1000))
       : new Date(Date.now() + (47304000 * 1000));
 
-    const existingAccount = await EbayAccountService.getAccountById(accountId);
-
-    if (isDebug) {
-      console.log('EXISTING ACCOUNT:', { accountId, exists: !!existingAccount });
-    }
-
-    const preservedUserSelectedScopes = existingAccount?.userSelectedScopes || ['api_scope'];
+    const grantedScopes = tokenData.scope ? tokenData.scope.split(' ') : [EBAY_SCOPES.READ_BASIC];
 
     const updateData = {
       ebayUserId: ebayUserId,
@@ -240,8 +234,7 @@ export async function GET(request: NextRequest) {
       expiresAt: expiresAt,
       refreshTokenExpiresAt: refreshTokenExpiresAt,
       tokenType: tokenData.token_type || 'Bearer',
-      scopes: tokenData.scope ? tokenData.scope.split(' ') : [EBAY_SCOPES.READ_BASIC],
-      userSelectedScopes: preservedUserSelectedScopes,
+      scopes: grantedScopes,
       status: 'active',
     };
 

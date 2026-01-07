@@ -3,9 +3,7 @@
 import { Modal, Badge, Button } from 'react-bootstrap';
 import { FiGlobe, FiUser, FiClock, FiTag, FiShield, FiCalendar } from 'react-icons/fi';
 import { EbayAccount } from '@/app/hooks/useEbayAccounts';
-import { EBAY_OAUTH_SCOPES, SCOPE_CATEGORIES } from '@/app/lib/constants/ebayScopes';
-import EbayScopeCategory from './scope/EbayScopeCategory';
-import { useState } from 'react';
+import { EBAY_OAUTH_SCOPES } from '@/app/lib/constants/ebayScopes';
 
 interface EbayAccountViewModalProps {
   isOpen: boolean;
@@ -18,37 +16,29 @@ export default function EbayAccountViewModal({
   onClose,
   account,
 }: EbayAccountViewModalProps) {
-  const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
-
   if (!account) return null;
-
-  const handleCategoryToggle = (categoryKey: string) => {
-    setExpandedCategories(prev =>
-      prev.includes(categoryKey)
-        ? prev.filter(cat => cat !== categoryKey)
-        : [...prev, categoryKey]
-    );
-  };
 
   const isActive = account.status === 'active';
   const isExpired = new Date(account.expiresAt) < new Date();
   const environment = account.environment || 'production';
 
-  // Safely parse scopes and tags
-  const scopeIds = Array.isArray(account.userSelectedScopes)
-    ? account.userSelectedScopes
-    : typeof account.userSelectedScopes === 'string'
-      ? (account.userSelectedScopes ? JSON.parse(account.userSelectedScopes) : [])
-      : [];
+  const parseArray = (value: string[] | string | undefined): string[] => {
+    if (Array.isArray(value)) return value;
+    if (typeof value === 'string' && value) {
+      try {
+        const parsed = JSON.parse(value);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  };
 
-  const tags = Array.isArray(account.tags)
-    ? account.tags
-    : typeof account.tags === 'string'
-      ? (account.tags ? JSON.parse(account.tags) : [])
-      : [];
+  const grantedScopes = parseArray(account.scopes);
+  const tags = parseArray(account.tags);
 
-  // Get scope objects from IDs
-  const accountScopes = EBAY_OAUTH_SCOPES.filter(scope => scopeIds.includes(scope.id));
+  const grantedScopeCount = grantedScopes.length;
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString('en-US', {
@@ -208,41 +198,42 @@ export default function EbayAccountViewModal({
 
           <hr className="my-0" />
 
-          {/* Scopes */}
+          {/* Granted Scopes (Read-Only) */}
           <div className="d-flex flex-column gap-3">
             <div className="d-flex justify-content-between align-items-center">
-              <h5 className="text-secondary mb-0">Permissions & Scopes</h5>
-              <Badge
-                bg={accountScopes.length > 0 ? 'primary' : 'secondary'}
-              >
-                {accountScopes.length} permissions granted
+              <h5 className="text-secondary mb-0">Granted Permissions</h5>
+              <Badge bg={grantedScopeCount > 0 ? 'success' : 'secondary'}>
+                {grantedScopeCount} from eBay
               </Badge>
             </div>
 
-            {accountScopes.length > 0 ? (
-              <div className="d-flex flex-column gap-3">
-                {Object.keys(SCOPE_CATEGORIES).map((categoryKey) => (
-                  <EbayScopeCategory
-                    key={categoryKey}
-                    categoryKey={categoryKey}
-                    isExpanded={expandedCategories.includes(categoryKey)}
-                    onToggle={() => handleCategoryToggle(categoryKey)}
-                    selectedScopes={scopeIds}
-                    onScopeToggle={() => {}} // Read-only mode
-                    disabled={true}
-                  />
-                ))}
+            {grantedScopeCount > 0 ? (
+              <div className="d-flex flex-column gap-2">
+                {grantedScopes.map((scope, index) => {
+                  const scopeInfo = EBAY_OAUTH_SCOPES.find(s => s.url === scope || s.id === scope);
+                  const displayName = scopeInfo?.name || scope.split('/').pop() || scope;
+                  return (
+                    <div key={index} className="d-flex align-items-center gap-2 p-2 bg-light rounded small">
+                      <FiShield className="text-success" />
+                      <span>{displayName}</span>
+                    </div>
+                  );
+                })}
               </div>
             ) : (
-              <div className="p-3 bg-white rounded border">
+              <div className="p-3 bg-light rounded border">
                 <div className="d-flex align-items-center gap-2">
                   <FiShield className="text-secondary" />
                   <span className="small text-muted fst-italic">
-                    No specific scopes granted - Basic access only
+                    No scopes granted yet - Connect account to grant permissions
                   </span>
                 </div>
               </div>
             )}
+
+            <p className="small text-muted mb-0">
+              These permissions were granted by eBay during OAuth. To change permissions, reconnect the account.
+            </p>
           </div>
 
           {/* Tags */}

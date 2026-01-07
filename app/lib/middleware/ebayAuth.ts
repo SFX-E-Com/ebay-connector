@@ -185,13 +185,12 @@ export function withEbayAuth(
                     );
                 }
 
-                // Validate eBay scope permissions if operation is specified
                 if (requiredEbayOperation) {
                     const scopeValidation = await validateEbayOperation(
                         requiredEbayOperation,
                         {
                             id: ebayAccount.id,
-                            userSelectedScopes: ebayAccount.userSelectedScopes,
+                            scopes: ebayAccount.scopes,
                             friendlyName: ebayAccount.friendlyName,
                         },
                         `eBay Auth Middleware for ${requiredEndpoint}`

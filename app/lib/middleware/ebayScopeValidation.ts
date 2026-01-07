@@ -10,7 +10,7 @@ export interface EbayScopeValidationResult {
 
 export interface EbayAccount {
     id: string;
-    userSelectedScopes: string | string[] | null;
+    scopes: string | string[] | null;
     friendlyName?: string | null;
 }
 
@@ -35,34 +35,32 @@ export async function validateEbayScopes(
             "DEBUG"
         );
 
-        // Parse user selected scopes
-        let userSelectedScopes: string[] = [];
+        let grantedScopes: string[] = [];
 
-        if (Array.isArray(ebayAccount.userSelectedScopes)) {
-            userSelectedScopes = ebayAccount.userSelectedScopes;
-        } else if (typeof ebayAccount.userSelectedScopes === "string") {
+        if (Array.isArray(ebayAccount.scopes)) {
+            grantedScopes = ebayAccount.scopes;
+        } else if (typeof ebayAccount.scopes === "string") {
             try {
-                const parsed = JSON.parse(ebayAccount.userSelectedScopes);
-                userSelectedScopes = Array.isArray(parsed) ? parsed : [];
+                const parsed = JSON.parse(ebayAccount.scopes);
+                grantedScopes = Array.isArray(parsed) ? parsed : [];
             } catch {
-                userSelectedScopes = [];
+                grantedScopes = [];
             }
         }
 
         await logToDebug(
             "EBAY_SCOPE_VALIDATION",
-            "Parsed user selected scopes",
+            "Parsed granted scopes",
             {
-                userSelectedScopes,
+                grantedScopes,
                 accountId: ebayAccount.id,
                 context,
             },
             "DEBUG"
         );
 
-        // Check if all required scopes are in user selected scopes
         const missingScopes = requiredScopes.filter(
-            (scope) => !userSelectedScopes.includes(scope)
+            (scope) => !grantedScopes.includes(scope)
         );
 
         if (missingScopes.length > 0) {
@@ -81,7 +79,7 @@ export async function validateEbayScopes(
                 "eBay scope validation failed - missing scopes",
                 {
                     requiredScopes,
-                    userSelectedScopes,
+                    grantedScopes,
                     missingScopes,
                     missingScopeDetails,
                     accountId: ebayAccount.id,
@@ -117,7 +115,7 @@ export async function validateEbayScopes(
             "eBay scope validation passed",
             {
                 requiredScopes,
-                userSelectedScopes,
+                grantedScopes,
                 accountId: ebayAccount.id,
                 context,
             },

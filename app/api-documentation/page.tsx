@@ -82,7 +82,8 @@ export default function APIDocumentationPage() {
   return (
     <div
       id="swagger-ui"
-      className="bg-white rounded-4 min-vh-100 p-3 p-md-4"
+      className="bg-white rounded-4 flex-grow-1 p-3 p-md-4"
+      style={{ minHeight: 0 }}
     />
   );
 }

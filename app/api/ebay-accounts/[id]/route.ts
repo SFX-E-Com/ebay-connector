@@ -99,12 +99,6 @@ export async function PUT(
     if (updateData.tags !== undefined) {
       processedData.tags = updateData.tags;
     }
-    if (updateData.selectedScopes !== undefined) {
-      processedData.userSelectedScopes = updateData.selectedScopes;
-    }
-    if (updateData.userSelectedScopes !== undefined) {
-      processedData.userSelectedScopes = updateData.userSelectedScopes;
-    }
 
     // Update eBay account
     const updatedAccount = await EbayAccountService.updateAccount(id, processedData);

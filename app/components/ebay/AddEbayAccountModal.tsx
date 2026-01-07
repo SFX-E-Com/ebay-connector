@@ -2,14 +2,11 @@
 
 import { Modal, Form, Button, Badge, Row, Col, Alert, Spinner } from 'react-bootstrap';
 import { useState } from 'react';
-import EbayScopeSelector from './EbayScopeSelector';
-import { DEFAULT_SCOPES } from '@/app/lib/constants/ebayScopes';
 
 interface EbayAccountFormData {
   friendlyName: string;
   tags: string[];
   ebayUsername?: string;
-  selectedScopes: string[];
 }
 
 interface AddEbayAccountModalProps {
@@ -29,7 +26,6 @@ export default function AddEbayAccountModal({
     friendlyName: '',
     tags: [],
     ebayUsername: '',
-    selectedScopes: DEFAULT_SCOPES,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [tagInput, setTagInput] = useState('');
@@ -57,7 +53,6 @@ export default function AddEbayAccountModal({
       friendlyName: '',
       tags: [],
       ebayUsername: '',
-      selectedScopes: DEFAULT_SCOPES,
     });
     setErrors({});
     setTagInput('');
@@ -197,25 +192,22 @@ export default function AddEbayAccountModal({
               )}
             </div>
 
-            {/* eBay Permissions Section */}
-            <EbayScopeSelector
-              selectedScopes={formData.selectedScopes}
-              onScopeChange={(scopes) => setFormData({ ...formData, selectedScopes: scopes })}
-              disabled={isSubmitting}
-            />
-
             {/* Connection Info */}
             <div className="d-flex flex-column gap-3">
               <h5 className="text-dark mb-0">Next Steps</h5>
-              <Alert variant="warning" className="mb-0">
+              <Alert variant="info" className="mb-0">
                 <p className="small fw-medium mb-2">
                   After creating this account:
                 </p>
                 <div className="d-flex flex-column gap-1 small">
-                  <p className="mb-0">• Click "Connect Account" to authorize with eBay</p>
-                  <p className="mb-0">• Complete the OAuth flow with your selected permissions</p>
-                  <p className="mb-0">• Your account will be ready to use for API calls</p>
+                  <p className="mb-0">1. Click &quot;Connect Account&quot; to authorize with eBay</p>
+                  <p className="mb-0">2. Grant the requested permissions on eBay</p>
+                  <p className="mb-0">3. Your account will be ready for API calls</p>
                 </div>
+                <hr className="my-2" />
+                <p className="small text-muted mb-0">
+                  <strong>Note:</strong> Permissions are managed via API Tokens, not per account.
+                </p>
               </Alert>
             </div>
           </div>

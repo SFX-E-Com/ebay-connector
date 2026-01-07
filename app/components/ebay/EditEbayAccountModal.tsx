@@ -2,15 +2,12 @@
 
 import { Modal, Form, Button, Badge, Row, Col, Alert, Spinner } from 'react-bootstrap';
 import { useState, useEffect } from 'react';
-import EbayScopeSelector from './EbayScopeSelector';
 import { EbayAccount } from '@/app/hooks/useEbayAccounts';
-import { DEFAULT_SCOPES, EBAY_OAUTH_SCOPES } from '@/app/lib/constants/ebayScopes';
 
 interface EditEbayAccountFormData {
   friendlyName: string;
   tags: string[];
   ebayUsername?: string;
-  selectedScopes: string[];
   status: 'active' | 'disabled';
 }
 
@@ -33,7 +30,6 @@ export default function EditEbayAccountModal({
     friendlyName: '',
     tags: [],
     ebayUsername: '',
-    selectedScopes: [],
     status: 'active',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -41,8 +37,7 @@ export default function EditEbayAccountModal({
 
   useEffect(() => {
     if (account && isOpen) {
-      // Parse JSON fields safely
-      const parseTags = (tags: any): string[] => {
+      const parseTags = (tags: string[] | string | undefined): string[] => {
         if (Array.isArray(tags)) return tags;
         if (typeof tags === 'string') {
           try {
@@ -55,48 +50,10 @@ export default function EditEbayAccountModal({
         return [];
       };
 
-      const parseScopes = (scopes: any): string[] => {
-        let parsedScopes: string[] = [];
-
-        if (Array.isArray(scopes)) {
-          parsedScopes = scopes;
-        } else if (typeof scopes === 'string') {
-          try {
-            const parsed = JSON.parse(scopes);
-            parsedScopes = Array.isArray(parsed) ? parsed : [];
-          } catch {
-            parsedScopes = [];
-          }
-        }
-
-        // Convert URLs to scope IDs using EBAY_OAUTH_SCOPES mapping
-        const scopeIds = parsedScopes.map(scope => {
-          // If it's already an ID, keep it
-          if (EBAY_OAUTH_SCOPES.find(s => s.id === scope)) {
-            return scope;
-          }
-          // If it's a URL, convert to ID
-          const scopeObj = EBAY_OAUTH_SCOPES.find(s => s.url === scope);
-          return scopeObj ? scopeObj.id : scope;
-        }).filter(Boolean);
-
-        // Add missing required scopes using DEFAULT_SCOPES
-        const missingRequiredScopes = DEFAULT_SCOPES.filter(
-          scopeId => !scopeIds.includes(scopeId)
-        );
-
-        console.log('EditEbayAccountModal - Original scopes:', parsedScopes);
-        console.log('EditEbayAccountModal - Converted scope IDs:', scopeIds);
-        console.log('EditEbayAccountModal - Final scopes with required:', [...scopeIds, ...missingRequiredScopes]);
-
-        return [...scopeIds, ...missingRequiredScopes];
-      };
-
       setFormData({
         friendlyName: account.friendlyName || '',
         tags: parseTags(account.tags),
         ebayUsername: account.ebayUsername || '',
-        selectedScopes: parseScopes(account.userSelectedScopes),
         status: account.status === 'active' ? 'active' : 'disabled',
       });
     }
@@ -287,27 +244,17 @@ export default function EditEbayAccountModal({
               )}
             </div>
 
-            {/* eBay Permissions Section */}
-            <EbayScopeSelector
-              selectedScopes={formData.selectedScopes}
-              onScopeChange={(scopes) => setFormData({ ...formData, selectedScopes: scopes })}
-              disabled={isSubmitting}
-            />
-
-            {/* Update Info */}
-            <div className="d-flex flex-column gap-3">
-              <h5 className="text-secondary mb-0">Important Notes</h5>
-              <Alert variant="info" className="mb-0">
-                <p className="small fw-medium mb-2">
-                  About updating permissions:
-                </p>
-                <div className="d-flex flex-column gap-1 small">
-                  <p className="mb-0">• Changing scopes may require re-authentication with eBay</p>
-                  <p className="mb-0">• You may need to reconnect the account after saving changes</p>
-                  <p className="mb-0">• Current tokens will remain valid until they expire</p>
-                </div>
-              </Alert>
-            </div>
+            {/* Info Section */}
+            <Alert variant="light" className="mb-0 border">
+              <p className="small fw-medium mb-2">
+                About permissions:
+              </p>
+              <div className="d-flex flex-column gap-1 small text-muted">
+                <p className="mb-0">• eBay permissions are granted during OAuth connection</p>
+                <p className="mb-0">• To change permissions, reconnect the account</p>
+                <p className="mb-0">• API access is controlled via API Token settings</p>
+              </div>
+            </Alert>
           </div>
         </Form>
       </Modal.Body>

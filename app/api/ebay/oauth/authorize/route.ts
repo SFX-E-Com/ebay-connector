@@ -7,6 +7,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const accountId = searchParams.get('accountId');
+    const isDebug = process.env.DEBUG_LOGGING === 'true' || searchParams.get('debug') === '1';
 
     if (!accountId) {
       return NextResponse.json(
@@ -25,9 +26,7 @@ export async function GET(request: NextRequest) {
     const config = getEbayConfig();
     const urls = getEbayUrls(config.isProduction);
 
-    // Fetch the account to get its selected scopes
     const account = await EbayAccountService.getAccountById(accountId);
-
     if (!account) {
       return NextResponse.json(
         { success: false, message: 'Account not found' },
@@ -35,95 +34,42 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get the selected scopes from the account
-    const selectedScopeIds = Array.isArray(account.userSelectedScopes)
-      ? account.userSelectedScopes
-      : [];
-
-    // Convert user selected scope IDs to eBay scope URLs dynamically
-    console.log('=== DYNAMIC SCOPE SELECTION ===');
-    console.log('User selected scopes from DB:', selectedScopeIds);
-
     const isSandbox = process.env.EBAY_SANDBOX === 'true';
-    console.log('Environment:', isSandbox ? 'SANDBOX' : 'PRODUCTION');
 
-    const accountScopeUrls = selectedScopeIds
-      .map((scopeId: string) => {
-        const scope = EBAY_OAUTH_SCOPES.find(s => s.id === scopeId);
-        if (scope) {
-          // Filter out scopes not available in sandbox
-          if (isSandbox && scope.sandboxAvailable === false) {
-            console.log(`⚠️ Skipping scope "${scopeId}" - not available in sandbox`);
-            return null;
-          }
-          console.log(`✅ Mapped scope ID "${scopeId}" to URL: ${scope.url}`);
-          return scope.url;
-        } else {
-          console.log(`❌ Could not find URL for scope ID: ${scopeId}`);
-          return null;
-        }
-      })
-      .filter(Boolean); // Remove any null values
+    const allScopeUrls = EBAY_OAUTH_SCOPES
+      .filter(scope => !isSandbox || (scope as { sandboxAvailable?: boolean }).sandboxAvailable !== false)
+      .map(scope => scope.url);
 
-    // Always ensure basic API scope is included
     const basicScope = EBAY_SCOPES.READ_BASIC;
-    if (!accountScopeUrls.includes(basicScope)) {
-      console.log(`➕ Adding basic API scope: ${basicScope}`);
-      accountScopeUrls.unshift(basicScope);
+    if (!allScopeUrls.includes(basicScope)) {
+      allScopeUrls.unshift(basicScope);
     }
 
-    // Use the user-selected scopes
-    const scopes = accountScopeUrls.join(' ');
-
-    console.log('=== FINAL SCOPE SELECTION ===');
-    console.log('Total scopes being requested:', accountScopeUrls.length);
-    console.log('Scope URLs:', accountScopeUrls);
-    console.log('Scopes string:', scopes);
-
-    // Generate a random state parameter for security
+    const scopes = allScopeUrls.join(' ');
     const state = `${accountId}_${Math.random().toString(36).substring(2, 15)}`;
 
-    // Build authorization URL manually with RuName
-    const baseUrl = urls.auth;
-
-    // Use RuName for both sandbox and production as per eBay documentation
-    const redirectValue = process.env.EBAY_REDIRECT_URI!;
-
-    console.log('=== OAUTH REDIRECT CONFIGURATION ===');
-    console.log('Environment:', config.isProduction ? 'PRODUCTION' : 'SANDBOX');
-    console.log('Using RuName (as per eBay docs):', redirectValue);
-
-    // Properly encode all parameters for OAuth URL
-    const authUrl = new URL(baseUrl);
+    const authUrl = new URL(urls.auth);
     authUrl.searchParams.set('client_id', process.env.EBAY_CLIENT_ID!);
     authUrl.searchParams.set('response_type', 'code');
-    authUrl.searchParams.set('redirect_uri', redirectValue);
+    authUrl.searchParams.set('redirect_uri', process.env.EBAY_REDIRECT_URI!);
     authUrl.searchParams.set('scope', scopes);
     authUrl.searchParams.set('state', state);
-    // Force eBay to show the consent screen every time (prevents silent re-auth)
     authUrl.searchParams.set('prompt', 'login');
 
-    // DEBUG: Log the complete OAuth request details
-    console.log('=== PRODUCTION OAUTH DEBUG ===');
-    console.log('Environment:', process.env.EBAY_SANDBOX === 'true' ? 'SANDBOX' : 'PRODUCTION');
-    console.log('Client ID:', process.env.EBAY_CLIENT_ID);
-    console.log('Client ID Length:', process.env.EBAY_CLIENT_ID?.length);
-    console.log('Auth URL:', baseUrl);
-    console.log('Redirect URI:', process.env.EBAY_REDIRECT_URI);
-    console.log('Redirect URI Length:', process.env.EBAY_REDIRECT_URI?.length);
-    console.log('Scopes being requested:', scopes);
-    console.log('Scopes length:', scopes.length);
-    console.log('State:', state);
-    console.log('Complete auth URL:', authUrl.toString());
-    console.log('Auth URL Length:', authUrl.toString().length);
+    if (isDebug) {
+      console.log('OAuth authorize:', {
+        environment: isSandbox ? 'SANDBOX' : 'PRODUCTION',
+        scopeCount: allScopeUrls.length,
+        state: state.substring(0, 30)
+      });
+    }
 
-    // Store state in session/cookie for verification
     const response = NextResponse.redirect(authUrl.toString());
     response.cookies.set('ebay_oauth_state', state, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 600 // 10 minutes
+      maxAge: 600
     });
 
     return response;
