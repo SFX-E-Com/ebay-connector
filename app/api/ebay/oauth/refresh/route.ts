@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { TokenService } from '@/app/lib/services/auth';
-import { ebayOAuthService } from '@/app/lib/services/ebayOAuth';
+import { EbayTokenRefreshService } from '@/app/lib/services/ebayTokenRefresh';
 import { EbayAccountService } from '@/app/lib/services/ebayAccountService';
 
 export async function POST(request: NextRequest) {
@@ -50,8 +50,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if token is actually expired
-    if (!ebayOAuthService.isTokenExpired(account.expiresAt)) {
+    // Check if token is actually expired (use consolidated service)
+    if (!EbayTokenRefreshService.isTokenExpired(account.expiresAt)) {
       return NextResponse.json({
         success: true,
         message: 'Token is still valid',
@@ -65,22 +65,11 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Refresh the access token using the official eBay client
-    const newTokenData = await ebayOAuthService.refreshUserAccessToken(account.refreshToken);
+    // Refresh the access token using consolidated service (direct HTTP, no hardcoded scopes)
+    const newTokenData = await EbayTokenRefreshService.refreshEbayToken(account.refreshToken);
 
-    // Calculate new expiration date
-    const newExpiresAt = ebayOAuthService.calculateExpirationDate(newTokenData.expires_in);
-
-    // Update the account with new token data
-    const newScopes = newTokenData.scope ? newTokenData.scope.split(' ') : account.scopes;
-
-    await EbayAccountService.updateAccount(accountId, {
-      accessToken: newTokenData.access_token,
-      refreshToken: newTokenData.refresh_token || account.refreshToken,
-      expiresAt: newExpiresAt,
-      tokenType: newTokenData.token_type || account.tokenType,
-      scopes: newScopes,
-    });
+    // Update the account with new token data using consolidated service
+    await EbayTokenRefreshService.updateTokenInDatabase(accountId, newTokenData);
 
     // Get updated account
     const updatedAccount = await EbayAccountService.getAccountById(accountId);
