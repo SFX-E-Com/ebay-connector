@@ -72,12 +72,21 @@ async function fetchEbayInventory(
     try {
         const config = getEbayConfig();
         const urls = getEbayUrls(config.isProduction);
+        const apiUrl = `${urls.api}/sell/inventory/v1/inventory_item`;
+
+        console.log('=== EBAY API CALL DEBUG ===');
+        console.log('API URL:', apiUrl);
+        console.log('Access Token Length:', accessToken?.length || 0);
+        console.log('Access Token Empty:', !accessToken || accessToken === '');
+        console.log('Access Token Type:', typeof accessToken);
 
         await logToDebug("EBAY_INVENTORY", "Making eBay Inventory API call", {
             limit,
             offset,
             environment: config.isProduction ? "production" : "sandbox",
-            apiUrl: `${urls.api}/sell/inventory/v1/inventory_item`
+            apiUrl,
+            tokenLength: accessToken?.length || 0,
+            tokenEmpty: !accessToken || accessToken === ''
         }, "DEBUG");
 
         const queryParams = new URLSearchParams({
@@ -101,12 +110,17 @@ async function fetchEbayInventory(
 
         const responseText = await response.text();
 
+        console.log('=== EBAY API RESPONSE DEBUG ===');
+        console.log('Status:', response.status, response.statusText);
+        console.log('Response Length:', responseText.length);
+        console.log('Response Preview:', responseText.substring(0, 500));
+
         await logToDebug("EBAY_INVENTORY", "eBay Inventory API response received", {
             statusCode: response.status,
             statusText: response.statusText,
             hasContent: !!responseText,
             contentLength: responseText.length,
-            contentPreview: responseText.substring(0, 200)
+            contentPreview: responseText.substring(0, 500)
         }, "DEBUG");
 
         if (!response.ok) {
@@ -148,12 +162,28 @@ const getHandler = withEbayAuth('ebay:inventory:read', async (request: NextReque
     const { accountId } = await params;
 
     try {
+        // DEBUG: Log token info (not the full token for security)
+        const tokenPreview = authData.ebayAccount.accessToken 
+            ? `${authData.ebayAccount.accessToken.substring(0, 20)}...${authData.ebayAccount.accessToken.substring(authData.ebayAccount.accessToken.length - 10)}`
+            : 'NO_TOKEN';
+        
+        console.log('=== INVENTORY API DEBUG ===');
+        console.log('Account ID:', accountId);
+        console.log('Token Length:', authData.ebayAccount.accessToken?.length || 0);
+        console.log('Token Preview:', tokenPreview);
+        console.log('Token Expires At:', authData.ebayAccount.expiresAt);
+        console.log('Environment:', config.isProduction ? 'PRODUCTION' : 'SANDBOX');
+        console.log('eBay Username:', authData.ebayAccount.ebayUsername);
+        console.log('Account Status:', authData.ebayAccount.status);
 
         await logToDebug("EBAY_INVENTORY", "View Inventory API Called", {
             accountId,
             userId: authData.user.id,
             userEmail: authData.user.email,
-            environment: config.isProduction ? "production" : "sandbox"
+            environment: config.isProduction ? "production" : "sandbox",
+            tokenLength: authData.ebayAccount.accessToken?.length || 0,
+            tokenPreview,
+            expiresAt: authData.ebayAccount.expiresAt?.toISOString()
         }, "INFO");
 
         // Parse query parameters for pagination
