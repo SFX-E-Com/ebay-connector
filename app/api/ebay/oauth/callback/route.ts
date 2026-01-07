@@ -1,16 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { EbayAccountService } from '@/app/lib/services/ebayAccountService';
 import { EBAY_SCOPES } from '@/app/lib/config/ebay';
+import { logToDebug } from '@/app/lib/middleware/queryDebugMiddleware';
 
 export async function GET(request: NextRequest) {
   try {
+    await logToDebug('OAUTH_CALLBACK', 'OAuth callback started', {}, 'INFO');
 
     const { searchParams } = new URL(request.url);
     const code = searchParams.get('code');
     const state = searchParams.get('state');
     const error = searchParams.get('error');
 
-    // Get base URL from request
+    await logToDebug('OAUTH_CALLBACK', 'Params received', {
+      hasCode: !!code,
+      codeLength: code?.length || 0,
+      hasState: !!state,
+      hasError: !!error
+    }, 'INFO');
+
     const baseUrl = `${request.nextUrl.protocol}//${request.nextUrl.host}`;
 
     // Check for OAuth errors
@@ -86,6 +94,11 @@ export async function GET(request: NextRequest) {
       redirect_uri: redirectValue!
     });
 
+    await logToDebug('OAUTH_CALLBACK', 'Starting token exchange', {
+      tokenUrl,
+      accountId: accountId
+    }, 'INFO');
+
     const tokenResponse = await fetch(tokenUrl, {
       method: 'POST',
       headers: {
@@ -96,13 +109,29 @@ export async function GET(request: NextRequest) {
       body: tokenParams.toString()
     });
 
+    await logToDebug('OAUTH_CALLBACK', 'Token exchange response', {
+      status: tokenResponse.status,
+      ok: tokenResponse.ok
+    }, 'INFO');
+
     if (!tokenResponse.ok) {
       const errorText = await tokenResponse.text();
-      console.error('Token exchange failed:', errorText);
+      await logToDebug('OAUTH_CALLBACK', 'Token exchange FAILED', {
+        status: tokenResponse.status,
+        error: errorText
+      }, 'ERROR');
       throw new Error(`Token exchange failed: ${tokenResponse.status} ${errorText}`);
     }
 
     const tokenData = await tokenResponse.json();
+    
+    await logToDebug('OAUTH_CALLBACK', 'Token exchange SUCCESS', {
+      hasAccessToken: !!tokenData.access_token,
+      accessTokenLength: tokenData.access_token?.length || 0,
+      hasRefreshToken: !!tokenData.refresh_token,
+      expiresIn: tokenData.expires_in,
+      tokenType: tokenData.token_type
+    }, 'INFO');
 
     // DEBUG: Log complete OAuth token response
     console.log('=== OAUTH CALLBACK DEBUG - COMPLETE TOKEN DATA ===');
@@ -171,21 +200,16 @@ export async function GET(request: NextRequest) {
 
     console.log('Refresh Token Expires At:', refreshTokenExpiresAt.toISOString());
 
-    // Get the account's selected scopes before updating
     const existingAccount = await EbayAccountService.getAccountById(accountId);
 
-    // DEBUG: Log existing account data
-    console.log('=== OAUTH CALLBACK DEBUG - EXISTING ACCOUNT ===');
-    console.log('Account ID:', accountId);
-    console.log('Existing Account userSelectedScopes:', existingAccount?.userSelectedScopes);
+    await logToDebug('OAUTH_CALLBACK', 'Existing account retrieved', {
+      accountId,
+      exists: !!existingAccount,
+      currentAccessTokenLength: existingAccount?.accessToken?.length || 0,
+      currentAccessTokenPreview: existingAccount?.accessToken?.substring(0, 20) || 'none'
+    }, 'INFO');
 
-    // PRESERVE the original userSelectedScopes format during reconnection
     const preservedUserSelectedScopes = existingAccount?.userSelectedScopes || ['api_scope'];
-
-    // DEBUG: Log preserved scopes
-    console.log('=== OAUTH CALLBACK DEBUG - PRESERVED SCOPES ===');
-    console.log('Preserved userSelectedScopes (no conversion):', preservedUserSelectedScopes);
-    console.log('eBay granted scopes (from tokenData.scope):', tokenData.scope);
 
     const updateData = {
       ebayUserId: ebayUserId,
@@ -200,25 +224,21 @@ export async function GET(request: NextRequest) {
       status: 'active',
     };
 
-    console.log('=== DATABASE UPDATE DEBUG ===');
-    console.log('Account ID:', accountId);
-    console.log('Update Data:', JSON.stringify(updateData, null, 2));
-    console.log('Access Token Length:', tokenData.access_token?.length);
-    console.log('Refresh Token Length:', tokenData.refresh_token?.length);
-    console.log('Token Expires At:', expiresAt.toISOString());
-    console.log('Granted Scopes Count:', updateData.scopes.length);
-    console.log('Granted Scopes List:', updateData.scopes);
+    await logToDebug('OAUTH_CALLBACK', 'Preparing database update', {
+      accountId,
+      newAccessTokenLength: tokenData.access_token?.length || 0,
+      newAccessTokenPreview: tokenData.access_token?.substring(0, 30) || 'none',
+      expiresAt: expiresAt.toISOString(),
+      scopesCount: updateData.scopes.length
+    }, 'INFO');
 
-    // Update the placeholder account with real OAuth data
     const updatedAccount = await EbayAccountService.updateAccount(accountId, updateData);
 
-    console.log('=== DATABASE UPDATE RESULT ===');
-    console.log('Updated Account ID:', updatedAccount?.id);
-    console.log('Updated eBay User ID:', updatedAccount?.ebayUserId);
-    console.log('Updated eBay Username:', updatedAccount?.ebayUsername);
-    console.log('Updated Status:', updatedAccount?.status);
-    console.log('Updated Scopes:', updatedAccount?.scopes);
-    console.log('Database Update Successful!');
+    await logToDebug('OAUTH_CALLBACK', 'Database update completed', {
+      success: !!updatedAccount,
+      updatedAccountId: updatedAccount?.id,
+      updatedStatus: updatedAccount?.status
+    }, 'INFO');
 
     // Clear the OAuth state cookie
     const response = NextResponse.redirect(new URL('/ebay-connections?success=connected', baseUrl));
